@@ -1,0 +1,32 @@
+//
+// printbaseparaview.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// EXAMPLE USAGE:
+//  Print base solution to single .vtu file:
+// mpirun -n 4 FreeFem++-mpi -v 0 printbaseparaview.edp -bfi <FILEIN> -split 2
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
+load "iovtk"
+include "settings.idp"
+include "macro_ddm.idp"
+// arguments
+string basefilein = getARGV("-bfi", "");
+string basefileout = getARGV("-bfo", basefilein);
+int split=getARGV("-split",1);
+// load macros
+include "solvermacros.idp"
+if (mpirank==0){
+  string meshfile = readmeshname(workdir + basefilein + ".base");
+  // Load mesh
+  Thg = readmesh(workdir + meshfile + meshext);
+  XMhg defu(ub);
+  restu = 0:XMhg.ndof-1;
+  ub[] = loadbase(workdir, basefilein, meshfile);
+  meshN Thgs = trunc(Thg, 1, split=split);
+  fespace XMhs(Thgs, Pk);
+  XMhs defu(us) = defu(ub);
+  savevtk(workdir + basefileout + ".vtu", Thgs, adaptu(us), dataname=ParaviewDataName, order=ParaviewOrder);
+}

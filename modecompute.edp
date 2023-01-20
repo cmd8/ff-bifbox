@@ -1,0 +1,108 @@
+//
+// modecompute.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// EXAMPLE USAGE:
+//  Compute eigenvalues, store specrum without storing eigenvectors:
+// mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -eps_target 0.1+1.0i -eps_nev 10 -bfi <FILEIN> -vfo <VALFILE>
+//
+//  Compute eigenvalues, store eigenvectors without storing spectrum:
+// mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -eps_target 0.1+1.0i -eps_nev 4 -bfi <FILEIN> -mfo <VALFILE>
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
+load "PETSc-complex"
+include "settings.idp"
+include "macro_ddm.idp"
+// arguments
+string basefilein = getARGV("-bfi", "");
+bool bf2d = getARGV("-bf2d", 0);// if true, base flow does not include z-velocity
+string modefilein = getARGV("-mfi", "");
+string evalfileout = getARGV("-vfo", "");
+string modefileout = getARGV("-mfo", "");
+bool adj = getARGV("-adj",0);
+int m = getARGV("-m", 0);
+int symm = getARGV("-symm", m);
+string epstarget = getARGV("-eps_target", "");
+int epsnev = getARGV("-eps_nev", 1);
+bool strictnev = getARGV("-strict", 0);
+string sttype = getARGV("-st_type", "sinvert");
+string stpctype = getARGV("-st_pc_type", "lu");
+// other variables
+complex[int] val(epsnev);
+complex eigenvalue, ik;
+// load macros
+include "solvermacros.idp"
+
+if (basefilein == "") basefilein = readbasename(workdir + modefilein + ".mode");
+string meshfile = readmeshname(workdir + basefilein + ".base");
+// Load mesh, make FE basis
+Th = readmeshN(workdir + meshfile + meshext);
+Thg = Th;
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+XMh defu(ub);
+if (bf2d) {
+  ub[] = load2Cbase(workdir, basefilein, meshfile);
+} else {
+  ub[] = loadbase(workdir, basefilein, meshfile);
+}
+XMh<complex>[int] defu(vec)(epsnev);
+XMh<complex> defu(um);
+
+if (epstarget == "" && modefilein != "") epstarget = string(readmodeeval(workdir + modefilein + ".mode", m));
+else if (epstarget == "") epstarget = "0+0i";
+
+Mat<complex> J, M;
+createMatu(Th, J, Pk);
+createMatu(Th, M, Pk);
+ik = 1i*real(m);
+IFMACRO(formulation,incomp)
+include "eqns_incomp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmach)
+include "eqns_lowmach.idp"
+ENDIFMACRO
+IFMACRO(formulation,comp)
+include "eqns_comp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmachreact)
+include "eqns_lowmachreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,compreact)
+include "eqns_compreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,custom)
+include "eqns_custom.idp"
+ENDIFMACRO
+
+{ matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -2);
+  if (adj) Jtemp = -Jtemp';
+  else Jtemp = -Jtemp;
+  J = Jtemp;
+}
+M = vM(XMh, XMh, tgv = -10);
+
+int k = EPSSolve(J, M, vectors = vec, values = val,
+                 sparams = " -st_type " + sttype
+                         + " -st_pc_type " + stpctype
+                         + " -eps_target " + epstarget
+                         + " -eps_monitor_conv " + EPSparams);
+if (strictnev) k = min(k, epsnev); // activate to limit number of eigenpairs
+if (evalfileout != "" && mpirank==0){
+  cout << "  Writing " + k + " eigenvalues to '" + evalfileout + ".txt' in '" + workdir + "'." << endl;
+  { ofstream file(workdir + evalfileout + ".txt", append);
+    file.precision(17);
+    file.scientific;
+    for(int i = 0; i < k; ++i) file << m + "\t" + val(i) << endl;
+  }
+}
+if (modefileout != ""){
+  for (int i = 0; i < k; ++i){
+    eigenvalue = val(i);
+    complex[int] eigenmode;
+    ChangeNumbering(J, vec[i][], eigenmode);
+    savemode(complex, workdir, modefileout + i, basefilein, meshfile, eigenmode, m, eigenvalue);
+  }
+}

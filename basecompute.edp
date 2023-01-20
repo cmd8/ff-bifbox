@@ -1,0 +1,154 @@
+//
+// basecompute.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// EXAMPLE USAGE:
+//  Initialize without file:
+// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -Re 1 -Pe 1 -Le 1 -mshi <FILEIN> -bfo <FILEOUT>
+//
+//  Initialize with guess from file, solve on same mesh
+// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -Re 1 -Pe 1 -Le 1 -bfi <FILEIN> -bfo <FILEOUT>
+//
+//  Initialize with guess from file, solve on different mesh
+// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -mshi <MESHIN> -bfi <FILEIN> -bfo <FILEOUT>
+//
+//  Initialize with guess from file, adapt mesh/solution
+// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -bfi <FILEIN> -bfo <FILEOUT> -msho <MESHOUT>
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
+load "PETSc"
+include "settings.idp"
+include "macro_ddm.idp"
+// arguments
+string meshfilein = getARGV("-mshi", ""); // input meshfile
+string meshfileout = getARGV("-msho", ""); // output mesh (adapted to input)
+string basefilein = getARGV("-bfi", ""); // input basefile
+string basefileout = getARGV("-bfo", ""); // output basefile
+real snesrtol = getARGV("-snes_rtol", 0); // set -snes_rtol
+string ksptype = getARGV("-ksp_type", "preonly"); // set -ksp_method
+string pctype = getARGV("-pc_type", "lu"); // set -pc_type
+string sneslinesearchtype = getARGV("-snes_linesearch_type","l2"); // set -snes_linesearch_type
+// load macros
+include "solvermacros.idp"
+
+// if no meshfilein is given, use the mesh from basefilein
+if (meshfilein == "" & basefilein != "") meshfilein = readmeshname(workdir + basefilein + ".base");
+assert(meshfilein != ""); // if no basefilein given, must provide a mesh
+// Load mesh
+Th = readmeshN(workdir + meshfilein + meshext);
+Thg = Th;
+// Partition mesh across processors
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+// Make finite element basis
+XMh defu(ub);
+// Initialize solution with guess or file
+ub[] = loadbase(workdir, basefilein, meshfilein);
+// Create distributed Mat
+Mat J;
+createMatu(Th, J, Pk);
+int m = 0;
+real ik = 0.;
+IFMACRO(formulation,incomp)
+include "eqns_incomp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmach)
+include "eqns_lowmach.idp"
+ENDIFMACRO
+IFMACRO(formulation,comp)
+include "eqns_comp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmachreact)
+include "eqns_lowmachreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,compreact)
+include "eqns_compreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,custom)
+include "eqns_custom.idp"
+ENDIFMACRO
+set(J, sparams = " -ksp_type " + ksptype
+               + " -pc_type " + pctype
+               + " " + KSPparams
+               );
+real[int] q;
+ChangeNumbering(J, ub[], q);
+// MESH ADAPTATION
+bool noadapt = (meshfileout == "");
+if (noadapt) meshfileout = meshfilein; // If no output meshfile, don't adapt
+else { // else  output meshfile is given, adapt mesh
+  ChangeNumbering(J, ub[], q, inverse = true, exchange = false); // PETSc to FF numbering
+  XMhg defu(uG), defu(tempu); // create private global FE functions
+  for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
+  mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
+  if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
+    Thg = adaptmesh(Thg, adaptu(uG), hmin = getARGV("-hmin",1.0e-6),
+                                     hmax = getARGV("-hmax",1.0),
+                                     err = getARGV("-err", 0.01),
+                                     errg = getARGV("-errg", 0.1),
+                                     nbvx = int(getARGV("-nbvx",1e6)),
+                                     nbsmooth = int(getARGV("-nbsmooth",5)),
+                                     ratio = getARGV("-ratio",1.8),
+                                     anisomax = getARGV("-anisomax",1.0),
+                                     rescaling = bool(getARGV("-rescaling", 1)),
+                                     power = getARGV("-power", 1.0),
+                                     thetamax = getARGV("-thmax", 10.0)
+                                     );
+  }
+  broadcast(processor(0), Thg); // broadcast global mesh to all processors
+  defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
+  Th = Thg; //Reinitialize local mesh with global mesh
+  { // Partition new mesh and update the PETSc numbering
+    Mat Adapt;
+    createMatu(Th, Adapt, Pk);
+    J = Adapt;
+    set(J, sparams = " -ksp_type " + ksptype
+                   + " -pc_type " + pctype
+                   + " " + KSPparams
+                   );
+  }
+  defu(ub) = initu(0.0); // set local values to zero
+  { // Compute new restriction from global mesh to local mesh
+    int[int] temprestu;
+    temprestu = restrict(XMh, XMhg, n2o);
+    restu.resize(temprestu.n);
+    restu = temprestu;
+  }
+  ub[] = uG[](restu); //restrict global solution to each local mesh
+  { // Resize vectors
+    real[int] tempq;
+    ChangeNumbering(J, ub[], tempq);
+    q.resize(tempq.n);
+    q = tempq;
+  }
+}
+// Function to build residual operator in PETSc numbering
+func real[int] funcR(real[int]& qPETSc) {
+    changeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
+    real[int] R(XMh.ndof);
+    R = vR(0, XMh, tgv = -1);
+    real[int] RPETSc;
+    changeNumbering(J, R, RPETSc);
+    return RPETSc;
+}
+// Function to build Jacobian operator in PETSc numbering
+func int funcJ(real[int]& qPETSc) {
+    changeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
+    J = vJ(XMh, XMh, tgv = -1);
+    return 0;
+}
+int ret;
+// solve nonlinear problem with SNES
+SNESSolve(J, funcJ, funcR, q, reason = ret, sparams = "-snes_rtol " + snesrtol
+                                                    + " -snes_linesearch_type " + sneslinesearchtype
+                                                    + " -snes_monitor -snes_converged_reason "
+                                                    );
+if (ret > 0) { // Save solution if solver converged and output file is given
+  if(mpirank==0 && !noadapt) { // Save adapted mesh
+    cout << "  Saving adapted mesh '" + meshfileout + meshext + "' in '" + workdir + "'." << endl;
+    savemesh(Thg, workdir + meshfileout + meshext);
+  }
+  savebase(workdir, basefileout, "", meshfileout, q, 0, 0, true, true);
+}

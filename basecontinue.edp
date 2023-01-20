@@ -1,0 +1,260 @@
+//
+// basecontinue.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// EXAMPLE USAGE:
+//  Continue input file along parameter without mesh adaptation:
+// mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -bfi <FILEIN> -param <PARAM>
+//
+//  Continue input file along parameter with mesh adaptation:
+// mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -bfi <FILEIN> -param <PARAM> -msho <MESHOUT>
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
+load "PETSc"
+include "settings.idp"
+include "macro_ddm.idp"
+// arguments
+string meshfileout = getARGV("-msho", "");
+string basefilein = getARGV("-bfi", "");
+string basefileout = getARGV("-bfo", basefilein);
+int count = getARGV("-count", 0);
+int savecount = getARGV("-scount", 1);
+int maxcount = getARGV("-maxcount", 100);
+real h = getARGV("-h0", 1.0);
+string param = getARGV("-param","Re");
+real tol = getARGV("-tol", 1.e-10);
+real fmax = getARGV("-fmax", 2.0);
+real kappamax = getARGV("-kmax", 0.5);
+real deltamax = getARGV("-dmax", 1.0);
+real alphamax = getARGV("-amax", 30.)*pi/180.0;
+int refactor = getARGV("-refact", 0);
+int monotone = getARGV("-mono", 1);
+int maxit = getARGV("-maxit", 10);
+real eps = getARGV("-eps", 1e-7);
+string ksptype = getARGV("-ksp_type", "preonly");
+string pctype = getARGV("-pc_type", "lu");
+real snesatol = getARGV("-snes_atol",tol);
+real snesrtol = getARGV("-snes_rtol", 0.0);
+string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
+// load macros
+include "solvermacros.idp"
+
+// Load mesh, make FE basis
+string meshfile, meshfilein;
+if (count == 0) {
+  meshfile = readmeshname(workdir + basefilein + ".base");
+  meshfilein = meshfile;
+} else {
+  meshfile = readmeshname(workdir + basefilein + count + ".base");
+  meshfilein = meshfile(0:meshfile.rfind(count)-1);
+}
+Th = readmeshN(workdir + meshfile + meshext);
+Thg = Th;
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+XMh defu(ub), defu(yb);
+if (count == 0){
+  ub[] = loadbase(workdir, basefilein, meshfile);
+  if(mpirank == 0) printstats(workdir + basefileout + ".txt", meshfile, 0, 0.0);
+} else {
+  ub[] = loadbase(workdir, basefilein + count, meshfile);
+}
+Mat J;
+createMatu(Th, J, Pk);
+int m = 0;
+real ik = 0.;
+IFMACRO(formulation,incomp)
+include "eqns_incomp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmach)
+include "eqns_lowmach.idp"
+ENDIFMACRO
+IFMACRO(formulation,comp)
+include "eqns_comp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmachreact)
+include "eqns_lowmachreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,compreact)
+include "eqns_compreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,custom)
+include "eqns_custom.idp"
+ENDIFMACRO
+set(J, sparams = " -ksp_type " + ksptype
+               + " -pc_type " + pctype
+               + " " + KSPparams);
+// FUNCTIONS
+  func real[int] funcR(real[int]& inPETSc) {
+      changeNumbering(J, ub[], inPETSc, inverse = true, exchange = true);
+      real[int] out(XMh.ndof);
+      out = vR(0, XMh, tgv = -1);
+      real[int] outPETSc;
+      changeNumbering(J, out, outPETSc);
+      return outPETSc;
+  }
+
+  func int funcJ(real[int]& inPETSc) {
+      changeNumbering(J, ub[], inPETSc, inverse = true, exchange = true);
+      J = vJ(XMh, XMh, tgv = -1);
+      return 0;
+  }
+
+  // parameter functions
+    func real[int] funcJl(real[int]& R, real[int]& inPETSc, string & param) {
+      real lambda = getlambda(param);
+      updatelambda(param, lambda + eps);
+      real[int] Jl = funcR(inPETSc);
+      updatelambda(param, lambda);
+      Jl -= R;
+      Jl /= eps;
+      return Jl;
+    }
+
+// PREDICTOR
+real[int] q;
+ChangeNumbering(J, ub[], q);
+real[int] yq0(q.n), yq(q.n), ff(ub[].n), ff2(ub[].n);
+real[int] R = funcR(q);
+real[int] dq = funcJl(R, q, param);
+funcJ(q);
+KSPSolve(J, dq, yq0);
+ChangeNumbering(J, ff, yq0, inverse = true, exchange = false);
+real yl0 = -1.0/sqrt(1.0 + J(ff,ff));
+yq0 *= -yl0;
+real lambda = getlambda(param);
+while (count < maxcount){
+  real lambda0 = lambda;
+  real[int] q0 = q;
+  lambda -= (h*yl0);
+  q -= (h*yq0);
+  updatelambda(param, lambda);
+  real kappa = 0.0;
+  real delta = abs(h);
+  real maxdelta;
+  R = funcR(q);
+  ChangeNumbering(J, ff, R, inverse = true, exchange = false);
+  real res = sqrt(J(ff, ff));
+  if (mpirank == 0) cout << "  " + count + "-0:\t||R|| = " << res << ",\th = " << h << ",\t" + param + " = " << lambda << "." << endl;
+  // CORRECTOR LOOP
+  int it = 0;
+  funcJ(q);
+  while (1){
+    ++it;
+    real resp = res;
+    real deltap = delta;
+    if (refactor >= it) funcJ(q);
+    dq = funcJl(R, q, param);
+    KSPSolve(J, dq, yq);
+    KSPSolve(J, R, dq);
+    ChangeNumbering(J, ff, yq, inverse = true, exchange = false);
+    ChangeNumbering(J, ff2, dq, inverse = true, exchange = false);
+    real dlambda = J(ff,ff2)/(1.0 + J(ff,ff));
+    lambda -= dlambda;
+    updatelambda(param, lambda);
+    dq -= yq*dlambda;
+    q -= dq;
+    R = funcR(q);
+    ChangeNumbering(J, ff, R, inverse = true, exchange = false);
+    res = sqrt(J(ff, ff));
+    // steplength adaptation
+    ChangeNumbering(J, ff, dq, inverse = true, exchange = false);
+    delta = sqrt(J(ff, ff) + dlambda^2); // distance to curve
+    ChangeNumbering(J, ff, yq, inverse = true, exchange = false);
+    real yl = -1.0/sqrt(1.0 + J(ff, ff));
+    yq *= -yl;
+    ChangeNumbering(J, ff, yq0, inverse = true, exchange = false);
+    ChangeNumbering(J, ff2, yq, inverse = true, exchange = false);
+    real alpha = J(ff, ff2) + yl0*yl;
+    if(mpirank == 0) cout << "  " + count + "-" + it + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\talpha = " << (acos(abs(alpha))*180./pi) << ",\t" + param + " = " << lambda << "." << endl;
+    kappa = max(delta/deltap, kappa);
+    if (it == 1) maxdelta = delta;
+    real f = max(acos(abs(alpha))/alphamax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
+    if (res < tol & f < fmax) {
+      ++count;
+      h /= f;
+      if ((meshfileout != "") && (count % savecount == 0)){
+        ChangeNumbering(J, ub[], q, inverse = true, exchange = false);
+        ChangeNumbering(J, yb[], yq, inverse = true, exchange = false);
+        XMhg defu(uG), defu(yG), defu(tempu);
+        for[i, v : restu] tempu[][v] = ub[][i];
+        mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
+        for[i, v : restu] tempu[][v] = yb[][i];
+        mpiAllReduce(tempu[], yG[], mpiCommWorld, mpiSUM);
+        if(mpirank == 0) Thg = adaptmesh(Thg, adaptu(uG), //adapt mesh on proc 0
+                                         hmin = getARGV("-hmin",1.0e-6),
+                                         hmax = getARGV("-hmax",1.0),
+                                         err = getARGV("-err", 0.01),
+                                         errg = getARGV("-errg", 0.1),
+                                         nbvx = int(getARGV("-nbvx",1e6)),
+                                         nbsmooth = int(getARGV("-nbsmooth",5)),
+                                         ratio = getARGV("-ratio",1.8),
+                                         anisomax = getARGV("-anisomax",1.0),
+                                         rescaling = bool(getARGV("-rescaling", 1)),
+                                         power = getARGV("-power", 1.0),
+                                         thetamax = getARGV("-thmax", 10.0)
+                                         );
+        broadcast(processor(0), Thg);
+        defu(uG) = defu(uG);
+        defu(yG) = defu(yG);
+        Th = Thg;
+        { Mat Adapt;
+          createMatu(Th, Adapt, Pk);
+          J = Adapt;
+          set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
+        }
+        defu(ub) = initu(0.0);
+        defu(yb) = initu(0.0);
+        { int[int] temprestu;
+          temprestu = restrict(XMh, XMhg, n2o);
+          restu.resize(temprestu.n);
+          restu = temprestu;
+        }
+        ub[] = uG[](restu);
+        yb[] = yG[](restu);
+        { real[int] tempq;
+          ChangeNumbering(J, ub[], tempq);
+          q.resize(tempq.n);
+          q = tempq;
+        }
+        R.resize(q.n);
+        dq.resize(q.n);
+        yq.resize(q.n);
+        ChangeNumbering(J, yb[], yq);
+        yq0.resize(q.n);
+        ff.resize(ub[].n);
+        ff2.resize(ub[].n);
+        meshfile = meshfileout + count;
+        savemesh(Thg, workdir + meshfile + meshext);
+        int ret;
+        SNESSolve(J, funcJ, funcR, q, reason = ret,
+                  sparams = " -snes_atol " + snesatol + " -snes_rtol " + snesrtol + " -snes_linesearch_type " + sneslinesearchtype + " -snes_monitor -snes_converged_reason "); // solve nonlinear problem with SNES
+        assert(ret > 0);
+      }
+      savebase(workdir, basefileout + count, basefileout, meshfile, q, 0, 0, (count % savecount == 0), true);
+      if (alpha < 0){
+        h *= -1.0;
+        if(mpirank == 0) cout << "\tFold detected. Search direction reversed." << endl;
+        savebase(workdir, basefileout + count + "foldguess", "", meshfile, q, 0, 0, true, true);
+      }
+      yq0 = yq;
+      yl0 = yl;
+      break;
+    } else if (f >= fmax | it == maxit | res*(monotone!=0) >= resp) {
+      if (mpirank == 0){
+        if(res*(monotone!=0) >= resp) cout << "\tResidual norm failed to decrease. Reattempting with smaller step." << endl;
+        if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;
+        if(it == maxit) cout << "\tFailed to converge within limit of " + maxit + " iterations. Reattempting with smaller step." << endl;
+        if(maxdelta >= deltamax) cout << "\tStep size exceeds " << deltamax << "." << endl;
+        if(acos(abs(alpha)) >= alphamax) cout << "\tAngle exceeds " << (alphamax*180./pi) << " degrees." << endl;
+      }
+      h /= fmax;
+      q = q0;
+      lambda = lambda0;
+      updatelambda(param, lambda);
+      break;
+    }
+  }
+}

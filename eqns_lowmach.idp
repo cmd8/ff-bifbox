@@ -1,0 +1,47 @@
+// Define KSP parameters
+string KSPparams = "";
+string EPSparams = " -eps_pos_gen_non_hermitian ";
+// RESIDUAL VECTOR
+  varf vR(defu(dub), defu(v))
+      = int2d(Th)(
+          vT*ugradf(ub, 0, ubT)/ubT                 + ubT^(params["a"])*diff(0, vT, 0, ubT)/params["Pe"]
+        + ugradu(v, ub, 0, ub)/ubT - divu(0, v)*ubp + ubT^(params["a"])*visc(0, v , 0, ub )/params["Re"]
+        - vp*divu(0, ub)                            - ubT^(params["a"])*diff(0, vp, 0, ubT)/params["Pe"]
+      )
+      - int1d(Th, BCopen) (
+          ubT^(params["a"])*ndotvisc(v, 0, ub)/params["Re"]
+      )
+      + int1d(Th, BCaxis, BCopen, BCwall, BCinflow, BCslip) (
+          vp*ubT^(params["a"])*ndotgrads(ubT)/params["Pe"]
+      )
+      + on(BCwall, dub = ub, duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubT = ubT - 1.0)
+      + on(BCslip, duby = uby IFMACRO(component,3), dubz = ubz ENDIFMACRO)
+      + on(BCinflow, dub = ub - 2./5., duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubT = ubT - 1.0)
+      + axisBCs(0, dub, ub, uby, ubz, ubY, ubT);
+
+// JACOBIAN MATRIX
+varf vJ(defu(dub), defu(v))
+      = int2d(Th)(
+          vT*(ugradf(dub, 0, ubT)   + ugradf(ub, ik, dubT)   - ugradf(ub, 0, ubT)*dubT/ubT)/ubT                       + (ubT^(params["a"])*diff(-ik, vT, ik, dubT) + params["a"]*ubT^(params["a"]-1.)*dubT*diff(-ik, vT, 0, ubT))/params["Pe"]
+        +    (ugradu(v, dub, 0, ub) + ugradu(v, ub, ik, dub) - ugradu(v, ub, 0, ub)*dubT/ubT)/ubT - divu(-ik, v)*dubp + (ubT^(params["a"])*visc(-ik, v , ik, dub ) + params["a"]*ubT^(params["a"]-1.)*dubT*visc(-ik, v , 0, ub ))/params["Re"]
+        - vp*divu(ik, dub)                                                                                            - (ubT^(params["a"])*diff(-ik, vp, ik, dubT) + params["a"]*ubT^(params["a"]-1.)*dubT*diff(-ik, vp, 0, ubT))/params["Pe"]
+      )
+      - int1d(Th, BCopen) (
+          (ubT^(params["a"])*ndotvisc(v, ik, dub) + params["a"]*ubT^(params["a"] - 1.0)*dubT*ndotvisc(v, 0, ub))/params["Re"]
+      )
+      + int1d(Th, BCaxis, BCopen, BCwall, BCinflow, BCslip) (
+          vp*(ubT^(params["a"])*ndotgrads(dubT) + params["a"]*ubT^(params["a"]-1.)*dubT*ndotgrads(ubT))/params["Pe"]
+      )
+      + on(BCwall, dub = ub, duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubT = ubT - 1.0)
+      + on(BCslip, duby = uby IFMACRO(component,3), dubz = ubz, ENDIFMACRO)
+      + on(BCinflow, dub = ub - 2./5., duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubT = ubT - 1.0)
+      + axisBCs(m, dub, ub, uby, ubz, ubY, ubT);
+
+varf vM(defu(dub), defu(v))
+      = int2d(Th)(
+          (fdotg(vT,dubT) + udotv(dub, v))/ubT
+      )
+      + on(BCwall, dub = ub, duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubT = ubT - 1.0)
+      + on(BCslip, duby = uby IFMACRO(component,3), dubz = ubz, ENDIFMACRO)
+      + on(BCinflow, dub = ub - 2./5., duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubT = ubT - 1.0)
+      + axisBCs(m, dub, ub, uby, ubz, ubY, ubT);

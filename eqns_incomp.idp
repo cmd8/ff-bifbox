@@ -1,0 +1,39 @@
+// Define KSP parameters
+string KSPparams = "";
+string EPSparams = " -eps_pos_gen_non_hermitian ";
+// RESIDUAL VECTOR
+  varf vR(defu(dub), defu(v))
+      = int2d(Th)(
+        ugradu(v, ub, 0, ub) - divu(0, v)*ubp + visc(0, v, 0, ub)/params["Re"]
+        + vp*divu(0, ub)
+      )
+      - int1d(Th, BCopen) (
+        ndotvisc(v, 0, ub)/params["Re"]
+      )
+      + on(BCwall, dub = ub, duby = uby IFMACRO(component,3) ,dubz = ubz ENDIFMACRO)
+      + on(BCslip, duby = uby IFMACRO(component,3), dubz = ubz ENDIFMACRO)
+      + on(BCinflow, dub = ub - 2./5., duby = uby IFMACRO(component,3) ,dubz = ubz ENDIFMACRO)
+      + axisBCs(0, dub, ub, uby, ubz, ubY, ubT);
+
+// JACOBIAN MATRIX
+varf vJ(defu(dub), defu(v))
+      = int2d(Th)(
+          ugradu(v, dub, 0, ub) + ugradu(v, ub, ik, dub) - divu(-ik, v)*dubp + visc(-ik, v , ik, dub )/params["Re"]
+        + vp*divu(ik, dub)
+      )
+      - int1d(Th, BCopen) (
+        ndotvisc(v, ik, dub)/params["Re"]
+      )
+      + on(BCwall, dub = ub, duby = uby IFMACRO(component,3) ,dubz = ubz ENDIFMACRO)
+      + on(BCslip, duby = uby IFMACRO(component,3) ,dubz = ubz ENDIFMACRO)
+      + on(BCinflow, dub = ub - 2./5., duby = uby IFMACRO(component,3) ,dubz = ubz ENDIFMACRO )
+      + axisBCs(m, dub, ub, uby, ubz, ubY, ubT);
+
+varf vM(defu(dub), defu(v))
+      = int2d(Th)(
+          udotv(dub, v)
+      )
+      + on(BCwall, dub = ub, duby = uby IFMACRO(component,3) ,dubz = ubz ENDIFMACRO)
+      + on(BCslip, duby = uby IFMACRO(component,3), dubz = ubz ENDIFMACRO)
+      + on(BCinflow, dub = ub - 2./5., duby = uby IFMACRO(component,3) ,dubz = ubz ENDIFMACRO)
+      + axisBCs(m, dub, ub, uby, ubz, ubY, ubT);

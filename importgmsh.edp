@@ -1,0 +1,18 @@
+//
+// importgmsh.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
+load "gmsh"
+include "getARGV.idp"
+string gmshdir = getARGV("-gmshdir","./gmsh/");
+string meshfile = getARGV("-msh", "");
+string workdir = getARGV("-workdir","./data/");
+// stored in .msh format (gmsh)
+mesh Th  = gmshload(gmshdir + meshfile + ".msh");
+
+cout << " Mesh '" + meshfile + meshext + "' created with " << Th.nv << " vertices, " << Th.nt << " triangles, " << Th.nbe << " boundary elements." << endl;
+
+savemesh(Th, workdir + meshfile + ".msh");

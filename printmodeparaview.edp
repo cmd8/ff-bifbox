@@ -1,0 +1,40 @@
+//
+// printmodeparaview.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// EXAMPLE USAGE:
+//  Print mode to sequence of .vtu files for animation:
+// mpirun -n 4 FreeFem++-mpi -v 0 printbaseparaview.edp -mfi <FILEIN> -split 2
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
+load "iovtk"
+include "settings.idp"
+include "macro_ddm.idp"
+// arguments
+string modefilein = getARGV("-mfi", "");
+string modefileout = getARGV("-mfo", modefilein);
+int split=getARGV("-split",1);
+int nfmax = getARGV("-nfmax",24);
+// load macros
+include "solvermacros.idp"
+if (mpirank==0){
+  string meshfile = readmeshname(workdir + modefilein + ".mode");
+  // Load mesh
+  Thg = readmesh(workdir + meshfile + meshext);
+  XMhg<complex> defu(um);
+  restu = 0:XMhg.ndof-1;
+  int m;
+  complex eigenvalue;
+  um[] = loadmode(workdir, modefilein, meshfile, m, eigenvalue);
+  meshN Thgs = trunc(Thg, 1, split=split);
+  fespace XMhs(Thgs, Pk);
+  XMhs<complex> defu(us) = defu(um);
+  XMhs defu(usr);
+  for (int nf = 0; nf < nfmax; nf++){
+    complex[int] qtemp = us[]*exp(2i*pi*nf/nfmax);
+    usr[] = qtemp.re;
+    savevtk(workdir + modefileout + "_frame_"+ nf + ".vtu", Thgs, adaptu(usr), dataname=ParaviewDataName, order=ParaviewOrder);
+  }
+}
