@@ -21,13 +21,13 @@ git clone https://github.com/FreeFem/FreeFem-sources
 
 git clone https://gitlab.com/petsc/petsc
 
-#Compile real PETSc
+# Compile real PETSc
 
 cd ${PETSC_DIR} && ./configure --download-mumps --download-parmetis --download-metis --download-hypre --download-superlu --download-slepc --download-hpddm --download-ptscotch --download-suitesparse --download-scalapack --download-tetgen --download-mmg --download-parmmg --with-fortran-bindings=no --with-scalar-type=real --with-debugging=no
 
 make
 
-#Compile complex PETSc
+# Compile complex PETSc
 
 export PETSC_ARCH=arch-FreeFem-complex
 
@@ -55,4 +55,4 @@ export FF_INCLUDEPATH="$HOME/.local/FreeFem-sources/idp"
 
 export FF_LOADPATH="$HOME/.local/FreeFem-sources/plugin/mpi;;$HOME/.local/FreeFem-sources/plugin/seq"
 
-#end
+# end
