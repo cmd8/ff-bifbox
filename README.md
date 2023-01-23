@@ -1,9 +1,7 @@
 # ff-bifbox
 Numerical bifurcation analysis toolbox in FreeFEM
 
-FREEFEM INSTALL INSTRUCTIONS (USE AT OWN RISK)
-
-# Preliminary stuff
+# FREEFEM INSTALL INSTRUCTIONS (USE AT OWN RISK)
 
 # First make sure you have a working MPI implementation
 
