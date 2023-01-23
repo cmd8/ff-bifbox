@@ -13,7 +13,7 @@ macro coordinates()cartesian//EOM
 // Set number of vector components (2 or 3)
 macro component()2//EOM
 // Set equations (incomp, lowmach, comp, lowmachreact, compreact, or custom)
-macro formulation()lowmach//EOM NOTE: only compreact is actually implemented for now.
+macro formulation()compreact//EOM NOTE: only compreact is actually implemented for now.
 
 // Define parameter and monitor names
 IFMACRO(formulation,incomp)

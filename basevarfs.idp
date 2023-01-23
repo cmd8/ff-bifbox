@@ -1,7 +1,7 @@
 // Define KSP parameters
 string KSPparams = "";
-string EPSparams = " -eps_pos_gen_non_hermitian ";
 // RESIDUAL VECTOR
+IFMACRO(formulation,compreact)
   varf vR(defu(dub), defu(v))
       = int2d(Th)(
           vY*ubR*(ugradf(ub, 0, ubY) + ubY*Daexp(ub)) + ubT^(params["a"])*diff(0, vY, 0, ubY)/(params["Le"]*params["Pe"])
@@ -35,14 +35,34 @@ varf vJ(defu(dub), defu(v))
       + on(BCwall, dub = ub, duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubT = ubT - 1.0)
       + on(BCslip, duby = uby IFMACRO(component,3), dubz = ubz, ENDIFMACRO)
       + on(BCinflow, dub = ub - 2./5., duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubY = ubY - 1.0, dubT = ubT - 1.0)
-      + axisBCs(m, dub, ub, uby, ubz, ubY, ubT);
+      + axisBCs(0, dub, ub, uby, ubz, ubY, ubT);
+ENDIFMACRO
+// FUNCTIONS
+  func real[int] funcR(real[int]& inPETSc) {
+      changeNumbering(J, ub[], inPETSc, inverse = true, exchange = true);
+      real[int] out(XMh.ndof);
+      out = vR(0, XMh, tgv = -1);
+      real[int] outPETSc;
+      changeNumbering(J, out, outPETSc);
+      return outPETSc;
+  }
 
-// MASS MATRIX
-varf vM(defu(dub), defu(v))
-      = int2d(Th)(
-          fdotg(vR,dubR) + ubR*(fdotg(vY,dubY) + fdotg(vT,dubT) + udotv(dub, v))
-      )
-      + on(BCwall, dub = ub, duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubT = ubT - 1.0)
-      + on(BCslip, duby = uby IFMACRO(component,3), dubz = ubz, ENDIFMACRO)
-      + on(BCinflow, dub = ub - 2./5., duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubY = ubY - 1.0, dubT = ubT - 1.0)
-      + axisBCs(m, dub, ub, uby, ubz, ubY, ubT);
+  func int funcJ(real[int]& inPETSc) {
+      changeNumbering(J, ub[], inPETSc, inverse = true, exchange = true);
+      J = vJ(XMh, XMh, tgv = -1);
+      return 0;
+  }
+
+  // parameter functions
+    func real[int] funcJl(real[int]& R, real[int]& inPETSc, string & param) {
+      real lambda = getlambda(param);
+      real eps = getARGV("-eps", 1e-7);
+      updatelambda(param, lambda + eps);
+      real[int] Jl(R.n);
+      Jl = funcR(inPETSc);
+      updatelambda(param, lambda);
+      lambda -= eps;
+      Jl -= R;
+      Jl /= eps;
+      return Jl;
+    }

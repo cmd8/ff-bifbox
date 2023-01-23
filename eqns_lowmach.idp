@@ -37,6 +37,7 @@ varf vJ(defu(dub), defu(v))
       + on(BCinflow, dub = ub - 2./5., duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubT = ubT - 1.0)
       + axisBCs(m, dub, ub, uby, ubz, ubY, ubT);
 
+// MASS MATRIX
 varf vM(defu(dub), defu(v))
       = int2d(Th)(
           (fdotg(vT,dubT) + udotv(dub, v))/ubT

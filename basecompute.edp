@@ -29,7 +29,7 @@ string basefileout = getARGV("-bfo", ""); // output basefile
 real snesrtol = getARGV("-snes_rtol", 0); // set -snes_rtol
 string ksptype = getARGV("-ksp_type", "preonly"); // set -ksp_method
 string pctype = getARGV("-pc_type", "lu"); // set -pc_type
-string sneslinesearchtype = getARGV("-snes_linesearch_type","l2"); // set -snes_linesearch_type
+string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 // load macros
 include "solvermacros.idp"
 
@@ -141,7 +141,7 @@ func int funcJ(real[int]& qPETSc) {
 }
 int ret;
 // solve nonlinear problem with SNES
-SNESSolve(J, funcJ, funcR, q, reason = ret, sparams = "-snes_rtol " + snesrtol
+SNESSolve(J, funcJ, funcR, q, reason = ret, sparams = " -snes_rtol " + snesrtol
                                                     + " -snes_linesearch_type " + sneslinesearchtype
                                                     + " -snes_monitor -snes_converged_reason "
                                                     );

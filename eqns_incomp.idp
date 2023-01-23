@@ -29,6 +29,7 @@ varf vJ(defu(dub), defu(v))
       + on(BCinflow, dub = ub - 2./5., duby = uby IFMACRO(component,3) ,dubz = ubz ENDIFMACRO )
       + axisBCs(m, dub, ub, uby, ubz, ubY, ubT);
 
+// MASS MATRIX
 varf vM(defu(dub), defu(v))
       = int2d(Th)(
           udotv(dub, v)
@@ -37,3 +38,13 @@ varf vM(defu(dub), defu(v))
       + on(BCslip, duby = uby IFMACRO(component,3), dubz = ubz ENDIFMACRO)
       + on(BCinflow, dub = ub - 2./5., duby = uby IFMACRO(component,3) ,dubz = ubz ENDIFMACRO)
       + axisBCs(m, dub, ub, uby, ubz, ubY, ubT);
+
+// HESSIAN MATRIX
+varf vH(defu(dum), defu(v))
+      = int2d(Th)(
+          ugradu(v, dub, ik, dum) + ugradu(v, dum, 0, dub)
+      )
+      + on(BCwall, dum = 0, dumy = 0 IFMACRO(component,3) ,dumz = 0 ENDIFMACRO)
+      + on(BCslip, dumy = 0 IFMACRO(component,3) ,dumz = 0 ENDIFMACRO)
+      + on(BCinflow, dum = 0., dumy = 0 IFMACRO(component,3) ,dumz = 0 ENDIFMACRO )
+      + axisBCs(m, dum, 0, 0, 0, 0, 0);
