@@ -39,7 +39,7 @@ make
 
 cd ${FF_DIR}
 
-git checkout petsc-v3.19.0
+git checkout develop
 
 autoreconf -i
 
