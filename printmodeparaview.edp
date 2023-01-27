@@ -11,14 +11,12 @@
 //
 load "iovtk"
 include "settings.idp"
-include "macro_ddm.idp"
+include "solvermacros.idp"
 // arguments
 string modefilein = getARGV("-mfi", "");
 string modefileout = getARGV("-mfo", modefilein);
-int split=getARGV("-split",1);
-int nfmax = getARGV("-nfmax",24);
-// load macros
-include "solvermacros.idp"
+int meshsplit=getARGV("-split",1);
+int nfmax = getARGV("-nfmax",-1);
 if (mpirank==0){
   string meshfile = readmeshname(workdir + modefilein + ".mode");
   // Load mesh
@@ -28,13 +26,21 @@ if (mpirank==0){
   int m;
   complex eigenvalue;
   um[] = loadmode(workdir, modefilein, meshfile, m, eigenvalue);
-  meshN Thgs = trunc(Thg, 1, split=split);
+  meshN Thgs = trunc(Thg, 1, split = meshsplit);
   fespace XMhs(Thgs, Pk);
   XMhs<complex> defu(us) = defu(um);
   XMhs defu(usr);
-  for (int nf = 0; nf < nfmax; nf++){
-    complex[int] qtemp = us[]*exp(2i*pi*nf/nfmax);
-    usr[] = qtemp.re;
-    savevtk(workdir + modefileout + "_frame_"+ nf + ".vtu", Thgs, adaptu(usr), dataname=ParaviewDataName, order=ParaviewOrder);
+  if (nfmax >= 0){ // then loop through phases to create a movie
+    for (int nf = 0; nf < nfmax; nf++){
+      complex[int] qtemp = us[]*exp(2i*pi*nf/nfmax);
+      usr[] = qtemp.re;
+      savevtk(workdir + modefileout + "_mode_"+ nf + ".vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+    }
+  } else { //then just plot amplitude and phase
+    complex[int] qtemp = us[];
+    usr[] = abs(qtemp);
+    savevtk(workdir + modefileout + "_mode_abs.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+    usr[] = arg(qtemp);
+    savevtk(workdir + modefileout + "_mode_arg.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
   }
 }

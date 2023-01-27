@@ -12,13 +12,16 @@
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
+load "iovtk"
 load "PETSc"
 include "settings.idp"
-include "macro_ddm.idp"
+include "solvermacros.idp"
 // arguments
 string meshfileout = getARGV("-msho", "");
 string basefilein = getARGV("-bfi", "");
 string basefileout = getARGV("-bfo", basefilein);
+bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
+int meshsplit = getARGV("-split",1); // toggle whether mesh is split for P1 representation in Paraview
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
@@ -36,8 +39,6 @@ real snesrtol = getARGV("-snes_rtol", 0.0);
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 int refactor = getARGV("-refact", snesmaxit);
-// load macros
-include "solvermacros.idp"
 
 // Load mesh, make FE basis
 string meshfile, meshfilein;
@@ -119,7 +120,7 @@ real kappa, alpha, res, resp, delta, deltap, maxdelta;
         maxdelta = 0.0;
         alpha = 0.0;
         delta = abs(h0);
-        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << delta << ",\t" + param + " = " << lambda << "." << endl;
+        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param + " = " << lambda << "." << endl;
       } else {
         real dlambda;
         if(mpirank == 0) dlambda = lambda - qap(qap.n-1); // Extract parameter value from state vector on proc 0
@@ -300,11 +301,11 @@ while (count < maxcount){
     if(mpirank == 0) lambda = qa(qa.n-1);
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
-    savebase(workdir, basefileout + count, basefileout, meshfile, q, 0, 0, (count % savecount == 0), true);
+    savebase(workdir, basefileout + count, basefileout, meshfile, q, 0, 0, (count % savecount == 0), true, paraviewflag);
     if (alpha < 0){
       h0 *= -1.0;
       if(mpirank == 0) cout << "\tFold detected. Search direction reversed." << endl;
-      savebase(workdir, basefileout + count + "foldguess", "", meshfile, q, 0, 0, true, true);
+      savebase(workdir, basefileout + count + "foldguess", "", meshfile, q, 0, 0, true, true, paraviewflag);
     }
     yqP0 = yqP;
   } else {

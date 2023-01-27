@@ -12,15 +12,19 @@
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
+load "iovtk"
 load "PETSc-complex"
 include "settings.idp"
-include "macro_ddm.idp"
+include "solvermacros.idp"
 // arguments
 string basefilein = getARGV("-bfi", "");
 bool bf2d = getARGV("-bf2d", 0);// if true, base flow does not include z-velocity
 string modefilein = getARGV("-mfi", "");
 string evalfileout = getARGV("-vfo", "");
 string modefileout = getARGV("-mfo", "");
+bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
+int meshsplit = getARGV("-split", 1); // toggle whether mesh is split for P1 representation in Paraview
+int nfmax = getARGV("-nfmax",-1); // IF POSTIVE selects number of frames to animate for visualizing complex modes ELSE outputs mag/phase
 bool adj = getARGV("-adj",0);
 int m = getARGV("-m", 0);
 int symm = getARGV("-symm", m);
@@ -33,7 +37,6 @@ string stpctype = getARGV("-st_pc_type", "lu");
 complex[int] val(epsnev);
 complex eigenvalue, ik;
 // load macros
-include "solvermacros.idp"
 
 if (basefilein == "") basefilein = readbasename(workdir + modefilein + ".mode");
 string meshfile = readmeshname(workdir + basefilein + ".base");
@@ -90,7 +93,7 @@ int k = EPSSolve(J, M, vectors = vec, values = val,
                          + " -eps_target " + epstarget
                          + " -eps_monitor_conv " + EPSparams);
 if (strictnev) k = min(k, epsnev); // activate to limit number of eigenpairs
-if (evalfileout != "" && mpirank==0){
+if (evalfileout != "" && mpirank == 0){
   cout << "  Writing " + k + " eigenvalues to '" + evalfileout + ".txt' in '" + workdir + "'." << endl;
   { ofstream file(workdir + evalfileout + ".txt", append);
     file.precision(17);
@@ -103,6 +106,6 @@ if (modefileout != ""){
     eigenvalue = val(i);
     complex[int] eigenmode;
     ChangeNumbering(J, vec[i][], eigenmode);
-    savemode(complex, workdir, modefileout + i, basefilein, meshfile, eigenmode, m, eigenvalue);
+    savemode(complex,complex, workdir, modefileout + "_" + i, basefilein, meshfile, eigenmode, m, eigenvalue, paraviewflag);
   }
 }

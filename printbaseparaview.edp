@@ -11,13 +11,11 @@
 //
 load "iovtk"
 include "settings.idp"
-include "macro_ddm.idp"
+include "solvermacros.idp"
 // arguments
 string basefilein = getARGV("-bfi", "");
 string basefileout = getARGV("-bfo", basefilein);
-int split=getARGV("-split",1);
-// load macros
-include "solvermacros.idp"
+int meshsplit = getARGV("-split",1);
 if (mpirank==0){
   string meshfile = readmeshname(workdir + basefilein + ".base");
   // Load mesh
@@ -25,7 +23,7 @@ if (mpirank==0){
   XMhg defu(ub);
   restu = 0:XMhg.ndof-1;
   ub[] = loadbase(workdir, basefilein, meshfile);
-  meshN Thgs = trunc(Thg, 1, split=split);
+  meshN Thgs = trunc(Thg, 1, split=meshsplit);
   fespace XMhs(Thgs, Pk);
   XMhs defu(us) = defu(ub);
   savevtk(workdir + basefileout + ".vtu", Thgs, adaptu(us), dataname=ParaviewDataName, order=ParaviewOrder);

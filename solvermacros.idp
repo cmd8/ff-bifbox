@@ -5,6 +5,7 @@
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
+
 cout.precision(8);
 string workdir = getARGV("-dir","./data/"); // set working directory
 // Define local/global mesh variables
@@ -53,17 +54,17 @@ macro createMatf(th,A,P){
 } // EOM
 
 // FUNCTIONS -------------------------------------------------------------------
-macro savebase(workdir, basefile, statsfile, meshfile, q, m, omega, saveflag, getflag){
+macro savebase(workdir, basefileout, statsfile, meshfile, q, m, omega, saveflag, monitorflag, paraviewflag){
   XMhg defu(ubg), defu(ubo);
   ChangeNumbering(J, ub[], q, inverse = true);
   for[i, v : restu] ubg[][v] = ub[][i];
   mpiAllReduce(ubg[], ubo[], mpiCommWorld, mpiSUM);
-  if (getflag) getmonitors(ubo);
+  if (monitorflag) getmonitors(ubo);
   if (mpirank == 0 && statsfile != "") printstats(workdir + statsfile + ".txt", meshfile, m, omega);
-  if (saveflag && mpirank == 0 && basefile != ""){
-    cout << "  Saving '" + basefile + ".base' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
+  if (saveflag && mpirank == 0 && basefileout != ""){
+    cout << "  Saving '" + basefileout + ".base' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
     cout << "\t" + listparams(paramnames,params)  + ", " + listparams(monitornames, monitors) + "." << endl;
-    { ofstream file(workdir + basefile + ".base", binary);
+    { ofstream file(workdir + basefileout + ".base", binary);
       file.precision(17);
       file << "mesh\t" << meshfile << endl << endl;
       for (int k = 0; k < paramnames.n; ++k){
@@ -74,24 +75,41 @@ macro savebase(workdir, basefile, statsfile, meshfile, q, m, omega, saveflag, ge
       }
       file << ubo[] << endl;
     }
+    if (paraviewflag){
+      cout << "  Saving '" + basefileout + "_base.vtu' in '" + workdir + "'." << endl;
+      if (meshsplit != 1){
+        meshN Thgs = trunc(Thg, 1, split = meshsplit);
+        fespace XMhs(Thgs, Pk);
+        XMhs defu(us) = defu(ubo);
+        savevtk(workdir + basefileout + "_base.vtu", Thgs, adaptu(us), dataname = ParaviewDataName, order = ParaviewOrder);
+      } else {
+        savevtk(workdir + basefileout + "_base.vtu", Thg, adaptu(ubo), dataname = ParaviewDataName, order = ParaviewOrder);
+      }
+    }
   }
-}//
+}//EOM
 
-macro savemode(K, workdir, modefile, basefile, meshfile, eigenmode, m, eigenvalue){
-  NewMacro PETSctype()K EndMacro
-  XMhg<complex> defu(umg), defu(umo);
+macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, meshfile, eigenmode, m, eigenvalue,paraviewflag){
+  NewMacro FFtype()FFrealcomplex EndMacro
+  XMhg<FFtype> defu(umg), defu(umo);
+  IFMACRO(FFtype,real)
+    ChangeNumbering(J, um[], eigenmode, inverse = true);
+  ENDIFMACRO
+  IFMACRO(FFtype,complex)
+  NewMacro PETSctype()PETScrealcomplex EndMacro
   IFMACRO(PETSctype,real)
     ChangeNumbering([J, J], [um[].re, um[].im], eigenmode, inverse = true);
   ENDIFMACRO
   IFMACRO(PETSctype,complex)
     ChangeNumbering(J, um[], eigenmode, inverse = true);
   ENDIFMACRO
+  ENDIFMACRO
   for[i, v : restu] umg[][v] = um[][i];
   mpiAllReduce(umg[], umo[], mpiCommWorld, mpiSUM);
-  if (mpirank == 0 && modefile != ""){
-    cout << "  Saving '" + modefile + ".mode' over '" + basefile + ".base' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
+  if (mpirank == 0 && modefileout != ""){
+    cout << "  Saving '" + modefileout + ".mode' over '" + basefile + ".base' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
     cout << "\t" + listparams(paramnames,params) + ", m = " + m + ", eval = " + eigenvalue + "."  << endl;
-    { ofstream file(workdir + modefile + ".mode", binary);
+    { ofstream file(workdir + modefileout + ".mode", binary);
       file.precision(17);
       file << "mesh\t" << meshfile << endl << endl;
       file << "base\t" << basefile << endl << endl;
@@ -102,8 +120,46 @@ macro savemode(K, workdir, modefile, basefile, meshfile, eigenmode, m, eigenvalu
     file << "eval\t" << eigenvalue << endl << endl;
     file << umo[] << endl;
     }
+    if (paraviewflag){
+      cout << "  Saving '" + modefileout + "_mode.vtu' in '" + workdir + "'." << endl;
+      cout << "  Saving '" + modefileout + "_mode_[0-" + (nfmax-1) + "].vtu' in '" + workdir + "'." << endl;
+      if (meshsplit != 1){
+        meshN Thgs = trunc(Thg, 1, split = meshsplit);
+        fespace XMhs(Thgs, Pk);
+        XMhs<FFtype> defu(uso) = defu(umo);
+        XMhs defu(usr);
+        if (nfmax >= 0){
+          for (int nf = 0; nf < nfmax; nf++){
+            complex[int] qtemp = us[]*exp(2i*pi*nf/nfmax);
+            usr[] = qtemp.re;
+            savevtk(workdir + modefileout + "_mode_"+ nf + ".vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+          }
+        } else {
+          complex[int] qtemp = us[];
+          usr[] = abs(qtemp);
+          savevtk(workdir + modefileout + "_mode_abs.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+          usr[] = arg(qtemp);
+          savevtk(workdir + modefileout + "_mode_arg.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+        }
+      } else {
+        XMh defu(usr);
+        if (nfmax >= 0){
+          for (int nf = 0; nf < nfmax; nf++){
+            complex[int] qtemp = umo[]*exp(2i*pi*nf/nfmax);
+            usr[] = qtemp.re;
+            savevtk(workdir + modefileout + "_mode_"+ nf + ".vtu", Thg, adaptu(usr), dataname=ParaviewDataName, order=ParaviewOrder);
+          }
+        } else {
+          complex[int] qtemp = umo[];
+          usr[] = abs(qtemp);
+          savevtk(workdir + modefileout + "_mode_abs.vtu", Thgs, adaptu(usr), dataname=ParaviewDataName, order=ParaviewOrder);
+          usr[] = arg(qtemp);
+          savevtk(workdir + modefileout + "_mode_arg.vtu", Thgs, adaptu(usr), dataname=ParaviewDataName, order=ParaviewOrder);
+        }
+      }
+    }
   }
-}//
+}//EOM
 
 macro saveoptf(K, workdir, modefile, basefile, meshfile, forcingmode, m, eigenvalue){
   NewMacro PETSctype()K EndMacro
@@ -134,7 +190,7 @@ macro saveoptf(K, workdir, modefile, basefile, meshfile, forcingmode, m, eigenva
     file << fmf[] << endl;
     }
   }
-}//
+}//EOM
 
 func bool printstats(string outputfilename, string meshfilename, int m, real omega) {
       cout << "  Saving solution stats in '" + outputfilename + "'." << endl;
