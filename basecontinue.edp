@@ -134,7 +134,7 @@ real kappa, alpha, res, resp, delta, deltap, maxdelta;
         alpha = (J(ff1, ff2) + 1.0)/sqrt((J(ff1, ff1) + 1.0)*(J(ff2, ff2) + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
-        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (acos(alpha)*180./pi) << ",\t" + param + " = " << lambda << "." << endl;
+        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(alpha)*acos(abs(alpha))*180./pi) << ",\t" + param + " = " << lambda << "." << endl;
       }
       f = max(acos(abs(alpha))/alphamax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
       if (it > 0 && !adaptflag && (f > fmax || it-1 >= snesmaxit || res*(monotone!=0) > resp)) Ra(0) = NaN();
