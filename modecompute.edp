@@ -14,7 +14,7 @@
 //
 load "iovtk"
 load "PETSc-complex"
-include "settings.idp"
+include "solversettings.idp"
 include "solvermacros.idp"
 // arguments
 string basefilein = getARGV("-bfi", "");

@@ -225,7 +225,7 @@ func complex readmodeeval(string inputfilename, int & m) {
 func real[int] loadbase(string directoryname, string inputfilename, string meshfilename) {
       XMhg defu(ubg);
       if (inputfilename == ""){
-        defu(ubg) = [ICu];
+        defu(ubg) = InitialConditions;
       } else {
         if (mpirank == 0) cout << "  Loading '" + inputfilename + ".base' on '" + meshfilename + meshext + "' from '" + directoryname + "'." << endl;
         string filemesh;

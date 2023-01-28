@@ -10,7 +10,7 @@
 // NOTE: This file should not be changed unless you know what you're doing.
 //
 load "iovtk"
-include "settings.idp"
+include "solversettings.idp"
 include "solvermacros.idp"
 // arguments
 string modefilein = getARGV("-mfi", "");

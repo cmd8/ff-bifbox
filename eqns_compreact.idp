@@ -14,10 +14,7 @@ string EPSparams = " -eps_pos_gen_non_hermitian ";
       - int1d(Th, BCopen) (
         ubT^(params["a"])*ndotvisc(v, 0, ub)/params["Re"]
       )
-      + on(BCwall, dub = ub, duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubT = ubT - 1.0)
-      + on(BCslip, duby = uby IFMACRO(component,3), dubz = ubz ENDIFMACRO)
-      + on(BCinflow, dub = ub - 2./5., duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubY = ubY - 1.0, dubT = ubT - 1.0)
-      + axisBCs(0, dub, ub, uby, ubz, ubY, ubT);
+      + BoundaryConditions(0, dub, ub);
 
 // JACOBIAN MATRIX
 varf vJ(defu(dub), defu(v))
@@ -32,17 +29,11 @@ varf vJ(defu(dub), defu(v))
       - int1d(Th, BCopen) (
         (ubT^(params["a"])*ndotvisc(v, ik, dub) + params["a"]*ubT^(params["a"]-1.)*dubT*ndotvisc(v, 0, ub))/params["Re"]
       )
-      + on(BCwall, dub = ub, duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubT = ubT - 1.0)
-      + on(BCslip, duby = uby IFMACRO(component,3), dubz = ubz, ENDIFMACRO)
-      + on(BCinflow, dub = ub - 2./5., duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubY = ubY - 1.0, dubT = ubT - 1.0)
-      + axisBCs(m, dub, ub, uby, ubz, ubY, ubT);
+      + BoundaryConditions(0, dub, ub);
 
 // MASS MATRIX
 varf vM(defu(dub), defu(v))
       = int2d(Th)(
           fdotg(vR,dubR) + ubR*(fdotg(vY,dubY) + fdotg(vT,dubT) + udotv(dub, v))
       )
-      + on(BCwall, dub = ub, duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubT = ubT - 1.0)
-      + on(BCslip, duby = uby IFMACRO(component,3), dubz = ubz, ENDIFMACRO)
-      + on(BCinflow, dub = ub - 2./5., duby = uby, IFMACRO(component,3) dubz = ubz, ENDIFMACRO dubY = ubY - 1.0, dubT = ubT - 1.0)
-      + axisBCs(m, dub, ub, uby, ubz, ubY, ubT);
+      + BoundaryConditions(0, dub, ub);

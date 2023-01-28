@@ -20,7 +20,7 @@
 //
 load "iovtk"
 load "PETSc"
-include "settings.idp"
+include "solversettings.idp"
 include "solvermacros.idp"
 // arguments
 string meshfilein = getARGV("-mshi", ""); // input meshfile
