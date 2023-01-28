@@ -21,18 +21,18 @@ varf vJ(defu(dub), defu(v))
       - int1d(Th, BCopen) (
         ndotvisc(v, ik, dub)/params["Re"]
       )
-      + BoundaryConditions(0, dub, ub);
+      + BoundaryConditions(m, dub, ub);
 
 // MASS MATRIX
 varf vM(defu(dub), defu(v))
       = int2d(Th)(
           udotv(dub, v)
       )
-      + BoundaryConditions(0, dub, ub);
+      + BoundaryConditions(m, dub, ub);
 
 // HESSIAN MATRIX
 varf vH(defu(dum), defu(v))
       = int2d(Th)(
           ugradu(v, dub, ik, dum) + ugradu(v, dum, 0, dub)
       )
-      + BoundaryConditions(0, dum, um);
+      + BoundaryConditions(m, dum, um);

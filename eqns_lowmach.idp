@@ -29,11 +29,11 @@ varf vJ(defu(dub), defu(v))
       + int1d(Th, BCaxis, BCopen, BCwall, BCinflow, BCslip) (
           vp*(ubT^(params["a"])*ndotgrads(dubT) + params["a"]*ubT^(params["a"]-1.)*dubT*ndotgrads(ubT))/params["Pe"]
       )
-      + BoundaryConditions(0, dub, ub);
+      + BoundaryConditions(m, dub, ub);
 
 // MASS MATRIX
 varf vM(defu(dub), defu(v))
       = int2d(Th)(
           (fdotg(vT,dubT) + udotv(dub, v))/ubT
       )
-      + BoundaryConditions(0, dub, ub);
+      + BoundaryConditions(m, dub, ub);
