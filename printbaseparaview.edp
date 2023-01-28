@@ -26,5 +26,5 @@ if (mpirank==0){
   meshN Thgs = trunc(Thg, 1, split=meshsplit);
   fespace XMhs(Thgs, Pk);
   XMhs defu(us) = defu(ub);
-  savevtk(workdir + basefileout + ".vtu", Thgs, adaptu(us), dataname=ParaviewDataName, order=ParaviewOrder);
+  savevtk(workdir + basefileout + "_base.vtu", Thgs, adaptu(us), dataname=ParaviewDataName, order=ParaviewOrder);
 }

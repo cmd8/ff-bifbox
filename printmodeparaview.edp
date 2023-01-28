@@ -16,7 +16,6 @@ include "solvermacros.idp"
 string modefilein = getARGV("-mfi", "");
 string modefileout = getARGV("-mfo", modefilein);
 int meshsplit=getARGV("-split",1);
-int nfmax = getARGV("-nfmax",-1);
 if (mpirank==0){
   string meshfile = readmeshname(workdir + modefilein + ".mode");
   // Load mesh
@@ -25,22 +24,22 @@ if (mpirank==0){
   restu = 0:XMhg.ndof-1;
   int m;
   complex eigenvalue;
+  cout << "  Saving '" + modefileout + "_mode_[real,imag].vtu' in '" + workdir + "'." << endl;
   um[] = loadmode(workdir, modefilein, meshfile, m, eigenvalue);
-  meshN Thgs = trunc(Thg, 1, split = meshsplit);
-  fespace XMhs(Thgs, Pk);
-  XMhs<complex> defu(us) = defu(um);
-  XMhs defu(usr);
-  if (nfmax >= 0){ // then loop through phases to create a movie
-    for (int nf = 0; nf < nfmax; nf++){
-      complex[int] qtemp = us[]*exp(2i*pi*nf/nfmax);
-      usr[] = qtemp.re;
-      savevtk(workdir + modefileout + "_mode_"+ nf + ".vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
-    }
-  } else { //then just plot amplitude and phase
-    complex[int] qtemp = us[];
-    usr[] = abs(qtemp);
-    savevtk(workdir + modefileout + "_mode_abs.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
-    usr[] = arg(qtemp);
-    savevtk(workdir + modefileout + "_mode_arg.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+  if (meshsplit != 1){
+    meshN Thgs = trunc(Thg, 1, split = meshsplit);
+    fespace XMhs(Thgs, Pk);
+    XMhs<complex> defu(uso) = defu(um);
+    XMhs defu(usr);
+    usr[] = uso[].re;
+    savevtk(workdir + modefileout + "_mode_real.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+    usr[] = uso[].im;
+    savevtk(workdir + modefileout + "_mode_imag.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+  } else {
+    XMhg defu(usr);
+    usr[] = um[].re;
+    savevtk(workdir + modefileout + "_mode_real.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+    usr[] = um[].im;
+    savevtk(workdir + modefileout + "_mode_imag.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
   }
 }

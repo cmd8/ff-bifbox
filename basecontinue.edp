@@ -220,6 +220,15 @@ while (count < maxcount){
   if (ret > 0) {
     ++count;
     h0 /= f;
+    if (alpha < 0) {
+      h0 *= -1.0;
+      real[int] q = qa(0:qa.n - (mpirank == 0 ? 2 : 1));
+      if(mpirank == 0) lambda = qa(qa.n-1);
+      broadcast(processor(0), lambda);
+      updatelambda(param, lambda);
+      if(mpirank == 0) cout << "\tFold detected. Search direction reversed." << endl;
+      savebase(workdir, basefileout + count + "foldguess", "", meshfile, q, 0, 0, true, true, paraviewflag);
+    }
     if ((meshfileout != "") && (count % savecount == 0)){
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = false);
       if(mpirank == 0) lambda = qa(qa.n-1);
@@ -302,11 +311,6 @@ while (count < maxcount){
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
     savebase(workdir, basefileout + count, basefileout, meshfile, q, 0, 0, (count % savecount == 0), true, paraviewflag);
-    if (alpha < 0){
-      h0 *= -1.0;
-      if(mpirank == 0) cout << "\tFold detected. Search direction reversed." << endl;
-      savebase(workdir, basefileout + count + "foldguess", "", meshfile, q, 0, 0, true, true, paraviewflag);
-    }
     yqP0 = yqP;
   } else {
     if (mpirank == 0){

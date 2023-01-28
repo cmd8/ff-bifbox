@@ -18,16 +18,14 @@ include "settings.idp"
 include "solvermacros.idp"
 // arguments
 string basefilein = getARGV("-bfi", "");
-bool bf2d = getARGV("-bf2d", 0);// if true, base flow does not include z-velocity
+bool bf2d = getARGV("-bf2d", 0);// if true, base flow does not includes z-velocity
 string modefilein = getARGV("-mfi", "");
 string evalfileout = getARGV("-vfo", "");
 string modefileout = getARGV("-mfo", "");
 bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
 int meshsplit = getARGV("-split", 1); // toggle whether mesh is split for P1 representation in Paraview
-int nfmax = getARGV("-nfmax",-1); // IF POSTIVE selects number of frames to animate for visualizing complex modes ELSE outputs mag/phase
 bool adj = getARGV("-adj",0);
 int m = getARGV("-m", 0);
-int symm = getARGV("-symm", m);
 string epstarget = getARGV("-eps_target", "");
 int epsnev = getARGV("-eps_nev", 1);
 bool strictnev = getARGV("-strict", 0);
@@ -36,7 +34,6 @@ string stpctype = getARGV("-st_pc_type", "lu");
 // other variables
 complex[int] val(epsnev);
 complex eigenvalue, ik;
-// load macros
 
 if (basefilein == "") basefilein = readbasename(workdir + modefilein + ".mode");
 string meshfile = readmeshname(workdir + basefilein + ".base");
@@ -106,6 +103,6 @@ if (modefileout != ""){
     eigenvalue = val(i);
     complex[int] eigenmode;
     ChangeNumbering(J, vec[i][], eigenmode);
-    savemode(complex,complex, workdir, modefileout + "_" + i, basefilein, meshfile, eigenmode, m, eigenvalue, paraviewflag);
+    savemode(complex, complex, workdir, modefileout + "_" + i, basefilein, meshfile, eigenmode, m, eigenvalue, paraviewflag);
   }
 }

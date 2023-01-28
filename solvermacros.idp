@@ -89,7 +89,7 @@ macro savebase(workdir, basefileout, statsfile, meshfile, q, m, omega, saveflag,
   }
 }//EOM
 
-macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, meshfile, eigenmode, m, eigenvalue,paraviewflag){
+macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, meshfile, eigenmode, m, eigenvalue, paraviewflag){
   NewMacro FFtype()FFrealcomplex EndMacro
   XMhg<FFtype> defu(umg), defu(umo);
   IFMACRO(FFtype,real)
@@ -121,41 +121,22 @@ macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, 
     file << umo[] << endl;
     }
     if (paraviewflag){
-      cout << "  Saving '" + modefileout + "_mode.vtu' in '" + workdir + "'." << endl;
-      cout << "  Saving '" + modefileout + "_mode_[0-" + (nfmax-1) + "].vtu' in '" + workdir + "'." << endl;
+      cout << "  Saving '" + modefileout + "_mode_[real,imag].vtu' in '" + workdir + "'." << endl;
       if (meshsplit != 1){
         meshN Thgs = trunc(Thg, 1, split = meshsplit);
         fespace XMhs(Thgs, Pk);
         XMhs<FFtype> defu(uso) = defu(umo);
         XMhs defu(usr);
-        if (nfmax >= 0){
-          for (int nf = 0; nf < nfmax; nf++){
-            complex[int] qtemp = us[]*exp(2i*pi*nf/nfmax);
-            usr[] = qtemp.re;
-            savevtk(workdir + modefileout + "_mode_"+ nf + ".vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
-          }
-        } else {
-          complex[int] qtemp = us[];
-          usr[] = abs(qtemp);
-          savevtk(workdir + modefileout + "_mode_abs.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
-          usr[] = arg(qtemp);
-          savevtk(workdir + modefileout + "_mode_arg.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
-        }
+        usr[] = uso[].re;
+        savevtk(workdir + modefileout + "_mode_real.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+        usr[] = uso[].im;
+        savevtk(workdir + modefileout + "_mode_imag.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
       } else {
-        XMh defu(usr);
-        if (nfmax >= 0){
-          for (int nf = 0; nf < nfmax; nf++){
-            complex[int] qtemp = umo[]*exp(2i*pi*nf/nfmax);
-            usr[] = qtemp.re;
-            savevtk(workdir + modefileout + "_mode_"+ nf + ".vtu", Thg, adaptu(usr), dataname=ParaviewDataName, order=ParaviewOrder);
-          }
-        } else {
-          complex[int] qtemp = umo[];
-          usr[] = abs(qtemp);
-          savevtk(workdir + modefileout + "_mode_abs.vtu", Thgs, adaptu(usr), dataname=ParaviewDataName, order=ParaviewOrder);
-          usr[] = arg(qtemp);
-          savevtk(workdir + modefileout + "_mode_arg.vtu", Thgs, adaptu(usr), dataname=ParaviewDataName, order=ParaviewOrder);
-        }
+        XMhg defu(usr);
+        usr[] = umo[].re;
+        savevtk(workdir + modefileout + "_mode_real.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+        usr[] = umo[].im;
+        savevtk(workdir + modefileout + "_mode_imag.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
       }
     }
   }
