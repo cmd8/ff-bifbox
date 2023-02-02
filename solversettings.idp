@@ -120,7 +120,7 @@ ENDIFMACRO
 macro getmonitors(u)
   IFMACRO(custom){
   fespace Xh(Thg, P2);
-  Xh UX = u, UZ = u#z, UV = u#v;
+  Xh UX = u, UZ = u#z, UV = (1.0 + u#v*fv1(u));
   varf Onaxis(UX, VX) = on(BCaxis, UX = 1);
   real[int] onaxis = Onaxis(0, Xh, tgv = 1);
   int[int] indices(onaxis.sum);
@@ -218,9 +218,10 @@ IFMACRO(custom)
 macro fv1(u) ( u#v^3.0/(u#v^3.0 + params["cv1"]^3.0)) // EOM
 macro fv1p(u,du) ( 3.0*params["cv1"]^3*u#v^2.0*du#v/(u#v^3.0 + params["cv1"]^3.0)^2.0) // EOM
 
-macro dist() (  (y > 1.0 && y >  x + 2.0)*(x + 1.0)
-              + (y > 1.0 && y <= x + 2.0)*(  (x >  0)*sqrt(x^2 + (y - 1.0)^2)
-                                           + (x <= 0)*(y - 1.0) )
+macro dist() (  (y > 1.00001 && y >  x + 2.00001)*(x + 1.00001)
+              + (y > 1.00001 && y <= x + 2.00001)*(  (x >  0)*sqrt(x^2 + (y - 1.00001)^2)
+                                                   + (x <= 0)*(y - 1.00001) )
+              + (y > 1.0 && y <= 1.00001)*(x)
               + (y <= 1.0)*(  (x >  0)*sqrt(x^2 + (1.0 - y)^2)
                             + (x <= 0)*(1.0 - y) ) ) // EOM
 
