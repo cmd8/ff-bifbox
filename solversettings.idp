@@ -8,11 +8,11 @@
 // Set dimension macro for 'macro_ddm.idp' (2)
 macro dimension()2//EOM NOTE: only 2 for now
 // Set coordinate system (cartesian or cylindrical)
-macro coordinates()cartesian//EOM
+macro coordinates()cylindrical//EOM
 // Set number of vector components (2 or 3)
-macro component()2//EOM
+macro component()3//EOM
 // Set equations (incomp, lowmach, comp, lowmachreact, compreact, or custom)
-macro formulation()compreact//EOM NOTE: only compreact is actually implemented for now.
+macro formulation()custom//EOM NOTE: only compreact is actually implemented for now.
 include "macro_ddm.idp"
 verbosity = getARGV("-v",0);
 // Define parameter and monitor names
@@ -49,22 +49,23 @@ IFMACRO(formulation,compreact)
 ENDIFMACRO
 IFMACRO(formulation,custom)
 // NOTE: Edit this one
-  string[int] paramnames = ["param0","param1","param2"]; // set parameter names
-  string[int] monitornames = ["monitor0","monitor1"]; // set monitor names
-  func Pk2C = [P2,P2,P1];
+  string[int] paramnames = ["Re","S","v0","d0","cb1","sig","cb2","kap","cw2","cw3","cv1","ct3","ct4","cw1"]; // set parameter names
+  string[int] monitornames = ["Sn","minuCL","maxnu"]; // set monitor names
+  func Pk2C = [P2,P2,P2,P1];
   macro custom()1//EOM
-  macro defu2C(u)[u,u#y,u#p]//EOM
-  macro defu(u)[u,u#y, IFMACRO(component,3) u#z, ENDIFMACRO u#p]//EOM
-  macro initu(i)[i, i, IFMACRO(component,3) i, ENDIFMACRO i]//EOM
-  macro InitialConditions() [0,0, IFMACRO(component,3) 0, ENDIFMACRO 0]//EOM
-  func Pk = [P2,P2, IFMACRO(component,3) P2, ENDIFMACRO P1];
+  macro defu2C(u)[u,u#y,u#v,u#p]//EOM
+  macro defu(u)[u,u#y, IFMACRO(component,3) u#z, ENDIFMACRO u#v, u#p, u#pc]//EOM
+  macro initu(i)[i, i, IFMACRO(component,3) i, ENDIFMACRO i, i, i]//EOM
+  macro InitialConditions() [0,0, IFMACRO(component,3) 0, ENDIFMACRO 0, 0, 0]//EOM
+  func Pk = [P2,P2, IFMACRO(component,3) P2, ENDIFMACRO P2, P1, P1];
   macro deff(f)[f,f#y IFMACRO(component,3) ,f#z ENDIFMACRO]//EOM
   macro initf(i)[i, i IFMACRO(component,3) ,i ENDIFMACRO]//EOM
   func Pkf = [P2,P2 IFMACRO(component,3)  ,P2 ENDIFMACRO];
-  macro u2u(u)[u,u#y, IFMACRO(component,3) 0, ENDIFMACRO u#p]//EOM
-  macro f2u(f)[f,f#y, IFMACRO(component,3) f#z,ENDIFMACRO 0]//EOM
-  macro adaptu(u)[u, u#y IFMACRO(component,3), u#z ENDIFMACRO] , u#p//EOM
-  int[int] ParaviewOrder = [1, 1];
+  macro u2u(u)[u,u#y, IFMACRO(component,3) 0, ENDIFMACRO u#v, u#p, 0]//EOM
+  macro f2u(f)[f,f#y, IFMACRO(component,3) f#z,ENDIFMACRO 0, 0, 0]//EOM
+  macro adaptu(u)[u, u#y IFMACRO(component,3), u#z ENDIFMACRO] , u#v, u#p //EOM
+  int[int] ParaviewOrder = [1, 1, 1];
+  string ParaviewDataName = "velocity viscosity pressure";
 ENDIFMACRO
 IFMACRO(!custom)
   func Pk2C = [P2,P2                                           IFMACRO(species) ,P2  ENDIFMACRO IFMACRO(temperature) ,P2  ENDIFMACRO ,P1];
@@ -85,13 +86,13 @@ IFMACRO(!InitialConditions)
   macro InitialConditions()initu(1)//EOM
 ENDIFMACRO
 // Boundary labels and boundary conditions
+IFMACRO(!custom)
 int BCnull = 0;
 int BCaxis = 1;
 int BCopen = 2;
 int BCwall = 3;
 int BCslip = 4;
 int BCinflow = 5;
-
 macro BoundaryConditions(m, u, U)
   on(BCwall, u = U, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO IFMACRO(temperature) ,u#T = U#T - 1.0 ENDIFMACRO )
 + on(BCslip, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO )
@@ -99,9 +100,37 @@ macro BoundaryConditions(m, u, U)
 + on((abs(int(m)) != 1)*BCaxis, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO )
 + on((abs(int(m))  > 0)*BCaxis, u = U IFMACRO(species) ,u#Y = U#Y ENDIFMACRO IFMACRO(temperature) ,u#T = U#T ENDIFMACRO )
 // EOM
+ENDIFMACRO
+IFMACRO(custom)
+int BCnull = 0;
+int BCaxis = 1;
+int BCopen = 2;
+int BCin2  = 3;
+int BCwall = 4;
+int BCin1  = 5;
+macro BoundaryConditions(m, u, U)
+  on(BCin2,BCwall, u = U, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO, u#v = U#v, u#pc = U#pc )
++ on(BCin1, u = U - tanh(params["d0"]*(1.0 - y^2.0)), u#y = U#y IFMACRO(component,3) ,u#z = U#z - params["S"]*y*tanh(params["d0"]*(1.0 - y^2.0)) ENDIFMACRO , u#v = U#v - params["v0"], u#pc = U#pc )
++ on((abs(int(m)) != 1)*BCaxis, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO )
++ on((abs(int(m))  > 0)*BCaxis, u = U, u#v = U#v )
+// EOM
+ENDIFMACRO
 
 // Define solution monitors to extract
 macro getmonitors(u)
+  IFMACRO(custom){
+  fespace Xh(Thg, P2);
+  Xh UX = u, UZ = u#z, UV = u#v;
+  varf Onaxis(UX, VX) = on(BCaxis, UX = 1);
+  real[int] onaxis = Onaxis(0, Xh, tgv = 1);
+  int[int] indices(onaxis.sum);
+  for(int i=0, j=0; i<Xh.ndof; ++i) if(onaxis[i]) {indices[j] = i; ++j;}
+  real[int] uonaxis(indices.n);
+  for(int i=0; i<indices.n; ++i) uonaxis[i] = UX[][indices[i]];
+  monitors["maxnu"] = UV[].max;
+  monitors["minuCL"] = uonaxis.min;
+  monitors["Sn"] = int1d(Thg, levelset=x)(UX*UZ*y^2)/(1e-12+int1d(Thg, levelset=x)(y*UX*UX));
+  }  ENDIFMACRO
   IFMACRO(species) IFMACRO(temperature){
   fespace Xh(Thg, P2);
   IFMACRO(formulation,compreact)
@@ -156,6 +185,7 @@ macro ugradf(U, ik, f)   ( U*dx(f) + U#y*dy(f) IFMACRO(component,3) + (ik)*U#z*f
 macro Daexp(u) ( params["Da"]*exp(-params["Ze"]/params["dT"]*(1.0 + params["dT"])*(1.0 + params["dT"] - u#T)/u#T) ) // EOM
 ENDIFMACRO
 IFMACRO(coordinates,cylindrical)
+
 macro ndotgrads(s) ( y*N.x*dx(s) + y*N.y*dy(s)) // EOM
 
 macro tdotgrads(s) (-y*N.y*dx(s) + y*N.x*dy(s)) //EOM NOTE: grid scaling factors cancel
@@ -182,4 +212,37 @@ macro diff(ij, g, ik, f) ( y*dx(g)*dx(f) + y*dy(g)*dy(f) IFMACRO(component,3) + 
 macro ugradf(U, ik, f) ( y*U*dx(f) + y*U#y*dy(f) IFMACRO(component,3) + (ik)*U#z*f ENDIFMACRO ) // EOM
 
 macro Daexp(u) ( y*params["Da"]*exp(-params["Ze"]/params["dT"]*(1.0 + params["dT"])*(1.0 + params["dT"] - u#T)/u#T) ) // EOM
+
+IFMACRO(custom)
+// S-A macros from NASA: https://turbmodels.larc.nasa.gov/spalart.html#sa
+macro fv1(u) ( u#v^3.0/(u#v^3.0 + params["cv1"]^3.0)) // EOM
+macro fv1p(u,du) ( 3.0*params["cv1"]^3*u#v^2.0*du#v/(u#v^3.0 + params["cv1"]^3.0)^2.0) // EOM
+
+macro dist() (  (y > 1.0 && y >  x + 2.0)*(x + 1.0)
+              + (y > 1.0 && y <= x + 2.0)*(  (x >  0)*sqrt(x^2 + (y - 1.0)^2)
+                                           + (x <= 0)*(y - 1.0) )
+              + (y <= 1.0)*(  (x >  0)*sqrt(x^2 + (1.0 - y)^2)
+                            + (x <= 0)*(1.0 - y) ) ) // EOM
+
+macro S(u) ( Ome(u) + y*u#v*fv2(u)/(params["Re"]*params["kap"]^2.0*dist^2.0) ) // EOM
+macro SSp(u,ik,du) ( Omep(u,ik,du) + y*(du#v*fv2(u) + u#v*fv2p(u,du))/(params["Re"]*params["kap"]^2.0*dist^2.0) ) // EOM
+
+macro fv2(u) (1.0 - u#v/(1.0 + u#v*fv1(u))) // EOM
+macro fv2p(u,du) ( (u#v^2.0*fv1p(u,du) - du#v)/(1.0 + u#v*fv1(u))^2.0 ) // EOM
+
+macro fw(u) (g(u)*((1.0 + params["cw3"]^6.0)/(g(u)^6.0 + params["cw3"]^6))^(1.0/6.0)) // EOM
+macro fwp(u,ik,du) (params["cw3"]^6.0*gp(u,ik,du)/(1.0 + params["cw3"]^6.0)*((1.0 + params["cw3"]^6.0)/(g(u)^6.0 + params["cw3"]^6.0))^(7.0/6.0) ) // EOM
+
+macro g(u) (r(u) + params["cw2"]*(r(u)^6.0 - r(u))) // EOM
+macro gp(u,ik,du) ((1.0 + params["cw2"]*(6.0*r(u)^5.0 - 1.0))*rp(u,ik,du)) // EOM
+
+macro r(u) (min(y*u#v/(params["Re"]*S(u)*params["kap"]^2.0*dist^2.0),10.0)) // EOM
+macro rp(u,ik,du) ( ((y*u#v/(params["Re"]*S(u)*params["kap"]^2.0*dist^2.0))<10.0)*y*(du#v/(params["Re"]*S(u)*params["kap"]^2.0*dist^2.0) - u#v*SSp(u,m,du)/(params["Re"]*S(u)^2.0*params["kap"]^2.0*dist^2.0)) ) // EOM
+
+macro ft2(u) (params["ct3"]*exp(-params["ct4"]*u#v^2.0)) // EOM
+macro ft2p(u,du) (-2.0*params["ct4"]*params["ct3"]*u#v*du#v*exp(-params["ct4"]*u#v^2.0)) // EOM
+
+macro Ome(u) ( max(sqrt((y*dy(u#z) + u#z)*(y*dy(u#z) + u#z) + (-y*dx(u#z))*(-y*dx(u#z)) + (y*(dx(u#y) - dy(u)))*(y*(dx(u#y) - dy(u)))),1e-10) ) // EOM
+macro Omep(u,ik,du) ( ((y*dy(u#z) + u#z)*(y*dy(du#z) + du#z - (ik)*du#y) + (-y*dx(u#z))*(-y*dx(du#z) + (ik)*du) + (y*(dx(u#y) - dy(u)))*(y*(dx(du#y) - dy(du))))/Ome(u) ) // EOM
+ENDIFMACRO
 ENDIFMACRO

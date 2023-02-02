@@ -122,10 +122,11 @@ macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, 
     }
     if (paraviewflag){
       cout << "  Saving '" + modefileout + "_mode_[real,imag].vtu' in '" + workdir + "'." << endl;
+      IFMACRO(FFtype,complex)
       if (meshsplit != 1){
         meshN Thgs = trunc(Thg, 1, split = meshsplit);
         fespace XMhs(Thgs, Pk);
-        XMhs<FFtype> defu(uso) = defu(umo);
+        XMhs<complex> defu(uso) = defu(umo);
         XMhs defu(usr);
         usr[] = uso[].re;
         savevtk(workdir + modefileout + "_mode_real.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
@@ -138,6 +139,17 @@ macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, 
         usr[] = umo[].im;
         savevtk(workdir + modefileout + "_mode_imag.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
       }
+      ENDIFMACRO
+      IFMACRO(FFtype,real)
+      if (meshsplit != 1){
+        meshN Thgs = trunc(Thg, 1, split = meshsplit);
+        fespace XMhs(Thgs, Pk);
+        XMhs defu(uso) = defu(umo);
+        savevtk(workdir + modefileout + "_mode.vtu", Thgs, adaptu(uso), dataname = ParaviewDataName, order = ParaviewOrder);
+      } else {
+        savevtk(workdir + modefileout + "_mode.vtu", Thg, adaptu(umo), dataname = ParaviewDataName, order = ParaviewOrder);
+      }
+      ENDIFMACRO
     }
   }
 }//EOM

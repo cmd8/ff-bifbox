@@ -2,7 +2,7 @@
 string KSPparams = "";
 string EPSparams = " -eps_pos_gen_non_hermitian ";
 // RESIDUAL VECTOR
-  varf vR(defu(dub), defu(v))
+  varf vR(defu(um), defu(v))
       = int2d(Th)(
         ugradu(v, ub, 0, ub) - divu(0, v)*ubp + visc(0, v, 0, ub)/params["Re"]
         + vp*divu(0, ub)
@@ -10,29 +10,29 @@ string EPSparams = " -eps_pos_gen_non_hermitian ";
       - int1d(Th, BCopen) (
         ndotvisc(v, 0, ub)/params["Re"]
       )
-      + BoundaryConditions(0, dub, ub);
+      + BoundaryConditions(0, um, ub);
 
 // JACOBIAN MATRIX
-varf vJ(defu(dub), defu(v))
+varf vJ(defu(um), defu(v))
       = int2d(Th)(
-          ugradu(v, dub, 0, ub) + ugradu(v, ub, ik, dub) - divu(-ik, v)*dubp + visc(-ik, v , ik, dub )/params["Re"]
-        + vp*divu(ik, dub)
+          ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - divu(-ik, v)*ump + visc(-ik, v , ik, um )/params["Re"]
+        + vp*divu(ik, um)
       )
       - int1d(Th, BCopen) (
-        ndotvisc(v, ik, dub)/params["Re"]
+        ndotvisc(v, ik, um)/params["Re"]
       )
-      + BoundaryConditions(m, dub, ub);
+      + BoundaryConditions(m, um, ub);
 
 // MASS MATRIX
-varf vM(defu(dub), defu(v))
+varf vM(defu(um), defu(v))
       = int2d(Th)(
-          udotv(dub, v)
+          udotv(um, v)
       )
-      + BoundaryConditions(m, dub, ub);
+      + BoundaryConditions(m, um, ub);
 
 // HESSIAN MATRIX
-varf vH(defu(dum), defu(v))
+varf vH(defu(dub), defu(v))
       = int2d(Th)(
-          ugradu(v, dub, ik, dum) + ugradu(v, dum, 0, dub)
+          ugradu(v, um, 0, dub) + ugradu(v, dub, ik, um)
       )
-      + BoundaryConditions(m, dum, um);
+      + BoundaryConditions(0, dub, um);

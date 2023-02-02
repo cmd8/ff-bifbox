@@ -2,7 +2,7 @@
 string KSPparams = "";
 string EPSparams = " -eps_pos_gen_non_hermitian ";
 // RESIDUAL VECTOR
-  varf vR(defu(dub), defu(v))
+  varf vR(defu(um), defu(v))
       = int2d(Th)(
           vT*ugradf(ub, 0, ubT)/ubT                 + ubT^(params["a"])*diff(0, vT, 0, ubT)/params["Pe"]
         + ugradu(v, ub, 0, ub)/ubT - divu(0, v)*ubp + ubT^(params["a"])*visc(0, v , 0, ub )/params["Re"]
@@ -14,26 +14,26 @@ string EPSparams = " -eps_pos_gen_non_hermitian ";
       + int1d(Th, BCaxis, BCopen, BCwall, BCinflow, BCslip) (
           vp*ubT^(params["a"])*ndotgrads(ubT)/params["Pe"]
       )
-      + BoundaryConditions(0, dub, ub);
+      + BoundaryConditions(0, um, ub);
 
 // JACOBIAN MATRIX
-varf vJ(defu(dub), defu(v))
+varf vJ(defu(um), defu(v))
       = int2d(Th)(
-          vT*(ugradf(dub, 0, ubT)   + ugradf(ub, ik, dubT)   - ugradf(ub, 0, ubT)*dubT/ubT)/ubT                       + (ubT^(params["a"])*diff(-ik, vT, ik, dubT) + params["a"]*ubT^(params["a"]-1.)*dubT*diff(-ik, vT, 0, ubT))/params["Pe"]
-        +    (ugradu(v, dub, 0, ub) + ugradu(v, ub, ik, dub) - ugradu(v, ub, 0, ub)*dubT/ubT)/ubT - divu(-ik, v)*dubp + (ubT^(params["a"])*visc(-ik, v , ik, dub ) + params["a"]*ubT^(params["a"]-1.)*dubT*visc(-ik, v , 0, ub ))/params["Re"]
-        - vp*divu(ik, dub)                                                                                            - (ubT^(params["a"])*diff(-ik, vp, ik, dubT) + params["a"]*ubT^(params["a"]-1.)*dubT*diff(-ik, vp, 0, ubT))/params["Pe"]
+          vT*(ugradf(um, 0, ubT)   + ugradf(ub, ik, umT)   - ugradf(ub, 0, ubT)*umT/ubT)/ubT                       + (ubT^(params["a"])*diff(-ik, vT, ik, umT) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vT, 0, ubT))/params["Pe"]
+        +    (ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - ugradu(v, ub, 0, ub)*umT/ubT)/ubT - divu(-ik, v)*ump + (ubT^(params["a"])*visc(-ik, v , ik, um ) + params["a"]*ubT^(params["a"]-1.)*umT*visc(-ik, v , 0, ub ))/params["Re"]
+        - vp*divu(ik, um)                                                                                            - (ubT^(params["a"])*diff(-ik, vp, ik, umT) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vp, 0, ubT))/params["Pe"]
       )
       - int1d(Th, BCopen) (
-          (ubT^(params["a"])*ndotvisc(v, ik, dub) + params["a"]*ubT^(params["a"] - 1.0)*dubT*ndotvisc(v, 0, ub))/params["Re"]
+          (ubT^(params["a"])*ndotvisc(v, ik, um) + params["a"]*ubT^(params["a"] - 1.0)*umT*ndotvisc(v, 0, ub))/params["Re"]
       )
       + int1d(Th, BCaxis, BCopen, BCwall, BCinflow, BCslip) (
-          vp*(ubT^(params["a"])*ndotgrads(dubT) + params["a"]*ubT^(params["a"]-1.)*dubT*ndotgrads(ubT))/params["Pe"]
+          vp*(ubT^(params["a"])*ndotgrads(umT) + params["a"]*ubT^(params["a"]-1.)*umT*ndotgrads(ubT))/params["Pe"]
       )
-      + BoundaryConditions(m, dub, ub);
+      + BoundaryConditions(m, um, ub);
 
 // MASS MATRIX
-varf vM(defu(dub), defu(v))
+varf vM(defu(um), defu(v))
       = int2d(Th)(
-          (fdotg(vT,dubT) + udotv(dub, v))/ubT
+          (fdotg(vT,umT) + udotv(um, v))/ubT
       )
-      + BoundaryConditions(m, dub, ub);
+      + BoundaryConditions(m, um, ub);

@@ -13,6 +13,6 @@ string workdir = getARGV("-workdir","./data/");
 // stored in .msh format (gmsh)
 mesh Th  = gmshload(gmshdir + meshfile + ".msh");
 
-cout << " Mesh '" + meshfile + meshext + "' created with " << Th.nv << " vertices, " << Th.nt << " triangles, " << Th.nbe << " boundary elements." << endl;
+cout << " Mesh '" + meshfile + ".msh' created with " << Th.nv << " vertices, " << Th.nt << " triangles, " << Th.nbe << " boundary elements." << endl;
 
 savemesh(Th, workdir + meshfile + ".msh");

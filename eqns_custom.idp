@@ -1,0 +1,42 @@
+// Define KSP parameters
+string KSPparams = "";
+string EPSparams = " -eps_pos_gen_non_hermitian ";
+// RESIDUAL VECTOR
+  varf vR(defu(um), defu(v))
+      = int2d(Th)(
+          vv*(ugradf(ub, 0, ubv) - params["cb1"]*(1.0 - ft2(ub))*S(ub)*ubv + y*(params["cw1"]*fw(ub) - params["cb1"]/params["kap"]^2.0*ft2(ub))*ubv^2.0/(params["Re"]*dist^2))
+          + ((1.0 + ubv)*diff(0, vv, 0, ubv) - vv*params["cb2"]*diff(0, ubv, 0, ubv))/(params["Re"]*params["sig"])
+        + ugradu(v, ub, 0, ub) - divu(0, v)*ubp + (1.0 + ubv*fv1(ub))*visc(0, v , 0, ub )/params["Re"]
+        - vp*divu(0, ub)
+      )
+      + int1d(Th, BCopen)(
+        IFMACRO(cylindrical) y* ENDIFMACRO ndotu(v)*ubpc - 0.5*udotv(v,ub)*min(0.0, ndotu(ub))
+        IFMACRO(component,3) + vpc*(tdotgrads(ubpc) - ubz^2.0) ENDIFMACRO
+        - (1.0 + ubv*fv1(ub))*ndotvisc(v, 0, ub)/params["Re"]
+      )
+      + BoundaryConditions(0, um, ub);
+
+// JACOBIAN MATRIX
+varf vJ(defu(um), defu(v))
+      = int2d(Th)(
+        vv*(ugradf(ub, ik, umv) + ugradf(um, 0, ubv)
+        - params["cb1"]*(1.0 - ft2(ub))*S(ub)*umv - params["cb1"]*(1.0 - ft2(ub))*SSp(ub,ik,um)*ubv + params["cb1"]*ft2p(ub,um)*S(ub)*ubv
+        + 2.0*y*(params["cw1"]*fw(ub) - params["cb1"]/params["kap"]^2.0*ft2(ub))*ubv*umv/(params["Re"]*dist^2.0)
+        + y*(params["cw1"]*fwp(ub,ik,um) - params["cb1"]/params["kap"]^2.0*ft2p(ub,um))*ubv^2.0/(params["Re"]*dist^2))
+        + ((1.0 + ubv)*diff(-ik, vv, ik, umv) + umv*diff(-ik, vv, 0, ubv) - 2.0*vv*params["cb2"]*diff(-ik, ubv, ik, umv))/(params["Re"]*params["sig"])
+        + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - divu(-ik, v)*ump + ((1.0 + ubv*fv1(ub))*visc(-ik, v, ik, um) + (umv*fv1(ub) + ubv*fv1p(ub,um))*visc(-ik, v, 0, ub))/params["Re"]
+        - vp*divu(ik, um) + 1.0e-10*umpc*vpc
+        )
+      + int1d(Th, BCopen)(
+        IFMACRO(cylindrical) y* ENDIFMACRO ndotu(v)*umpc - 0.5*(ndotu(ub) < 0.0)*(udotv(um,v)*ndotu(ub) + udotv(ub,v)*ndotu(um))
+        IFMACRO(component,3) + vpc*( tdotgrads(umpc) - 2.0*ubz*umz) ENDIFMACRO
+        - ((1.0 + ubv*fv1(ub))*ndotvisc(v, ik, um) + (umv*fv1(ub) + ubv*fv1p(ub,um))*ndotvisc(v, 0, ub))/params["Re"]
+        )
+      + BoundaryConditions(m, um, ub);
+
+// MASS MATRIX
+varf vM(defu(um), defu(v))
+      = int2d(Th)(
+          fdotg(vv,umv) + udotv(um, v)
+      )
+      + BoundaryConditions(m, um, ub);
