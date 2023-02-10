@@ -91,12 +91,14 @@ macro savebase(workdir, basefileout, statsfile, meshfile, q, m, omega, saveflag,
 
 macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, meshfile, eigenmode, m, eigenvalue, paraviewflag){
   NewMacro FFtype()FFrealcomplex EndMacro
+  NewMacro PETSctype()PETScrealcomplex EndMacro
   XMhg<FFtype> defu(umg), defu(umo);
   IFMACRO(FFtype,real)
+  IFMACRO(PETSctype,real)
     ChangeNumbering(J, um[], eigenmode, inverse = true);
   ENDIFMACRO
+  ENDIFMACRO
   IFMACRO(FFtype,complex)
-  NewMacro PETSctype()PETScrealcomplex EndMacro
   IFMACRO(PETSctype,real)
     ChangeNumbering([J, J], [um[].re, um[].im], eigenmode, inverse = true);
   ENDIFMACRO
@@ -121,12 +123,12 @@ macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, 
     file << umo[] << endl;
     }
     if (paraviewflag){
-      cout << "  Saving '" + modefileout + "_mode_[real,imag].vtu' in '" + workdir + "'." << endl;
       IFMACRO(FFtype,complex)
+      cout << "  Saving '" + modefileout + "_mode_[real,imag].vtu' in '" + workdir + "'." << endl;
       if (meshsplit != 1){
         meshN Thgs = trunc(Thg, 1, split = meshsplit);
         fespace XMhs(Thgs, Pk);
-        XMhs<complex> defu(uso) = defu(umo);
+        XMhs<FFtype> defu(uso) = defu(umo);
         XMhs defu(usr);
         usr[] = uso[].re;
         savevtk(workdir + modefileout + "_mode_real.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
@@ -141,6 +143,7 @@ macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, 
       }
       ENDIFMACRO
       IFMACRO(FFtype,real)
+      cout << "  Saving '" + modefileout + "_mode.vtu' in '" + workdir + "'." << endl;
       if (meshsplit != 1){
         meshN Thgs = trunc(Thg, 1, split = meshsplit);
         fespace XMhs(Thgs, Pk);
@@ -154,8 +157,8 @@ macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, 
   }
 }//EOM
 
-macro saveoptf(K, workdir, modefile, basefile, meshfile, forcingmode, m, eigenvalue){
-  NewMacro PETSctype()K EndMacro
+macro saveoptf(workdir, modefile, basefile, meshfile, forcingmode, m, eigenvalue){
+  NewMacro PETSctype()PetscScalar EndMacro
   fespace Xhg(Thg, Pkf);
   IFMACRO(PETSctype,real)
     ChangeNumbering([Mf, Mf], [fm[].re, fm[].im], eigenmode, inverse = true);
@@ -301,8 +304,8 @@ func real[int] load2Cbase(string directoryname, string inputfilename, string mes
       return qlocal;
     }
 
-func complex[int] loadmode(string directoryname, string inputfilename, string meshfilename, int & m, complex & eigenvalue) {
-      XMhg<complex> defu(umg);
+func PetscScalar[int] loadmode(string directoryname, string inputfilename, string meshfilename, int & m, complex & eigenvalue) {
+      XMhg<PetscScalar> defu(umg);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".mode' over '";
       string filemesh, basefilename, dummy;
       real[string] tempparams;
@@ -320,11 +323,11 @@ func complex[int] loadmode(string directoryname, string inputfilename, string me
       if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh + meshext << "'." << endl;
         meshN Thg1 = readmeshN(directoryname + filemesh + meshext);
         fespace XMhg1(Thg1, Pk);
-        XMhg1<complex> defu(umg1);
+        XMhg1<PetscScalar> defu(umg1);
         file >> umg1[];
         defu(umg) = defu(umg1);
       }
-      complex[int] qlocal = umg[](restu);
+      PetscScalar[int] qlocal = umg[](restu);
       return qlocal;
     }
 

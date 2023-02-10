@@ -48,15 +48,15 @@ if (bf2d) {
 } else {
   ub[] = loadbase(workdir, basefilein, meshfile);
 }
-XMh<complex>[int] defu(vec)(epsnev);
-XMh<complex> defu(um);
+XMh<PetscScalar>[int] defu(vec)(epsnev);
+XMh<PetscScalar> defu(um);
 
 if (epstarget == "" && modefilein != "") epstarget = string(readmodeeval(workdir + modefilein + ".mode", m));
 else if (epstarget == "") epstarget = "0+0i";
 
-Mat<complex> J, M;
+Mat<PetscScalar> J;
 createMatu(Th, J, Pk);
-createMatu(Th, M, Pk);
+Mat<PetscScalar> M(J);
 ik = 1i*real(m);
 IFMACRO(formulation,incomp)
 include "eqns_incomp.idp"
@@ -77,12 +77,12 @@ IFMACRO(formulation,custom)
 include "eqns_custom.idp"
 ENDIFMACRO
 
-{ matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -2);
+{ matrix<PetscScalar> Jtemp = vJ(XMh, XMh, tgv = -2);
   if (adj) Jtemp = -Jtemp';
   else Jtemp = -Jtemp;
   J = Jtemp;
 }
-M = vM(XMh, XMh, tgv = -10);
+M = vM(XMh, XMh, tgv = -20);
 
 int k = EPSSolve(J, M, vectors = vec, values = val,
                  sparams = " -st_type " + sttype
@@ -101,7 +101,7 @@ if (evalfileout != "" && mpirank == 0){
 if (modefileout != ""){
   for (int i = 0; i < k; ++i){
     eigenvalue = val(i);
-    complex[int] eigenmode;
+    PetscScalar[int] eigenmode;
     ChangeNumbering(J, vec[i][], eigenmode);
     savemode(complex, complex, workdir, modefileout + "_" + i, basefilein, meshfile, eigenmode, m, eigenvalue, paraviewflag);
   }

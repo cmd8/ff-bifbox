@@ -8,11 +8,11 @@
 // Set dimension macro for 'macro_ddm.idp' (2)
 macro dimension()2//EOM NOTE: only 2 for now
 // Set coordinate system (cartesian or cylindrical)
-macro coordinates()cylindrical//EOM
+macro coordinates()cartesian//EOM
 // Set number of vector components (2 or 3)
-macro component()3//EOM
+macro component()2//EOM
 // Set equations (incomp, lowmach, comp, lowmachreact, compreact, or custom)
-macro formulation()custom//EOM NOTE: only compreact is actually implemented for now.
+macro formulation()compreact//EOM
 include "macro_ddm.idp"
 verbosity = getARGV("-v",0);
 // Define parameter and monitor names
@@ -99,6 +99,13 @@ macro BoundaryConditions(m, u, U)
 + on(BCinflow, u = U - 2./5., u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO IFMACRO(species) ,u#Y = U#Y - 1.0 ENDIFMACRO IFMACRO(temperature) ,u#T = U#T - 1.0 ENDIFMACRO )
 + on((abs(int(m)) != 1)*BCaxis, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO )
 + on((abs(int(m))  > 0)*BCaxis, u = U IFMACRO(species) ,u#Y = U#Y ENDIFMACRO IFMACRO(temperature) ,u#T = U#T ENDIFMACRO )
+// EOM
+macro HomBoundaryConditions(m, u)
+  on(BCwall, u = 0, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0 ENDIFMACRO )
++ on(BCslip, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO )
++ on(BCinflow, u = 0., u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO IFMACRO(species) ,u#Y = 0.0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0.0 ENDIFMACRO )
++ on((abs(int(m)) != 1)*BCaxis, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO )
++ on((abs(int(m))  > 0)*BCaxis, u = 0 IFMACRO(species) ,u#Y = 0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0 ENDIFMACRO )
 // EOM
 ENDIFMACRO
 IFMACRO(custom)

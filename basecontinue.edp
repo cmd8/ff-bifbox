@@ -86,25 +86,20 @@ include "eqns_custom.idp"
 ENDIFMACRO
 
 // Build bordered block matrix from only Mat components
-real[int] yqP;
-ChangeNumbering(J, yb[], yqP); // FreeFEM to PETSc
-Mat JlPM(yqP.n, mpirank == 0 ? 1 : 0), yqPM(yqP.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
-
+Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Ja = [[J,JlPM],[yqPM',-1.0]]; // make dummy Jacobian
 
-real f;
-int it, internalit, adaptflag;
-real[int] qap = yqP, yqP0 = yqP;
+real[int] yqP(J.n), qap(J.n), yqP0(J.n);
 if(mpirank==0) qap.resize(qap.n+1);
-real kappa, alpha, res, resp, delta, deltap, maxdelta;
+int it, internalit, adaptflag;
+real f, kappa, alpha, res, resp, delta, deltap, maxdelta;
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
-      real[int] R = vR(0, XMh, tgv = -1);
-      real[int] Ra;
+      real[int] Ra, R = vR(0, XMh, tgv = -1);
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       if(mpirank == 0) {
           Ra.resize(Ra.n+1); // Append 0 to residual vector on proc 0
@@ -114,7 +109,7 @@ real kappa, alpha, res, resp, delta, deltap, maxdelta;
       string text1;
       if (!adaptflag) text1 = count + "-" + it;
       else text1 = "A" + (count-1) + "-" + it;
-      if(internalit>0) text1 = text1 + ">" + internalit;
+      if(internalit > 0) text1 = text1 + ">" + internalit;
       if (it == 0){
         kappa = 0.0;
         maxdelta = 0.0;
@@ -182,7 +177,7 @@ real kappa, alpha, res, resp, delta, deltap, maxdelta;
       return 0;
   }
 
-set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur ", setup = 1);
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
 set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
 
 // PREDICTOR
@@ -192,7 +187,18 @@ if(mpirank == 0) {
   qa.resize(qa.n+1);
   qa(qa.n-1) = lambda;
 }
-funcJa(qa);
+{
+  broadcast(processor(0), lambda);
+  updatelambda(param, lambda + eps);
+  real[int] Jl = vR(0, XMh, tgv = -1);
+  updatelambda(param, lambda);
+  real[int] R = vR(0, XMh, tgv = -1);
+  J = vJ(XMh, XMh, tgv = -1);
+  Jl -= R;
+  Jl /= eps;
+  R = J^-1*Jl;
+  ChangeNumbering(J, R, yqP); // FreeFEM to PETSc
+}
 yqP0 = yqP;
 while (count < maxcount){
   real[int] qa0 = qa;
@@ -226,7 +232,7 @@ while (count < maxcount){
       if(mpirank == 0) lambda = qa(qa.n-1);
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
-      if(mpirank == 0) cout << "\tFold detected. Search direction reversed." << endl;
+      if(mpirank == 0) cout << "\tFold detected. Orientation reversed." << endl;
       savebase(workdir, basefileout + count + "foldguess", "", meshfile, q, 0, 0, true, true, paraviewflag);
     }
     if ((meshfileout != "") && (count % savecount == 0)){
@@ -240,7 +246,7 @@ while (count < maxcount){
       mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
       for[i, v : restu] tempu[][v] = yb[][i];
       mpiAllReduce(tempu[], yG[], mpiCommWorld, mpiSUM);
-      if(mpirank == 0) Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG),
+      if(mpirank == 0) Thg = adaptmesh(Thg, adaptu(uG),
                                        hmin = getARGV("-hmin",1.0e-6),
                                        hmax = getARGV("-hmax",1.0),
                                        err = getARGV("-err", 1.0e-2),
@@ -284,7 +290,6 @@ while (count < maxcount){
       set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
       qa.resize(0);
       ChangeNumbering(J, ub[], qa);
-      lambda = getlambda(param);
       if(mpirank == 0) {
         qa.resize(qa.n+1);
         qa(qa.n-1) = lambda;
@@ -322,6 +327,5 @@ while (count < maxcount){
     }
     h0 /= fmax;
     qa = qa0;
-    updatelambda(param, lambda);
   }
 }

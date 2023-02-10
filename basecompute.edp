@@ -128,9 +128,7 @@ else { // else  output meshfile is given, adapt mesh
 // Function to build residual operator in PETSc numbering
 func real[int] funcR(real[int]& qPETSc) {
     changeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
-    real[int] R(XMh.ndof);
-    R = vR(0, XMh, tgv = -1);
-    real[int] RPETSc;
+    real[int] RPETSc, R = vR(0, XMh, tgv = -1);
     changeNumbering(J, R, RPETSc);
     return RPETSc;
 }
