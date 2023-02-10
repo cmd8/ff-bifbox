@@ -47,12 +47,6 @@ macro createMatu(th,A,P){
     createMat(th,A,P)
 } // EOM
 
-macro createMatf(th,A,P){
-    NewMacro def(u)deff(u) EndMacro
-    NewMacro init(i)initf(i) EndMacro
-    createMat(th,A,P)
-} // EOM
-
 // FUNCTIONS -------------------------------------------------------------------
 macro savebase(workdir, basefileout, statsfile, meshfile, q, m, omega, saveflag, monitorflag, paraviewflag){
   XMhg defu(ubg), defu(ubo);
@@ -157,37 +151,6 @@ macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, 
   }
 }//EOM
 
-macro saveoptf(workdir, modefile, basefile, meshfile, forcingmode, m, eigenvalue){
-  NewMacro PETSctype()PetscScalar EndMacro
-  fespace Xhg(Thg, Pkf);
-  IFMACRO(PETSctype,real)
-    ChangeNumbering([Mf, Mf], [fm[].re, fm[].im], eigenmode, inverse = true);
-  ENDIFMACRO
-  IFMACRO(PETSctype,complex)
-    ChangeNumbering(Mf, fm[], eigenmode, inverse = true);
-  ENDIFMACRO
-  Xhg<complex> deff(fmg), deff(fmo);
-  for[i, v : restf] fmg[][v] = fm[][i];
-  mpiAllReduce(fmg[], fmo[], mpiCommWorld, mpiSUM);
-  XMhg<complex> defu(fmf) = f2u(fmo);
-  if (mpirank == 0 && modefile != "") {
-    string outputfile = workdir + modefile + ".optf";
-    cout << "  Saving '" + modefile + ".optf' over '" + basefile + ".base' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
-    cout << "\t" + listparams(paramnames, params) + "."  << endl;
-    { ofstream file(outputfile, binary);
-      file.precision(17);
-      file << "mesh\t" << meshfile << endl << endl;
-      file << "base\t" << basefile << endl << endl;
-      for (int k = 0; k < paramnames.n; ++k){
-        file << paramnames[k] << "\t" << params[paramnames[k]] << endl << endl;
-      }
-    file << "m\t" << m << endl << endl;
-    file << "eval\t" << eigenvalue << endl << endl;
-    file << fmf[] << endl;
-    }
-  }
-}//EOM
-
 func bool printstats(string outputfilename, string meshfilename, int m, real omega) {
       cout << "  Saving solution stats in '" + outputfilename + "'." << endl;
       cout << "\t" + listparams(paramnames, params) + ", " + listparams(monitornames, monitors) << endl;
@@ -269,41 +232,6 @@ func real[int] loadbase(string directoryname, string inputfilename, string meshf
       return qlocal;
     }
 
-func real[int] load2Cbase(string directoryname, string inputfilename, string meshfilename) {
-      XMhg defu(ubg);
-      if (inputfilename != ""){
-        if (mpirank == 0) cout << "  Loading '" + inputfilename + ".base' on '" + meshfilename + meshext + "' from '" + directoryname + "'." << endl;
-        string filemesh;
-        ifstream file(directoryname + inputfilename + ".base");
-        file >> filemesh >> filemesh;
-        for (int k = 0; k < paramnames.n; ++k){
-          file >> paramnames[k] >> params[paramnames[k]];
-        }
-        for (int k = 0; k < monitornames.n; ++k){
-          file >> monitornames[k] >> monitors[monitornames[k]];
-        }
-        if (mpirank == 0) cout << "\t" + listparams(paramnames,params) + ", " + listparams(monitornames,monitors) << endl;
-        { // Add 3rd velocity component to 2-component flow
-          if (filemesh == meshfilename){ // no interpolation needed
-            fespace XMhg2C(Thg, Pk2C);
-            XMhg2C defu2C(ubg2C);
-            file >> ubg2C[];
-            defu(ubg) = u2u(ubg2C);
-          } else { // must interpolate
-            if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh + meshext << "'." << endl;
-            meshN Thg1 = readmeshN(directoryname + filemesh + meshext);
-            fespace XMhg1(Thg1, Pk2C);
-            XMhg1 defu2C(ubg1);
-            file >> ubg1[];
-            defu(ubg) = u2u(ubg1);
-          }
-        }
-      }
-      setparams(paramnames,params);
-      real[int] qlocal = ubg[](restu);
-      return qlocal;
-    }
-
 func PetscScalar[int] loadmode(string directoryname, string inputfilename, string meshfilename, int & m, complex & eigenvalue) {
       XMhg<PetscScalar> defu(umg);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".mode' over '";
@@ -328,38 +256,6 @@ func PetscScalar[int] loadmode(string directoryname, string inputfilename, strin
         defu(umg) = defu(umg1);
       }
       PetscScalar[int] qlocal = umg[](restu);
-      return qlocal;
-    }
-
-func complex[int] load2Cmode(string directoryname, string inputfilename, string meshfilename, int & m, complex & eigenvalue) {
-      XMhg<complex> defu(umg);
-      if (mpirank == 0) cout << "  Loading '" + inputfilename + ".mode' over '";
-      string filemesh, basefilename, dummy;
-      real[string] tempparams;
-      ifstream file(directoryname + inputfilename + ".mode");
-      file >> filemesh >> filemesh >> basefilename >> basefilename;
-      if (mpirank == 0) cout << basefilename + ".base' on '" + meshfilename + meshext + "' from '" + directoryname + "'." << endl;
-      for (int k = 0; k < paramnames.n; ++k){
-        file >> paramnames[k] >> tempparams[paramnames[k]];
-      }
-      file >> dummy >> m >> dummy >> eigenvalue;
-      if (mpirank == 0) cout << "\t" + listparams(paramnames,tempparams) << ", m = " + m + ", eval = " + eigenvalue + "." << endl;
-      { // Add 3rd velocity component to 2-component flow
-        if (filemesh == meshfilename){ // no interpolation needed
-          fespace XMhg2C(Thg, Pk2C);
-          XMhg2C<complex> defu2C(umg2C);
-          file >> umg2C[];
-          defu(umg) = u2u(umg2C);
-        } else { // must interpolate
-          if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh + meshext << "'." << endl;
-          meshN Thg1 = readmeshN(directoryname + filemesh + meshext);
-          fespace XMhg1(Thg1, Pk2C);
-          XMhg1<complex> defu2C(umg1);
-          file >> umg1[];
-          defu(umg) = u2u(umg1);
-        }
-      }
-      complex[int] qlocal = umg[](restu);
       return qlocal;
     }
 

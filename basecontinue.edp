@@ -89,8 +89,7 @@ ENDIFMACRO
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Ja = [[J,JlPM],[yqPM',-1.0]]; // make dummy Jacobian
 
-real[int] yqP(J.n), qap(J.n), yqP0(J.n);
-if(mpirank==0) qap.resize(qap.n+1);
+real[int] yqP(J.n), qap(J.n + (mpirank == 0 ? 1 : 0)), yqP0(J.n);
 int it, internalit, adaptflag;
 real f, kappa, alpha, res, resp, delta, deltap, maxdelta;
 // FUNCTIONS
@@ -121,12 +120,11 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta;
         if(mpirank == 0) dlambda = lambda - qap(qap.n-1); // Extract parameter value from state vector on proc 0
         broadcast(processor(0), dlambda);
         real[int] qdiff  = qa(0:qa.n - (mpirank == 0 ? 2 : 1)) - qap(0:qap.n - (mpirank == 0 ? 2 : 1));
-        real[int] ff, ff1, ff2;
-        ChangeNumbering(J, ff, qdiff, inverse = true, exchange = false);
-        delta = sqrt(J(ff, ff) + dlambda^2); // distance to curve
-        ChangeNumbering(J, ff1, yqP0, inverse = true, exchange = false);
-        ChangeNumbering(J, ff2, yqP, inverse = true, exchange = false);
-        alpha = (J(ff1, ff2) + 1.0)/sqrt((J(ff1, ff1) + 1.0)*(J(ff2, ff2) + 1.0));
+        ChangeNumbering(J, R, qdiff, inverse = true, exchange = false);
+        delta = sqrt(J(R, R) + dlambda^2); // distance to curve
+        ChangeNumbering(J, R, yqP0, inverse = true, exchange = false);
+        ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
+        alpha = (J(R, yb[]) + 1.0)/sqrt((J(R, R) + 1.0)*(J(yb[], yb[]) + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(alpha)*acos(abs(alpha))*180./pi) << ",\t" + param + " = " << lambda << "." << endl;
@@ -202,9 +200,8 @@ if(mpirank == 0) {
 yqP0 = yqP;
 while (count < maxcount){
   real[int] qa0 = qa;
-  real[int] yq;
-  ChangeNumbering(J, yq, yqP, inverse = true, exchange = false); // PETSc to FreeFEM
-  real h = h0/sqrt(J(yq,yq) + 1.0); // use FreeFEM numbering here
+  ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false); // PETSc to FreeFEM
+  real h = h0/sqrt(J(yb[] ,yb[]) + 1.0); // use FreeFEM numbering here
   qa(0:qa.n - (mpirank == 0 ? 2 : 1)) -= (h*yqP);
   if (mpirank == 0) {
     qa(qa.n-1) += h; // -= (-1.0*h)
@@ -286,9 +283,9 @@ while (count < maxcount){
         yqPM = Adapt2;
         Ja = [[J,JlPM],[yqPM',-1.0]]; // make dummy Jacobian
       }
-      set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur ", setup = 1);
+      set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
       set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
-      qa.resize(0);
+      qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
       if(mpirank == 0) {
         qa.resize(qa.n+1);

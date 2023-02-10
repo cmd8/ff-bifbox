@@ -89,7 +89,7 @@ else { // else  output meshfile is given, adapt mesh
   ChangeNumbering(J, um[], qm, inverse = true, exchange = false); // PETSc to FF numbering
   ChangeNumbering(J, uma[], qma);
   ChangeNumbering(J, uma[], qma, inverse = true, exchange = false); // PETSc to FF numbering
-  XMhg defu(uG), defu(umG),defu(umaG), defu(tempu); // create private global FE functions
+  XMhg defu(uG), defu(umG), defu(umaG), defu(tempu); // create private global FE functions
   for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
   for[i, v : restu] tempu[][v] = um[][i]; // populate local portion of global soln
@@ -226,6 +226,8 @@ if (foldfilein == ""){
   J = vJ(XMh, XMh, tgv = -1);
   p0 = J'^-1*Jl;
   q0 = J^-1*Jl;
+  q0 /= sqrt(J(q0, q0));
+  p0 /= J(q0, p0);
 } else {
   p0 = uma[];
   q0 = um[];
@@ -246,6 +248,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     savemesh(Thg, workdir + meshfileout + meshext);
   }
   savebase(workdir, basefileout, "", meshfileout, qout, 0, 0, true, true, paraviewflag);
+  um[] /= sqrt(J(um[],um[]));
+  uma[] /= J(um[],uma[]);
   ChangeNumbering(J, um[], qout);
   if(foldfileout != "") savemode(real, real, workdir, foldfileout + "_dir", basefileout, meshfileout, qout, m, eigenvalue, paraviewflag);
   ChangeNumbering(J, uma[], qout);
