@@ -124,12 +124,8 @@ else { // else  output meshfile is given, adapt mesh
   defu(ub) = initu(0.0); // set local values to zero
   defu(um) = initu(0.0); // set local values to zero
   defu(uma) = initu(0.0); // set local values to zero
-  { // Compute new restriction from global mesh to local mesh
-    int[int] temprestu;
-    temprestu = restrict(XMh, XMhg, n2o);
-    restu.resize(temprestu.n);
-    restu = temprestu;
-  }
+  restu.resize(ub[].n); // Change size of restriction operator
+  restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
   ub[] = uG[](restu); //restrict global solution to each local mesh
   um[] = umG[](restu); //restrict global solution to each local mesh
   uma[] = umaG[](restu); //restrict global solution to each local mesh

@@ -111,19 +111,11 @@ else { // else  output meshfile is given, adapt mesh
                    );
   }
   defu(ub) = initu(0.0); // set local values to zero
-  { // Compute new restriction from global mesh to local mesh
-    int[int] temprestu;
-    temprestu = restrict(XMh, XMhg, n2o);
-    restu.resize(temprestu.n);
-    restu = temprestu;
-  }
+  restu.resize(ub[].n); // Change size of restriction operator
+  restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
   ub[] = uG[](restu); //restrict global solution to each local mesh
-  { // Resize vectors
-    real[int] tempq;
-    ChangeNumbering(J, ub[], tempq);
-    q.resize(tempq.n);
-    q = tempq;
-  }
+  q.resize(J.n);  // Resize state vector
+  ChangeNumbering(J, ub[], q);
 }
 // Function to build residual operator in PETSc numbering
 func real[int] funcR(real[int]& qPETSc) {

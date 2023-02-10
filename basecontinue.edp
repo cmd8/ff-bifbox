@@ -266,19 +266,11 @@ while (count < maxcount){
       }
       defu(ub) = initu(0.0);
       defu(yb) = initu(0.0);
-      { int[int] temprestu;
-        temprestu = restrict(XMh, XMhg, n2o);
-        restu.resize(temprestu.n);
-        restu = temprestu;
-      }
+      restu.resize(ub[].n); // Change size of restriction operator
+      restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
       ub[] = uG[](restu);
       yb[] = yG[](restu);
-      { real[int] tempyqP;
-        ChangeNumbering(J, yb[], tempyqP);
-        yqP.resize(tempyqP.n);
-        yqP = tempyqP;
-      }
-      { Mat Adapt1(yqP.n, mpirank == 0 ? 1 : 0), Adapt2(yqP.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
+      { Mat Adapt1(J.n, mpirank == 0 ? 1 : 0), Adapt2(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
         JlPM = Adapt1;
         yqPM = Adapt2;
         Ja = [[J,JlPM],[yqPM',-1.0]]; // make dummy Jacobian
@@ -291,7 +283,9 @@ while (count < maxcount){
         qa.resize(qa.n+1);
         qa(qa.n-1) = lambda;
       }
-      yqP0.resize(yqP.n);
+      yqP.resize(J.n);
+      ChangeNumbering(J, yb[], yqP);
+      yqP0.resize(J.n);
       yqP0 = yqP;
       qa0.resize(qa.n);
       qap.resize(qa.n);
