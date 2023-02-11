@@ -234,7 +234,7 @@ SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_rtol " + snesr
                                                         + " -snes_monitor -snes_converged_reason "
                                                         );
 if (ret > 0) { // Save solution if solver converged and output file is given
-  real[int] qm, qma, q = qa(0:qa.n - (mpirank == 0 ? 2 : 1));
+  real[int] q = qa(0:qa.n - (mpirank == 0 ? 2 : 1));
   if(mpirank == 0) lambda = qa(qa.n-1);
   broadcast(processor(0), lambda);
   updatelambda(param, lambda);
