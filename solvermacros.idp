@@ -48,12 +48,11 @@ macro createMatu(th,A,P){
 } // EOM
 
 // FUNCTIONS -------------------------------------------------------------------
-macro savebase(workdir, basefileout, statsfile, meshfile, q, m, omega, saveflag, monitorflag, paraviewflag){
-  XMhg defu(ubg), defu(ubo);
-  ChangeNumbering(J, ub[], q, inverse = true);
-  for[i, v : restu] ubg[][v] = ub[][i];
-  mpiAllReduce(ubg[], ubo[], mpiCommWorld, mpiSUM);
-  if (monitorflag) getmonitors(ubo);
+macro savebase(workdir, basefileout, statsfile, meshfile, m, omega, saveflag, monitorflag, paraviewflag){
+  XMhg defu(tempu), defu(ubg);
+  for[i, v : restu] tempu[][v] = ub[][i];
+  mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+  if (monitorflag) getmonitors(ubg);
   if (mpirank == 0 && statsfile != "") printstats(workdir + statsfile + ".txt", meshfile, m, omega);
   if (saveflag && mpirank == 0 && basefileout != ""){
     cout << "  Saving '" + basefileout + ".base' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
@@ -67,41 +66,26 @@ macro savebase(workdir, basefileout, statsfile, meshfile, q, m, omega, saveflag,
       for (int k = 0; k < monitornames.n; ++k){
         file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl << endl;
       }
-      file << ubo[] << endl;
+      file << ubg[] << endl;
     }
     if (paraviewflag){
       cout << "  Saving '" + basefileout + "_base.vtu' in '" + workdir + "'." << endl;
       if (meshsplit != 1){
         meshN Thgs = trunc(Thg, 1, split = meshsplit);
         fespace XMhs(Thgs, Pk);
-        XMhs defu(us) = defu(ubo);
+        XMhs defu(us) = defu(ubg);
         savevtk(workdir + basefileout + "_base.vtu", Thgs, adaptu(us), dataname = ParaviewDataName, order = ParaviewOrder);
       } else {
-        savevtk(workdir + basefileout + "_base.vtu", Thg, adaptu(ubo), dataname = ParaviewDataName, order = ParaviewOrder);
+        savevtk(workdir + basefileout + "_base.vtu", Thg, adaptu(ubg), dataname = ParaviewDataName, order = ParaviewOrder);
       }
     }
   }
 }//EOM
 
-macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, meshfile, eigenmode, m, eigenvalue, paraviewflag){
-  NewMacro FFtype()FFrealcomplex EndMacro
-  NewMacro PETSctype()PETScrealcomplex EndMacro
-  XMhg<FFtype> defu(umg), defu(umo);
-  IFMACRO(FFtype,real)
-  IFMACRO(PETSctype,real)
-    ChangeNumbering(J, um[], eigenmode, inverse = true);
-  ENDIFMACRO
-  ENDIFMACRO
-  IFMACRO(FFtype,complex)
-  IFMACRO(PETSctype,real)
-    ChangeNumbering([J, J], [um[].re, um[].im], eigenmode, inverse = true);
-  ENDIFMACRO
-  IFMACRO(PETSctype,complex)
-    ChangeNumbering(J, um[], eigenmode, inverse = true);
-  ENDIFMACRO
-  ENDIFMACRO
-  for[i, v : restu] umg[][v] = um[][i];
-  mpiAllReduce(umg[], umo[], mpiCommWorld, mpiSUM);
+macro savemode(workdir, modefileout, basefile, meshfile, m, eigenvalue, paraviewflag){
+  XMhg<complex> defu(tempu), defu(umg);
+  for[i, v : restu] tempu[][v] = um[][i];
+  mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
   if (mpirank == 0 && modefileout != ""){
     cout << "  Saving '" + modefileout + ".mode' over '" + basefile + ".base' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
     cout << "\t" + listparams(paramnames,params) + ", m = " + m + ", eval = " + eigenvalue + "."  << endl;
@@ -114,15 +98,14 @@ macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, 
       }
     file << "m\t" << m << endl << endl;
     file << "eval\t" << eigenvalue << endl << endl;
-    file << umo[] << endl;
+    file << umg[] << endl;
     }
     if (paraviewflag){
-      IFMACRO(FFtype,complex)
       cout << "  Saving '" + modefileout + "_mode_[real,imag].vtu' in '" + workdir + "'." << endl;
       if (meshsplit != 1){
         meshN Thgs = trunc(Thg, 1, split = meshsplit);
         fespace XMhs(Thgs, Pk);
-        XMhs<FFtype> defu(uso) = defu(umo);
+        XMhs<complex> defu(uso) = defu(umg);
         XMhs defu(usr);
         usr[] = uso[].re;
         savevtk(workdir + modefileout + "_mode_real.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
@@ -130,23 +113,57 @@ macro savemode(FFrealcomplex, PETScrealcomplex, workdir, modefileout, basefile, 
         savevtk(workdir + modefileout + "_mode_imag.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
       } else {
         XMhg defu(usr);
-        usr[] = umo[].re;
+        usr[] = umg[].re;
         savevtk(workdir + modefileout + "_mode_real.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
-        usr[] = umo[].im;
+        usr[] = umg[].im;
         savevtk(workdir + modefileout + "_mode_imag.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
       }
-      ENDIFMACRO
-      IFMACRO(FFtype,real)
-      cout << "  Saving '" + modefileout + "_mode.vtu' in '" + workdir + "'." << endl;
+    }
+  }
+}//EOM
+
+macro savefold(workdir, foldfileout, statsfile, meshfile, saveflag, monitorflag, paraviewflag){
+  XMhg defu(tempu), defu(ubg), defu(umg), defu(umag);
+  for[i, v : restu] tempu[][v] = ub[][i];
+  mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+  for[i, v : restu] tempu[][v] = um[][i];
+  mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
+  for[i, v : restu] tempu[][v] = uma[][i];
+  mpiAllReduce(tempu[], umag[], mpiCommWorld, mpiSUM);
+  if (monitorflag) getmonitors(ubg);
+  if (mpirank == 0 && statsfile != "") printstats(workdir + statsfile + ".txt", meshfile, 0, 0);
+  if (saveflag && mpirank == 0 && foldfileout != ""){
+    cout << "  Saving '" + foldfileout + ".fold' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
+    cout << "\t" + listparams(paramnames,params)  + ", " + listparams(monitornames, monitors) + "." << endl;
+    { ofstream file(workdir + foldfileout + ".fold", binary);
+      file.precision(17);
+      file << "mesh\t" << meshfile << endl << endl;
+      for (int k = 0; k < paramnames.n; ++k){
+        file << paramnames[k] << "\t" << params[paramnames[k]] << endl << endl;
+      }
+      for (int k = 0; k < monitornames.n; ++k){
+        file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl << endl;
+      }
+      file << ubg[] << endl << endl;
+      file << umg[] << endl << endl;
+      file << umag[] << endl << endl;
+    }
+    if (paraviewflag){
+      cout << "  Saving '" + foldfileout + "_fold_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
       if (meshsplit != 1){
         meshN Thgs = trunc(Thg, 1, split = meshsplit);
         fespace XMhs(Thgs, Pk);
-        XMhs defu(uso) = defu(umo);
-        savevtk(workdir + modefileout + "_mode.vtu", Thgs, adaptu(uso), dataname = ParaviewDataName, order = ParaviewOrder);
+        XMhs defu(ubs) = defu(ubg);
+        XMhs defu(ums) = defu(umg);
+        XMhs defu(umas) = defu(umag);
+        savevtk(workdir + foldfileout + "_base.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
+        savevtk(workdir + foldfileout + "_dirmode.vtu", Thgs, adaptu(ums), dataname = ParaviewDataName, order = ParaviewOrder);
+        savevtk(workdir + foldfileout + "_adjmode.vtu", Thgs, adaptu(umas), dataname = ParaviewDataName, order = ParaviewOrder);
       } else {
-        savevtk(workdir + modefileout + "_mode.vtu", Thg, adaptu(umo), dataname = ParaviewDataName, order = ParaviewOrder);
+        savevtk(workdir + foldfileout + "_base.vtu", Thg, adaptu(ubg), dataname = ParaviewDataName, order = ParaviewOrder);
+        savevtk(workdir + foldfileout + "_dirmode.vtu", Thg, adaptu(umg), dataname = ParaviewDataName, order = ParaviewOrder);
+        savevtk(workdir + foldfileout + "_adjmode.vtu", Thg, adaptu(umag), dataname = ParaviewDataName, order = ParaviewOrder);
       }
-      ENDIFMACRO
     }
   }
 }//EOM
@@ -232,8 +249,40 @@ func real[int] loadbase(string directoryname, string inputfilename, string meshf
       return qlocal;
     }
 
-func PetscScalar[int] loadmode(string directoryname, string inputfilename, string meshfilename, int & m, complex & eigenvalue) {
-      XMhg<PetscScalar> defu(umg);
+func real[int] loadfold(string directoryname, string inputfilename, string meshfilename, real[int] & qmlocal, real[int] & qmalocal) {
+      XMhg defu(ubg), defu(umg), defu(umag);
+      if (mpirank == 0) cout << "  Loading '" + inputfilename + ".fold' on '" + meshfilename + meshext + "' from '" + directoryname + "'." << endl;
+      string filemesh;
+      ifstream file(directoryname + inputfilename + ".fold");
+      file >> filemesh >> filemesh;
+      for (int k = 0; k < paramnames.n; ++k){
+        file >> paramnames[k] >> params[paramnames[k]];
+      }
+      for (int k = 0; k < monitornames.n; ++k){
+        file >> monitornames[k] >> monitors[monitornames[k]];
+      }
+      if (mpirank == 0) cout << "\t" + listparams(paramnames,params) + ", " + listparams(monitornames,monitors) << endl;
+      if (filemesh == meshfilename){ // no interpolation needed
+        file >> ubg[];
+        file >> umg[];
+        file >> umag[];
+      } else { // must interpolate
+        if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh + meshext << "'." << endl;
+        meshN Thg1 = readmeshN(directoryname + filemesh + meshext);
+        fespace XMhg1(Thg1, Pk);
+        XMhg1 defu(ubg1);
+        file >> ubg1[];
+        defu(ubg) = defu(ubg1);
+      }
+      setparams(paramnames,params);
+      real[int] qlocal = ubg[](restu);
+      qmlocal = umg[](restu);
+      qmalocal = umag[](restu);
+      return qlocal;
+    }
+
+func complex[int] loadmode(string directoryname, string inputfilename, string meshfilename, int & m, complex & eigenvalue) {
+      XMhg<complex> defu(umg);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".mode' over '";
       string filemesh, basefilename, dummy;
       real[string] tempparams;
@@ -251,11 +300,11 @@ func PetscScalar[int] loadmode(string directoryname, string inputfilename, strin
       if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh + meshext << "'." << endl;
         meshN Thg1 = readmeshN(directoryname + filemesh + meshext);
         fespace XMhg1(Thg1, Pk);
-        XMhg1<PetscScalar> defu(umg1);
+        XMhg1<complex> defu(umg1);
         file >> umg1[];
         defu(umg) = defu(umg1);
       }
-      PetscScalar[int] qlocal = umg[](restu);
+      complex[int] qlocal = umg[](restu);
       return qlocal;
     }
 

@@ -26,6 +26,7 @@ include "solvermacros.idp"
 string meshfilein = getARGV("-mshi", ""); // input meshfile
 string meshfileout = getARGV("-msho", ""); // output mesh (adapted to input)
 string basefilein = getARGV("-bfi", ""); // input basefile
+string foldfilein = getARGV("-ffi", ""); // input foldfile
 string basefileout = getARGV("-bfo", ""); // output basefile
 bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
 int meshsplit = getARGV("-split",1); // toggle whether mesh is split for P1 representation in Paraview
@@ -35,7 +36,10 @@ string pctype = getARGV("-pc_type", "lu"); // set -pc_type
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 
 // if no meshfilein is given, use the mesh from basefilein
-if (meshfilein == "" & basefilein != "") meshfilein = readmeshname(workdir + basefilein + ".base");
+if (meshfilein == ""){
+  if(basefilein != "") meshfilein = readmeshname(workdir + basefilein + ".base");
+  else if(foldfilein != "") meshfilein = readmeshname(workdir + foldfilein + ".fold");
+}
 assert(meshfilein != ""); // if no basefilein given, must provide a mesh
 // Load mesh
 Th = readmeshN(workdir + meshfilein + meshext);
@@ -47,6 +51,10 @@ restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub);
 // Initialize solution with guess or file
 ub[] = loadbase(workdir, basefilein, meshfilein);
+if(foldfilein != "") {
+  real[int] qm, qma;
+  ub[] = loadfold(workdir, foldfilein, meshfilein, qm, qma);
+}
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
@@ -141,5 +149,6 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     cout << "  Saving adapted mesh '" + meshfileout + meshext + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshfileout + meshext);
   }
-  savebase(workdir, basefileout, "", meshfileout, q, 0, 0, true, true, paraviewflag);
+  ChangeNumbering(J, ub[], q, inverse = true);
+  savebase(workdir, basefileout, "", meshfileout, 0, 0, true, true, paraviewflag);
 }

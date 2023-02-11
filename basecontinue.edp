@@ -185,8 +185,8 @@ if(mpirank == 0) {
   qa.resize(qa.n+1);
   qa(qa.n-1) = lambda;
 }
+broadcast(processor(0), lambda);
 {
-  broadcast(processor(0), lambda);
   updatelambda(param, lambda + eps);
   real[int] Jl = vR(0, XMh, tgv = -1);
   updatelambda(param, lambda);
@@ -194,9 +194,9 @@ if(mpirank == 0) {
   J = vJ(XMh, XMh, tgv = -1);
   Jl -= R;
   Jl /= eps;
-  R = J^-1*Jl;
-  ChangeNumbering(J, R, yqP); // FreeFEM to PETSc
+  yb[] = J^-1*Jl;
 }
+ChangeNumbering(J, yb[], yqP); // FreeFEM to PETSc
 yqP0 = yqP;
 while (count < maxcount){
   real[int] qa0 = qa;
@@ -230,7 +230,8 @@ while (count < maxcount){
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
       if(mpirank == 0) cout << "\tFold detected. Orientation reversed." << endl;
-      savebase(workdir, basefileout + count + "foldguess", "", meshfile, q, 0, 0, true, true, paraviewflag);
+      ChangeNumbering(J, ub[], q, inverse = true);
+      savebase(workdir, basefileout + count + "foldguess", "", meshfile, 0, 0, true, true, paraviewflag);
     }
     if ((meshfileout != "") && (count % savecount == 0)){
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = false);
@@ -306,7 +307,8 @@ while (count < maxcount){
     if(mpirank == 0) lambda = qa(qa.n-1);
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
-    savebase(workdir, basefileout + count, basefileout, meshfile, q, 0, 0, (count % savecount == 0), true, paraviewflag);
+    ChangeNumbering(J, ub[], q, inverse = true);
+    savebase(workdir, basefileout + count, basefileout, meshfile, 0, 0, (count % savecount == 0), true, paraviewflag);
     yqP0 = yqP;
   } else {
     if (mpirank == 0){

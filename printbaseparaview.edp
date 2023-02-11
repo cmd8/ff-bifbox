@@ -10,6 +10,7 @@
 // NOTE: This file should not be changed unless you know what you're doing.
 //
 load "iovtk"
+load "PETSc"
 include "solversettings.idp"
 include "solvermacros.idp"
 // arguments
@@ -23,8 +24,13 @@ if (mpirank==0){
   XMhg defu(ub);
   restu = 0:XMhg.ndof-1;
   ub[] = loadbase(workdir, basefilein, meshfile);
-  meshN Thgs = trunc(Thg, 1, split=meshsplit);
-  fespace XMhs(Thgs, Pk);
-  XMhs defu(us) = defu(ub);
-  savevtk(workdir + basefileout + "_base.vtu", Thgs, adaptu(us), dataname=ParaviewDataName, order=ParaviewOrder);
+  cout << "  Saving '" + basefileout + "_base.vtu' in '" + workdir + "'." << endl;
+  if (meshsplit != 1){
+    meshN Thgs = trunc(Thg, 1, split = meshsplit);
+    fespace XMhs(Thgs, Pk);
+    XMhs defu(us) = defu(ub);
+    savevtk(workdir + basefileout + "_base.vtu", Thgs, adaptu(us), dataname = ParaviewDataName, order = ParaviewOrder);
+  } else {
+    savevtk(workdir + basefileout + "_base.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
+  }
 }

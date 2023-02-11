@@ -1,0 +1,467 @@
+//
+// foldcompute.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// EXAMPLE USAGE:
+//  Initialize with fold guess from base file, solve on same mesh
+// mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -param Re -bfi <FILEIN> -ffo <FILEOUT>
+//
+//  Initialize with fold from base and mode file, solve on same mesh
+// mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -param Re -ffi <FILEIN> -ffo <FILEOUT>
+//
+//  Initialize with guess from file, solve on different mesh
+// mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -mshi <MESHIN> -bfi <FILEIN> -bfo <FILEOUT>
+//
+//  Initialize with fold from file, adapt mesh/solution
+// mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -ffi <FILEIN> -ffo <FILEOUT> -msho <MESHOUT>
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
+load "iovtk"
+load "PETSc"
+include "solversettings.idp"
+include "solvermacros.idp"
+// arguments
+string meshfileout = getARGV("-msho", "");
+string foldfilein = getARGV("-ffi", "");
+string foldfileout = getARGV("-ffo", foldfilein);
+bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
+int meshsplit = getARGV("-split",1); // toggle whether mesh is split for P1 representation in Paraview
+int count = getARGV("-count", 0);
+int savecount = getARGV("-scount", 1);
+int maxcount = getARGV("-maxcount", 100);
+real h0 = getARGV("-h0", 1.0);
+string param1 = getARGV("-param1","Re");
+string param2 = getARGV("-param2","Sw");
+real fmax = getARGV("-fmax", 2.0);
+real kappamax = getARGV("-kmax", 0.5);
+real deltamax = getARGV("-dmax", 4.0);
+real alphamax = getARGV("-amax", 30.)*pi/180.0;
+int monotone = getARGV("-mono", 0);
+real eps = getARGV("-eps", 1e-7);
+string ksptype = getARGV("-ksp_type", "preonly");
+string pctype = getARGV("-pc_type", "lu");
+real snesrtol = getARGV("-snes_rtol", 0.0);
+int snesmaxit = getARGV("-snes_max_it", 10);
+string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
+int m = 0;
+complex eigenvalue;
+
+// load macros
+macro Hessian()1 // EOM
+
+assert(foldfilein != "");
+// Load mesh, make FE basis
+string meshfile, meshfilein;
+if (count == 0) {
+  meshfile = readmeshname(workdir + foldfilein + ".fold");
+  meshfilein = meshfile;
+} else {
+  meshfile = readmeshname(workdir + foldfilein + count + ".fold");
+  meshfilein = meshfile(0:meshfile.rfind(count)-1);
+}
+Th = readmeshN(workdir + meshfile + meshext);
+Thg = Th;
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+XMh defu(ub), defu(yb), defu(um), defu(uma);
+if (count == 0){
+  ub[] = loadfold(workdir, foldfilein, meshfile, um[], uma[]);
+  if(mpirank == 0) printstats(workdir + foldfileout + ".txt", meshfile, 0, 0.0);
+} else {
+  ub[] = loadfold(workdir, foldfilein + count, meshfile, um[], uma[]);
+}
+real lambda1 = getlambda(param1);
+real lambda2 = getlambda(param2);
+// Create distributed Mat
+Mat J;
+createMatu(Th, J, Pk);
+real ik = 0.;
+IFMACRO(formulation,incomp)
+include "eqns_incomp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmach)
+include "eqns_lowmach.idp"
+ENDIFMACRO
+IFMACRO(formulation,comp)
+include "eqns_comp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmachreact)
+include "eqns_lowmachreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,compreact)
+include "eqns_compreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,custom)
+include "eqns_custom.idp"
+ENDIFMACRO
+
+// Build bordered block matrix from only Mat components
+Mat H(J);
+Mat JlPM(J.n, mpirank == 0 ? 2 : 0), jPM(J.n, mpirank == 0 ? 2 : 0), lPM(mpirank == 0 ? 2 : 0, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
+Mat Ja = [[J,JlPM],[jPM',lPM]]; // make dummy Jacobian
+
+real[int] p0(uma[].n),q0(um[].n);
+real[int] yqP(J.n), qap(J.n + (mpirank == 0 ? 2 : 0)), yqP0(J.n);
+int it, internalit, adaptflag;
+real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
+// FUNCTIONS
+  func real[int] funcRa(real[int]& qa) {
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      if(mpirank == 0) {
+        lambda1 = qa(qa.n-2); // Extract parameter value from state vector on proc 0
+        lambda2 = qa(qa.n-1); // Extract parameter value from state vector on proc 0
+      }
+      broadcast(processor(0), lambda1);
+      broadcast(processor(0), lambda2);
+      updatelambda(param1, lambda1);
+      updatelambda(param2, lambda2);
+      real[int] Ra, R = vR(0, XMh, tgv = -1);
+      ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
+      J = vJ(XMh, XMh, tgv = -1);
+      real[int] Jp = J^-1*p0;
+      real r = -1.0/J(q0, Jp);
+      um[] = J^-1*p0;
+      um[] *= -r;
+      uma[] = J'^-1*q0;
+      uma[] *= -r;
+      if(mpirank == 0) {
+          Ra.resize(Ra.n+2); // Append 0 to residual vector on proc 0
+          Ra(Ra.n-2) = r;
+          Ra(Ra.n-1) = 0.0;
+      }
+      res = sqrt(J(R, R) + r^2);
+      string text1;
+      if (!adaptflag) text1 = count + "-" + it;
+      else text1 = "A" + (count-1) + "-" + it;
+      if(internalit > 0) text1 = text1 + ">" + internalit;
+      if (it == 0){
+        kappa = 0.0;
+        maxdelta = 0.0;
+        alpha = 0.0;
+        delta = abs(h0);
+        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << "." << endl;
+      } else {
+        real dlambda1, dlambda2;
+        if(mpirank == 0) {
+          dlambda1 = lambda1 - qap(qap.n-2); // Extract parameter value from state vector on proc 0
+          dlambda2 = lambda2 - qap(qap.n-1); // Extract parameter value from state vector on proc 0
+        }
+        broadcast(processor(0), dlambda1);
+        broadcast(processor(0), dlambda2);
+        real[int] qdiff  = qa(0:qa.n - (mpirank == 0 ? 3 : 1)) - qap(0:qap.n - (mpirank == 0 ? 3 : 1));
+        ChangeNumbering(J, Jp, qdiff, inverse = true, exchange = false);
+        delta = sqrt(J(Jp, Jp) + dlambda1^2 + dlambda2^2); // distance to curve
+        ChangeNumbering(J, Jp, yqP0, inverse = true, exchange = false);
+        ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
+        alpha = (J(Jp, yb[]) + yl10*yl1 + 1.0)/sqrt((J(Jp, Jp) + yl10^2 + 1.0)*(J(yb[], yb[]) + yl1^2 + 1.0));
+        kappa = max(delta/deltap, kappa);
+        maxdelta = max(delta, maxdelta);
+        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(alpha)*acos(abs(alpha))*180./pi) << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << "." << endl;
+      }
+      f = max(acos(abs(alpha))/alphamax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
+      if (it > 0 && !adaptflag && (f > fmax || it-1 >= snesmaxit || res*(monotone!=0) > resp)) Ra(0) = NaN();
+      ++internalit;
+      return Ra;
+  }
+
+  func int funcJa(real[int]& qa) {
+      ++it;
+      internalit = 0;
+      qap = qa;
+      resp = res;
+      deltap = delta;
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      if(mpirank == 0) {
+        lambda1 = qa(qa.n-2); // Extract parameter value from state vector on proc 0
+        lambda2 = qa(qa.n-1); // Extract parameter value from state vector on proc 0
+      }
+      broadcast(processor(0), lambda1);
+      broadcast(processor(0), lambda2);
+      updatelambda(param1, lambda1 + eps);
+      updatelambda(param2, lambda2);
+      real[int] Jl1 = vR(0, XMh, tgv = -1);
+      real[int] Hl1 = vJq(0, XMh, tgv = -10);
+      updatelambda(param1, lambda1);
+      updatelambda(param2, lambda2 + eps);
+      real[int] Jl2 = vR(0, XMh, tgv = -1);
+      real[int] Hl2 = vJq(0, XMh, tgv = -10);
+      updatelambda(param2, lambda2);
+      real[int] a0 = vR(0, XMh, tgv = -1);
+      Jl1 -= a0;
+      Jl2 -= a0;
+      Jl1 /= eps;
+      Jl2 /= eps;
+      a0 = vJq(0, XMh, tgv = -10);
+      Hl1 -= a0;
+      Hl2 -= a0;
+      Hl1 /= eps;
+      Hl2 /= eps;
+      {
+        real[int] temp1, temp2;
+        ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
+        ChangeNumbering(J, Jl2, temp2); // FreeFEM to PETSc
+        real[int, int] tempPmd(temp1.n, 2); // vector to dense array
+        for[i,v : temp1] if(v == 0.0) v = -1e+30; // indexing trick
+        for[i,v : temp2] if(v == 0.0) v = -1e+30; // indexing trick
+        tempPmd(:, 0) = temp1; // assigning the first column of the dense array
+        tempPmd(:, 1) = temp2; // assigning the second column of the dense array
+        for[i,j,v : tempPmd] if(v == 0.0) v = -1e+30; // indexing trick
+        matrix tempPms = tempPmd; // dense array to sparse matrix
+        for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
+        ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+      }
+      yb[] = J^-1*Jl2;
+      a0 = J^-1*Jl1;
+      H = vH(XMh, XMh, tgv = -10);
+      Jl1 = H'*uma[];
+      Jl1 *= -1.0;
+      real gl1 = -J(uma[],Hl1);
+      real gl2 = -J(uma[],Hl2);
+      yl1 = (gl2 - J(Jl1, yb[]))/(gl1 - J(Jl1, a0));
+      yb[] -= yl1*a0;
+      ChangeNumbering(J, yb[], yqP);
+      {
+        real[int] temp1, temp2 = yqP;
+        ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
+        real[int, int] tempPmd(temp1.n, 2); // vector to dense array
+        for[i,v : temp1] if(v == 0.0) v = -1e+30; // indexing trick
+        for[i,v : temp2] if(v == 0.0) v = -1e+30; // indexing trick
+        tempPmd(:, 0) = temp1; // assigning the first column of the dense array
+        tempPmd(:, 1) = temp2; // assigning the second column of the dense array
+        matrix tempPms = tempPmd; // dense array to sparse matrix
+        for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
+        ChangeOperator(jPM, tempPms, parent = Ja); // send to Mat
+      }
+      {
+        real[int, int] tempPmd(2, 2); // vector to dense array
+        tempPmd(0, 0) = gl1;
+        tempPmd(1, 0) = gl2;
+        tempPmd(0, 1) = yl1;
+        tempPmd(1, 1) = -1.0;
+        matrix tempPms = tempPmd; // dense array to sparse matrix
+        ChangeOperator(lPM, tempPms, parent = Ja); // send to Mat
+      }
+      return 0;
+  }
+
+// fix indexing problem
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
+set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+
+// PREDICTOR
+real[int] qa;
+ChangeNumbering(J, ub[], qa);
+if(mpirank == 0) {
+  qa.resize(qa.n+2);
+  qa(qa.n-2) = lambda1;
+  qa(qa.n-1) = lambda2;
+}
+{
+  broadcast(processor(0), lambda1);
+  broadcast(processor(0), lambda2);
+  updatelambda(param1, lambda1 + eps);
+  updatelambda(param2, lambda2);
+  real[int] Jl1 = vR(0, XMh, tgv = -1);
+  real[int] Hl1 = vJq(0, XMh, tgv = -10);
+  updatelambda(param1, lambda1);
+  updatelambda(param2, lambda2 + eps);
+  real[int] Jl2 = vR(0, XMh, tgv = -1);
+  real[int] Hl2 = vJq(0, XMh, tgv = -10);
+  updatelambda(param2, lambda2);
+  real[int] a0 = vR(0, XMh, tgv = -1);
+  Jl1 -= a0;
+  Jl1 /= eps;
+  Jl2 -= a0;
+  Jl2 /= eps;
+  a0 = vJq(0, XMh, tgv = -10);
+  Hl1 -= a0;
+  Hl1 /= eps;
+  Hl2 -= a0;
+  Hl2 /= eps;
+  J = vJ(XMh, XMh, tgv = -1);
+  yb[] = J^-1*Jl2;
+  a0 = J^-1*Jl1;
+  H = vH(XMh, XMh, tgv = -10);
+  Jl1 = H'*uma[];
+  real gl1 = -J(uma[],Hl1);
+  real gl2 = -J(uma[],Hl2);
+  yl1 = (gl2 + J(Jl1, yb[]))/(gl1 + J(Jl1, a0));
+  yb[] -= yl1*a0;
+  ChangeNumbering(J, yb[], yqP);
+}
+yqP0 = yqP;
+yl10 = yl1;
+q0 = um[];
+p0 = uma[];
+while (count < maxcount){
+  real[int] qa0 = qa;
+  ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false); // PETSc to FreeFEM
+  real h = h0/sqrt(J(yb[], yb[]) + yl1^2 + 1.0); // use FreeFEM numbering here
+  qa(0:qa.n - (mpirank == 0 ? 3 : 1)) -= (h*yqP);
+  if (mpirank == 0) {
+    qa(qa.n-2) -= h*yl1;
+    qa(qa.n-1) += h; // -= (-1.0*h)
+    lambda1 = qa(qa.n-2);
+    lambda2 = qa(qa.n-1);
+  }
+  broadcast(processor(0), lambda1);
+  broadcast(processor(0), lambda2);
+  updatelambda(param1, lambda1);
+  updatelambda(param2, lambda2);
+  // CORRECTOR LOOP
+  int ret;
+  it = 0;
+  internalit = 0;
+  adaptflag = 0;
+  SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
+            sparams = " -snes_rtol " + snesrtol
+                    + " -snes_linesearch_type " + sneslinesearchtype
+                    + " -snes_max_it " + snesmaxit
+                    + " -snes_converged_reason "
+                    + " "); // solve nonlinear problem with SNES
+  if (ret > 0) {
+    ++count;
+    h0 /= f;
+    um[] /= sqrt(J(um[],um[]));
+    uma[] /= J(um[],uma[]);
+    if (alpha < 0) {
+      h0 *= -1.0;
+      real[int] q = qa(0:qa.n - (mpirank == 0 ? 3 : 1));
+      if(mpirank == 0) {
+        lambda1 = qa(qa.n-2);
+        lambda2 = qa(qa.n-1);
+      }
+      broadcast(processor(0), lambda1);
+      broadcast(processor(0), lambda2);
+      updatelambda(param1, lambda1);
+      updatelambda(param2, lambda2);
+      if(mpirank == 0) cout << "\tCusp detected. Orientation reversed." << endl;
+      ChangeNumbering(J, ub[], q, inverse = true);
+      savefold(workdir, foldfileout + count + "foldguess", "", meshfile, true, true, paraviewflag);
+    }
+    if ((meshfileout != "") && (count % savecount == 0)){
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = false);
+      if(mpirank == 0) {
+        lambda1 = qa(qa.n-2);
+        lambda2 = qa(qa.n-1);
+      }
+      broadcast(processor(0), lambda1);
+      broadcast(processor(0), lambda2);
+      updatelambda(param1, lambda1);
+      updatelambda(param2, lambda2);
+      ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
+      XMhg defu(uG), defu(umG), defu(umaG), defu(yG), defu(tempu);
+      for[i, v : restu] tempu[][v] = ub[][i];
+      mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
+      for[i, v : restu] tempu[][v] = yb[][i];
+      mpiAllReduce(tempu[], yG[], mpiCommWorld, mpiSUM);
+      for[i, v : restu] tempu[][v] = um[][i]; // populate local portion of global soln
+      mpiAllReduce(tempu[], umG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
+      for[i, v : restu] tempu[][v] = uma[][i]; // populate local portion of global soln
+      mpiAllReduce(tempu[], umaG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
+      if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
+        Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptu(umaG),
+                        hmin = getARGV("-hmin",1.0e-6),
+                        hmax = getARGV("-hmax",1.0),
+                        err = getARGV("-err", 0.01),
+                        errg = getARGV("-errg", 0.1),
+                        nbvx = int(getARGV("-nbvx",1e6)),
+                        nbsmooth = int(getARGV("-nbsmooth",5)),
+                        ratio = getARGV("-ratio",1.8),
+                        anisomax = getARGV("-anisomax",1.0),
+                        rescaling = bool(getARGV("-rescaling", 1)),
+                        power = getARGV("-power", 1.0),
+                        thetamax = getARGV("-thmax", 10.0)
+                        );
+      }
+      broadcast(processor(0), Thg); // broadcast global mesh to all processors
+      defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
+      defu(yG) = defu(yG); //interpolate global solution from old mesh to new mesh
+      defu(umG) = defu(umG); //interpolate global solution from old mesh to new mesh
+      defu(umaG) = defu(umaG); //interpolate global solution from old mesh to new mesh
+      Th = Thg;
+      {
+        Mat Adapt;
+        createMatu(Th, Adapt, Pk);
+        J = Adapt;
+      }
+      defu(ub) = initu(0.0);
+      defu(yb) = initu(0.0);
+      defu(um) = initu(0.0);
+      defu(uma) = initu(0.0);
+      restu.resize(ub[].n); // Change size of restriction operator
+      restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
+      ub[] = uG[](restu);
+      yb[] = yG[](restu);
+      um[] = umG[](restu);
+      uma[] = umaG[](restu);
+      {
+        Mat Adapt0(J), Adapt1(J.n, mpirank == 0 ? 2 : 0), Adapt2(J.n, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
+        H = Adapt0;
+        JlPM = Adapt1;
+        jPM = Adapt2;
+        Ja = [[J,JlPM],[jPM',lPM]]; // make dummy Jacobian
+      }
+      set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
+      set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+      qa.resize(J.n);
+      ChangeNumbering(J, ub[], qa);
+      if(mpirank == 0) {
+        qa.resize(qa.n+2);
+        qa(qa.n-2) = lambda1;
+        qa(qa.n-1) = lambda2;
+      }
+      p0.resize(uma[].n);
+      p0 = uma[];
+      q0.resize(um[].n);
+      q0 = um[];
+      yqP.resize(J.n);
+      ChangeNumbering(J, yb[], yqP);
+      yqP0.resize(J.n);
+      yqP0 = yqP;
+      qa0.resize(qa.n);
+      qap.resize(qa.n);
+      meshfile = meshfileout + count;
+      savemesh(Thg, workdir + meshfile + meshext);
+      int ret;
+      it = 0;
+      internalit = 0;
+      adaptflag = 1;
+      SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
+      sparams = " -snes_rtol " + snesrtol
+              + " -snes_linesearch_type " + sneslinesearchtype
+              + " -snes_converged_reason "
+              + " "); // solve nonlinear problem with SNES
+      assert(ret > 0);
+      um[] /= sqrt(J(um[],um[]));
+      uma[] /= J(um[],uma[]);
+    }
+    real[int] q = qa(0:qa.n - (mpirank == 0 ? 3 : 1));
+    if(mpirank == 0) {
+      lambda1 = qa(qa.n-2);
+      lambda2 = qa(qa.n-1);
+    }
+    broadcast(processor(0), lambda1);
+    broadcast(processor(0), lambda2);
+    updatelambda(param1, lambda1);
+    updatelambda(param2, lambda2);
+    ChangeNumbering(J, ub[], q, inverse = true);
+    savefold(workdir, foldfileout + count, foldfileout, meshfile, (count % savecount == 0), true, paraviewflag);
+    yqP0 = yqP;
+    q0 = um[];
+    p0 = uma[];
+    yl10 = yl1;
+  } else {
+    if (mpirank == 0){
+      if(res*(monotone!=0) >= resp) cout << "\tResidual norm failed to decrease. Reattempting with smaller step." << endl;
+      if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;
+      if(it >= snesmaxit) cout << "\tFailed to converge within limit of " + snesmaxit + " iterations. Reattempting with smaller step." << endl;
+      if(maxdelta >= deltamax) cout << "\tStep size exceeds " << deltamax << "." << endl;
+      if(acos(abs(alpha)) >= alphamax) cout << "\tAngle exceeds " << (alphamax*180./pi) << " degrees." << endl;
+    }
+    h0 /= fmax;
+    qa = qa0;
+  }
+}

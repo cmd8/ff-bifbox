@@ -26,9 +26,8 @@ include "solvermacros.idp"
 string meshfilein = getARGV("-mshi", "");
 string meshfileout = getARGV("-msho", "");
 string foldfilein = getARGV("-ffi", "");
-string basefilein = getARGV("-bfi", foldfilein);
+string basefilein = getARGV("-bfi", "");
 string foldfileout = getARGV("-ffo", "");
-string basefileout = getARGV("-bfo", foldfileout);
 bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
 int meshsplit = getARGV("-split",1); // toggle whether mesh is split for P1 representation in Paraview
 string param = getARGV("-param","Re");
@@ -43,17 +42,19 @@ complex eigenvalue;
 // load macros
 macro Hessian()1 // EOM
 
-assert(basefilein != "");
-if (meshfilein == "") meshfilein = readmeshname(workdir + basefilein + ".base");
+assert(basefilein != "" || foldfilein != "");
+if (meshfilein == ""){
+  if (basefilein != "") meshfilein = readmeshname(workdir + basefilein + ".base");
+  if (foldfilein != "") meshfilein = readmeshname(workdir + foldfilein + ".fold");
+}
 // Load mesh, make FE basis
 Th = readmeshN(workdir + meshfilein + meshext);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(um), defu(uma);
-ub[] = loadbase(workdir, basefilein, meshfilein);
-if(foldfilein != "") um[] = loadmode(workdir, foldfilein + "_dir", meshfilein, m, eigenvalue);
-if(foldfilein != "") uma[] = loadmode(workdir, foldfilein + "_adj", meshfilein, m, eigenvalue);
+if (foldfilein != "") ub[] = loadfold(workdir, foldfilein, meshfilein, um[], uma[]);
+else  ub[] = loadbase(workdir, basefilein, meshfilein);
 real lambda = getlambda(param);
 // Create distributed Mat
 Mat J;
@@ -222,8 +223,6 @@ if (foldfilein == ""){
   J = vJ(XMh, XMh, tgv = -1);
   p0 = J'^-1*Jl;
   q0 = J^-1*Jl;
-  q0 /= sqrt(J(q0, q0));
-  p0 /= J(q0, p0);
 } else {
   p0 = uma[];
   q0 = um[];
@@ -235,19 +234,16 @@ SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_rtol " + snesr
                                                         + " -snes_monitor -snes_converged_reason "
                                                         );
 if (ret > 0) { // Save solution if solver converged and output file is given
-  real[int] qout = qa(0:qa.n - (mpirank == 0 ? 2 : 1));
+  real[int] qm, qma, q = qa(0:qa.n - (mpirank == 0 ? 2 : 1));
   if(mpirank == 0) lambda = qa(qa.n-1);
   broadcast(processor(0), lambda);
   updatelambda(param, lambda);
+  ChangeNumbering(J, ub[], q, inverse = true);
+  um[] /= sqrt(J(um[],um[]));
+  uma[] /= J(um[],uma[]);
   if(mpirank==0 && !noadapt) { // Save adapted mesh
     cout << "  Saving adapted mesh '" + meshfileout + meshext + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshfileout + meshext);
   }
-  savebase(workdir, basefileout, "", meshfileout, qout, 0, 0, true, true, paraviewflag);
-  um[] /= sqrt(J(um[],um[]));
-  uma[] /= J(um[],uma[]);
-  ChangeNumbering(J, um[], qout);
-  if(foldfileout != "") savemode(real, real, workdir, foldfileout + "_dir", basefileout, meshfileout, qout, m, eigenvalue, paraviewflag);
-  ChangeNumbering(J, uma[], qout);
-  if(foldfileout != "") savemode(real, real, workdir, foldfileout + "_adj", basefileout, meshfileout, qout, m, eigenvalue, paraviewflag);
+  savefold(workdir, foldfileout, "", meshfileout, true, true, paraviewflag);
 }

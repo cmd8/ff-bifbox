@@ -18,7 +18,7 @@ include "solversettings.idp"
 include "solvermacros.idp"
 // arguments
 string basefilein = getARGV("-bfi", "");
-bool bf2d = getARGV("-bf2d", 0);// if true, base flow does not includes z-velocity
+string foldfilein = getARGV("-ffi", "");
 string modefilein = getARGV("-mfi", "");
 string evalfileout = getARGV("-vfo", "");
 string modefileout = getARGV("-mfo", "");
@@ -35,18 +35,23 @@ string stpctype = getARGV("-st_pc_type", "lu");
 complex[int] val(epsnev);
 complex eigenvalue, ik;
 
-if (basefilein == "") basefilein = readbasename(workdir + modefilein + ".mode");
-string meshfile = readmeshname(workdir + basefilein + ".base");
+if (foldfilein =="" && basefilein == "") basefilein = readbasename(workdir + modefilein + ".mode");
+string meshfile;
+if(foldfilein != "") meshfile = readmeshname(workdir + foldfilein + ".fold");
+else meshfile = readmeshname(workdir + basefilein + ".base");
+
 // Load mesh, make FE basis
 Th = readmeshN(workdir + meshfile + meshext);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub);
-if (bf2d) {
-  ub[] = load2Cbase(workdir, basefilein, meshfile);
-} else {
-  ub[] = loadbase(workdir, basefilein, meshfile);
+ub[] = loadbase(workdir, basefilein, meshfile);
+if(foldfilein != "") {
+  real[int] qm, qma;
+  ub[] = loadfold(workdir, foldfilein, meshfile, qm, qma);
+  savebase(workdir, modefileout, "", meshfile, 0, 0, true, true, paraviewflag);
+  basefilein = modefileout;
 }
 XMh<PetscScalar>[int] defu(vec)(epsnev);
 XMh<PetscScalar> defu(um);
@@ -77,7 +82,8 @@ IFMACRO(formulation,custom)
 include "eqns_custom.idp"
 ENDIFMACRO
 
-{ matrix<PetscScalar> Jtemp = vJ(XMh, XMh, tgv = -2);
+{
+  matrix<PetscScalar> Jtemp = vJ(XMh, XMh, tgv = -2);
   if (adj) Jtemp = -Jtemp';
   else Jtemp = -Jtemp;
   J = Jtemp;
@@ -101,8 +107,7 @@ if (evalfileout != "" && mpirank == 0){
 if (modefileout != ""){
   for (int i = 0; i < k; ++i){
     eigenvalue = val(i);
-    PetscScalar[int] eigenmode;
-    ChangeNumbering(J, vec[i][], eigenmode);
-    savemode(complex, complex, workdir, modefileout + "_" + i, basefilein, meshfile, eigenmode, m, eigenvalue, paraviewflag);
+    um[] = vec[i][];
+    savemode(workdir, modefileout + "_" + i, basefilein, meshfile, m, eigenvalue, paraviewflag);
   }
 }
