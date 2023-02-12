@@ -339,7 +339,7 @@ while (count < maxcount){
       updatelambda(param2, lambda2);
       if(mpirank == 0) cout << "\tCusp detected. Orientation reversed." << endl;
       ChangeNumbering(J, ub[], q, inverse = true);
-      savefold(workdir, foldfileout + count + "foldguess", "", meshfile, true, true, paraviewflag);
+      savefold(workdir, foldfileout + count + "cuspguess", "", meshfile, true, true, paraviewflag);
     }
     if ((meshfileout != "") && (count % savecount == 0)){
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = false);
