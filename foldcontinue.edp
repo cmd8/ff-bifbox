@@ -397,6 +397,8 @@ while (count < maxcount){
       yb[] = yG[](restu);
       um[] = umG[](restu);
       uma[] = umaG[](restu);
+      um[] /= sqrt(J(um[],um[]));
+      uma[] /= J(um[],uma[]);
       {
         Mat Adapt0(J), Adapt1(J.n, mpirank == 0 ? 2 : 0), Adapt2(J.n, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
         H = Adapt0;
