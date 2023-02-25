@@ -27,6 +27,7 @@ string meshfilein = getARGV("-mshi", ""); // input meshfile
 string meshfileout = getARGV("-msho", ""); // output mesh (adapted to input)
 string basefilein = getARGV("-bfi", ""); // input basefile
 string foldfilein = getARGV("-ffi", ""); // input foldfile
+string hopffilein = getARGV("-hfi", ""); // input hopffile
 string basefileout = getARGV("-bfo", ""); // output basefile
 bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
 int meshsplit = getARGV("-split",1); // toggle whether mesh is split for P1 representation in Paraview
@@ -36,9 +37,10 @@ string pctype = getARGV("-pc_type", "lu"); // set -pc_type
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 
 // if no meshfilein is given, use the mesh from basefilein
-if (meshfilein == ""){
+if(meshfilein == ""){
   if(basefilein != "") meshfilein = readmeshname(workdir + basefilein + ".base");
   else if(foldfilein != "") meshfilein = readmeshname(workdir + foldfilein + ".fold");
+  else if(hopffilein != "") meshfilein = readmeshname(workdir + hopffilein + ".hopf");
 }
 assert(meshfilein != ""); // if no basefilein given, must provide a mesh
 // Load mesh
@@ -54,12 +56,17 @@ ub[] = loadbase(workdir, basefilein, meshfilein);
 if(foldfilein != "") {
   real[int] qm, qma;
   ub[] = loadfold(workdir, foldfilein, meshfilein, qm, qma);
+} else if(hopffilein != "") {
+  complex[int] qm, qma;
+  int m;
+  real omega;
+  ub[] = loadhopf(workdir, hopffilein, meshfilein, qm, qma, m, omega);
 }
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
 int m = 0;
-real ik = 0.;
+real ik = 0.0, iomega = 0.0;
 IFMACRO(formulation,incomp)
 include "eqns_incomp.idp"
 ENDIFMACRO
@@ -86,9 +93,9 @@ real[int] q;
 ChangeNumbering(J, ub[], q);
 // MESH ADAPTATION
 bool noadapt = (meshfileout == "");
-if (noadapt) meshfileout = meshfilein; // If no output meshfile, don't adapt
+if(noadapt) meshfileout = meshfilein; // If no output meshfile, don't adapt
 else { // else  output meshfile is given, adapt mesh
-  ChangeNumbering(J, ub[], q, inverse = true, exchange = false); // PETSc to FF numbering
+  ChangeNumbering(J, ub[], q, inverse = true, exchange = true); // PETSc to FF numbering
   XMhg defu(uG), defu(tempu); // create private global FE functions
   for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
@@ -127,14 +134,14 @@ else { // else  output meshfile is given, adapt mesh
 }
 // Function to build residual operator in PETSc numbering
 func real[int] funcR(real[int]& qPETSc) {
-    changeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
+    ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
     real[int] RPETSc, R = vR(0, XMh, tgv = -1);
-    changeNumbering(J, R, RPETSc);
+    ChangeNumbering(J, R, RPETSc);
     return RPETSc;
 }
 // Function to build Jacobian operator in PETSc numbering
 func int funcJ(real[int]& qPETSc) {
-    changeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
+    ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
     J = vJ(XMh, XMh, tgv = -1);
     return 0;
 }
@@ -144,11 +151,11 @@ SNESSolve(J, funcJ, funcR, q, reason = ret, sparams = " -snes_rtol " + snesrtol
                                                     + " -snes_linesearch_type " + sneslinesearchtype
                                                     + " -snes_monitor -snes_converged_reason "
                                                     );
-if (ret > 0) { // Save solution if solver converged and output file is given
+if(ret > 0) { // Save solution if solver converged and output file is given
   if(mpirank==0 && !noadapt) { // Save adapted mesh
     cout << "  Saving adapted mesh '" + meshfileout + meshext + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshfileout + meshext);
   }
   ChangeNumbering(J, ub[], q, inverse = true);
-  savebase(workdir, basefileout, "", meshfileout, 0, 0, true, true, paraviewflag);
+  savebase(workdir, basefileout, "", meshfileout, true, true, paraviewflag);
 }

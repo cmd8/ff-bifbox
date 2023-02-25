@@ -17,7 +17,8 @@ string EPSparams = " -eps_pos_gen_non_hermitian ";
 // JACOBIAN MATRIX
 varf vJ(defu(um), defu(v))
       = int2d(Th)(
-          vR*(ugradf(ub, ik, umR) + ugradf(um, 0, ubR) + umR*divu(0, ub) + ubR*divu(ik, um))
+        iomega*(gdotf(vR, umR) + ubR*(gdotf(vT, umT) + vdotu(v, um)))
+        + vR*(ugradf(ub, ik, umR) + ugradf(um, 0, ubR) + umR*divu(0, ub) + ubR*divu(ik, um))
         + ubR*(ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um)) + umR*ugradu(v, ub, 0, ub) - 1.0/(params["ga"]*params["Ma"]^2)*divu(-ik, v)*(umR*ubT + ubR*umT) + (ubT^(params["a"])*visc(-ik, v , ik, um ) + params["a"]*ubT^(params["a"]-1.)*umT*visc(-ik, v , 0, ub ))/params["Re"]
         + vT*(ubR*(ugradf(um, 0, ubT) + ugradf(ub, ik, umT)) + umR*ugradf(ub, 0, ubT) + (params["ga"] - 1.0)*(umR*ubT*divu(0, ub) + ubR*umT*divu(0, ub) + ubR*ubT*divu(ik, um)))
         - vT*params["ga"]*(params["ga"] - 1.0)*params["Ma"]^2./params["Re"]*(ubT^(params["a"])*(visc(-ik, um, 0, ub) + visc(0, ub, ik, um)) + params["a"]*ubT^(params["a"]-1.)*umT*visc(0, ub, 0, ub))
@@ -26,11 +27,11 @@ varf vJ(defu(um), defu(v))
       - int1d(Th, BCopen) (
         (ubT^(params["a"])*ndotvisc(v, ik, um) + params["a"]*ubT^(params["a"]-1.)*umT*ndotvisc(v, 0, ub))/params["Re"]
       )
-      + BoundaryConditions(m, um, ub);
+      + HomBoundaryConditions(m, um);
 
 // MASS MATRIX
 varf vM(defu(um), defu(v))
       = int2d(Th)(
-          fdotg(vR,umR) + ubR*(fdotg(vT,umT) + udotv(um, v))
+          gdotf(vR, umR) + ubR*(gdotf(vT, umT) + vdotu(v, um))
       )
-      + BoundaryConditions(m, um, ub);
+      + HomBoundaryConditions(m, um);

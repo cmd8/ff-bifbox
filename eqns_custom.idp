@@ -10,7 +10,7 @@ string EPSparams = " -eps_pos_gen_non_hermitian ";
         - vp*divu(0, ub)
       )
       + int1d(Th, BCopen)(
-        IFMACRO(cylindrical) y* ENDIFMACRO ndotu(v)*ubpc - 0.5*udotv(v,ub)*min(0.0, ndotu(ub))
+        IFMACRO(cylindrical) y* ENDIFMACRO ndotu(v)*ubpc - 0.5*vdotu(v, ub)*min(0.0, ndotu(ub))
         IFMACRO(component,3) + vpc*(tdotgrads(ubpc) - ubz^2.0) ENDIFMACRO
         - (1.0 + ubv*fv1(ub))*ndotvisc(v, 0, ub)/params["Re"]
       )
@@ -28,7 +28,7 @@ varf vJ(defu(um), defu(v))
         - vp*divu(ik, um) + 1.0e-10*umpc*vpc
         )
       + int1d(Th, BCopen)(
-        IFMACRO(cylindrical) y* ENDIFMACRO ndotu(v)*umpc - 0.5*(ndotu(ub) < 0.0)*(udotv(um,v)*ndotu(ub) + udotv(ub,v)*ndotu(um))
+        IFMACRO(cylindrical) y* ENDIFMACRO ndotu(v)*umpc - 0.5*(ndotu(ub) < 0.0)*(vdotu(um,v)*ndotu(ub) + vdotu(ub,v)*ndotu(um))
         IFMACRO(component,3) + vpc*( tdotgrads(umpc) - 2.0*ubz*umz) ENDIFMACRO
         - ((1.0 + ubv*fv1(ub))*ndotvisc(v, ik, um) + (umv*fv1(ub) + ubv*fv1p(ub,um))*ndotvisc(v, 0, ub))/params["Re"]
         )
@@ -37,6 +37,6 @@ varf vJ(defu(um), defu(v))
 // MASS MATRIX
 varf vM(defu(um), defu(v))
       = int2d(Th)(
-          fdotg(vv,umv) + udotv(um, v)
+          gdotf(vv, umv) + vdotu(um, v)
       )
       + BoundaryConditions(m, um, ub);

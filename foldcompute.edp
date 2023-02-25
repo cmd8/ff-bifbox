@@ -5,16 +5,16 @@
 //
 // EXAMPLE USAGE:
 //  Initialize with fold guess from base file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -param Re -bfi <FILEIN> -ffo <FILEOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -param <PARAM> -bfi <FILEIN> -ffo <FILEOUT>
 //
 //  Initialize with fold from base and mode file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -param Re -ffi <FILEIN> -ffo <FILEOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -param <PARAM> -ffi <FILEIN> -ffo <FILEOUT>
 //
-//  Initialize with guess from file, solve on different mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -mshi <MESHIN> -bfi <FILEIN> -bfo <FILEOUT>
+//  Initialize with fold guess from file on a mesh from file
+// mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -param <PARAM> -mshi <MESHIN> -bfi <FILEIN> -ffo <FILEOUT>
 //
 //  Initialize with fold from file, adapt mesh/solution
-// mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -ffi <FILEIN> -ffo <FILEOUT> -msho <MESHOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -param <PARAM> -ffi <FILEIN> -ffo <FILEOUT> -msho <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
@@ -35,6 +35,7 @@ real eps = getARGV("-eps", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
 real snesrtol = getARGV("-snes_rtol", 0.0);
+real snesdivergencetolerance = getARGV("-snes_divergence_tolerance", 1.0e30);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 int m = 0;
 complex eigenvalue;
@@ -59,7 +60,7 @@ real lambda = getlambda(param);
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
-real ik = 0.;
+real ik = 0.0, iomega = 0.0;
 IFMACRO(formulation,incomp)
 include "eqns_incomp.idp"
 ENDIFMACRO
@@ -83,13 +84,9 @@ ENDIFMACRO
 bool noadapt = (meshfileout == "");
 if (noadapt) meshfileout = meshfilein; // If no output meshfile, don't adapt
 else { // else  output meshfile is given, adapt mesh
-  real[int] qb, qm, qma;
-  ChangeNumbering(J, ub[], qb);
-  ChangeNumbering(J, ub[], qb, inverse = true, exchange = false); // PETSc to FF numbering
-  ChangeNumbering(J, um[], qm);
-  ChangeNumbering(J, um[], qm, inverse = true, exchange = false); // PETSc to FF numbering
-  ChangeNumbering(J, uma[], qma);
-  ChangeNumbering(J, uma[], qma, inverse = true, exchange = false); // PETSc to FF numbering
+  ub[] .*= J.D;
+  um[] .*= J.D;
+  uma[] .*= J.D;
   XMhg defu(uG), defu(umG), defu(umaG), defu(tempu); // create private global FE functions
   for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
@@ -133,10 +130,10 @@ else { // else  output meshfile is given, adapt mesh
 }
 // Build bordered block matrix from only Mat components
 Mat H(J);
-Mat JlPM(J.n, mpirank == 0 ? 1 : 0), jPM(J.n, mpirank == 0 ? 1 : 0), lPM(mpirank == 0 ? 1 : 0, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
-Mat Ja = [[J,JlPM],[jPM',lPM]]; // make dummy Jacobian
+Mat JlPM(J.n, mpirank == 0 ? 1 : 0), gqPM(J.n, mpirank == 0 ? 1 : 0), glPM(mpirank == 0 ? 1 : 0, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
+Mat Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 
-real[int] p0(uma[].n), q0(um[].n);
+real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
@@ -146,15 +143,16 @@ real[int] p0(uma[].n), q0(um[].n);
       real[int] Ra, R = vR(0, XMh, tgv = -1);
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       J = vJ(XMh, XMh, tgv = -1);
-      R = J^-1*p0;
-      real r = -1.0/J(q0,R);
-      um[] = J^-1*p0;
-      um[] *= -r;
-      uma[] = J'^-1*q0;
-      uma[] *= -r;
+      KSPSolve(J, pP, qm);
+      KSPSolveTranspose(J, qP, qma);
+      ChangeNumbering(J, R, qP, inverse = true);
+      ChangeNumbering(J, um[], qm, inverse = true);
+      real g = 1.0/J(R, um[]);
+      qm *= g;
+      qma *= g;
       if(mpirank == 0) {
-          Ra.resize(Ra.n+1); // Append 0 to residual vector on proc 0
-          Ra(Ra.n-1) = r;
+          Ra.resize(Ra.n + 1); // Append 0 to residual vector on proc 0
+          Ra(Ra.n - 1) = g;
       }
       return Ra;
   }
@@ -163,6 +161,8 @@ real[int] p0(uma[].n), q0(um[].n);
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
+      ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+      ChangeNumbering(J, uma[], qma, inverse = true, exchange = true);
       updatelambda(param, lambda + eps);
       real[int] Jl = vR(0, XMh, tgv = -1);
       real[int] Hl = vJq(0, XMh, tgv = -10);
@@ -173,9 +173,9 @@ real[int] p0(uma[].n), q0(um[].n);
       a0 = vJq(0, XMh, tgv = -10);
       Hl -= a0;
       Hl /= eps;
+      real[int] temp;
+      ChangeNumbering(J, Jl, temp); // FreeFEM to PETSc
       {
-        real[int] temp;
-        ChangeNumbering(J, Jl, temp); // FreeFEM to PETSc
         real[int, int] tempPmd(temp.n, 1); // vector to dense array
         for[i,v : temp] if(v == 0.0) v = -1e+30; // indexing trick
         tempPmd(:, 0) = temp; // assigning the one and only column of the dense array
@@ -184,23 +184,20 @@ real[int] p0(uma[].n), q0(um[].n);
         ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       }
       H = vH(XMh, XMh, tgv = -10);
-      Jl = H'*uma[];
-      Jl *= -1.0;
+      MatMultTranspose(H, qma, temp);
       {
-        real[int] temp;
-        ChangeNumbering(J, Jl, temp); // FreeFEM to PETSc
         real[int, int] tempPmd(temp.n, 1); // vector to dense array
         for[i,v : temp] if(v == 0.0) v = -1e+30; // indexing trick
         tempPmd(:, 0) = temp; // assigning the one and only column of the dense array
         matrix tempPms = tempPmd; // dense array to sparse matrix
         for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
-        ChangeOperator(jPM, tempPms, parent = Ja); // send to Mat
+        ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       }
       {
         real[int, int] tempPmd(1, 1); // vector to dense array
-        tempPmd(0, 0) = -J(uma[],Hl); // assigning the one and only column of the dense array
+        tempPmd(0, 0) = J(uma[], Hl); // assigning the one and only column of the dense array
         matrix tempPms = tempPmd; // dense array to sparse matrix
-        ChangeOperator(lPM, tempPms, parent = Ja); // send to Mat
+        ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       }
       return 0;
   }
@@ -212,8 +209,8 @@ set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type 
 real[int] qa;
 ChangeNumbering(J, ub[], qa);
 if(mpirank == 0) {
-  qa.resize(qa.n+1);
-  qa(qa.n-1) = lambda;
+  qa.resize(qa.n + 1);
+  qa(qa.n - 1) = lambda;
 }
 if (foldfilein == ""){
   updatelambda(param, lambda + eps);
@@ -221,26 +218,32 @@ if (foldfilein == ""){
   updatelambda(param, lambda);
   real[int] a0 = vR(0, XMh, tgv = -1);
   J = vJ(XMh, XMh, tgv = -1);
-  p0 = J'^-1*Jl;
-  q0 = J^-1*Jl;
+  Jl -= a0;
+  Jl /= eps;
+  ChangeNumbering(J, Jl, pP);
+  KSPSolve(J, pP, qP);
+  KSPSolveTranspose(J, qP, pP);
 } else {
-  p0 = uma[];
-  q0 = um[];
+  ChangeNumbering(J, uma[], pP);
+  ChangeNumbering(J, um[], qP);
 }
-int ret;
 // solve nonlinear problem with SNES
+int ret;
 SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_rtol " + snesrtol
                                                         + " -snes_linesearch_type " + sneslinesearchtype
+                                                        + " -snes_divergence_tolerance " + snesdivergencetolerance
                                                         + " -snes_monitor -snes_converged_reason "
                                                         );
 if (ret > 0) { // Save solution if solver converged and output file is given
   real[int] q = qa(0:qa.n - (mpirank == 0 ? 2 : 1));
-  if(mpirank == 0) lambda = qa(qa.n-1);
+  if(mpirank == 0) lambda = qa(qa.n - 1);
   broadcast(processor(0), lambda);
   updatelambda(param, lambda);
   ChangeNumbering(J, ub[], q, inverse = true);
-  um[] /= sqrt(J(um[],um[]));
-  uma[] /= J(um[],uma[]);
+  ChangeNumbering(J, um[], qm, inverse = true);
+  ChangeNumbering(J, uma[], qma, inverse = true);
+  um[] /= sqrt(J(um[], um[]));
+  uma[] /= sqrt(J(uma[], uma[]));
   if(mpirank==0 && !noadapt) { // Save adapted mesh
     cout << "  Saving adapted mesh '" + meshfileout + meshext + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshfileout + meshext);

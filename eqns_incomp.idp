@@ -15,24 +15,43 @@ string EPSparams = " -eps_pos_gen_non_hermitian ";
 // JACOBIAN MATRIX
 varf vJ(defu(um), defu(v))
       = int2d(Th)(
-          ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - divu(-ik, v)*ump + visc(-ik, v , ik, um )/params["Re"]
+        iomega*vdotu(v, um)
+        + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - divu(-ik, v)*ump + visc(-ik, v , ik, um )/params["Re"]
         + vp*divu(ik, um)
       )
       - int1d(Th, BCopen) (
         ndotvisc(v, ik, um)/params["Re"]
       )
-      + BoundaryConditions(m, um, ub);
+      + HomBoundaryConditions(m, um);
 
 // MASS MATRIX
 varf vM(defu(um), defu(v))
       = int2d(Th)(
-          udotv(um, v)
+          vdotu(um, v)
       )
-      + BoundaryConditions(m, um, ub);
+      + HomBoundaryConditions(m, um);
 
 // HESSIAN MATRIX
+IFMACRO(Hessian)
+varf vJq(defu(dum), defu(v))
+      = int2d(Th)(
+        iomega*vdotu(v, um)
+        + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - divu(-ik, v)*ump + visc(-ik, v , ik, um )/params["Re"]
+        + vp*divu(ik, um)
+      )
+      - int1d(Th, BCopen) (
+        ndotvisc(v, ik, um)/params["Re"]
+      )
+      + HomBoundaryConditions(m, dum);
+
 varf vH(defu(dub), defu(v))
       = int2d(Th)(
-          ugradu(v, um, 0, dub) + ugradu(v, dub, ik, um)
+        ugradu(v, um, 0, dub) + ugradu(v, dub, ik, um)
+      + HomBoundaryConditions(0, dub);
+
+varf vMq(defu(dum), defu(v))
+      = int2d(Th)(
+          1i*vdotu(v, um)
       )
-      + BoundaryConditions(0, dub, um);
+      + HomBoundaryConditions(m, dum);
+ENDIFMACRO

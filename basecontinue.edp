@@ -65,7 +65,7 @@ real lambda = getlambda(param);
 Mat J, Ja;
 createMatu(Th, J, Pk);
 int m = 0;
-real ik = 0.;
+real ik = 0.0, iomega = 0.0;
 IFMACRO(formulation,incomp)
 include "eqns_incomp.idp"
 ENDIFMACRO
@@ -194,10 +194,10 @@ broadcast(processor(0), lambda);
   J = vJ(XMh, XMh, tgv = -1);
   Jl -= R;
   Jl /= eps;
-  yb[] = J^-1*Jl;
+  ChangeNumbering(J, Jl, yqP0); // FreeFEM to PETSc
+  KSPSolve(J, yqP0, yqP);
+  yqP0 = yqP;
 }
-ChangeNumbering(J, yb[], yqP); // FreeFEM to PETSc
-yqP0 = yqP;
 while (count < maxcount){
   real[int] qa0 = qa;
   ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false); // PETSc to FreeFEM
@@ -231,7 +231,7 @@ while (count < maxcount){
       updatelambda(param, lambda);
       if(mpirank == 0) cout << "\tFold detected. Orientation reversed." << endl;
       ChangeNumbering(J, ub[], q, inverse = true);
-      savebase(workdir, basefileout + count + "foldguess", "", meshfile, 0, 0, true, true, paraviewflag);
+      savebase(workdir, basefileout + count + "foldguess", "", meshfile, true, true, paraviewflag);
     }
     if ((meshfileout != "") && (count % savecount == 0)){
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = false);
@@ -308,7 +308,7 @@ while (count < maxcount){
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
     ChangeNumbering(J, ub[], q, inverse = true);
-    savebase(workdir, basefileout + count, basefileout, meshfile, 0, 0, (count % savecount == 0), true, paraviewflag);
+    savebase(workdir, basefileout + count, basefileout, meshfile, (count % savecount == 0), true, paraviewflag);
     yqP0 = yqP;
   } else {
     if (mpirank == 0){

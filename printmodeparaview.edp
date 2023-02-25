@@ -4,8 +4,8 @@
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // EXAMPLE USAGE:
-//  Print mode to sequence of .vtu files for animation:
-// mpirun -n 4 FreeFem++-mpi -v 0 printbaseparaview.edp -mfi <FILEIN> -split 2
+//  Print mode to .vtu file:
+// mpirun -n 1 FreeFem++-mpi -v 0 printmodeparaview.edp -mfi <FILEIN> -split 2
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //

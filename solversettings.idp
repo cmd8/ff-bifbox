@@ -168,9 +168,9 @@ macro ndotgrads(s) ( N.x*dx(s) + N.y*dy(s)) // EOM
 
 macro tdotgrads(s) (-N.y*dx(s) + N.x*dy(s)) //EOM NOTE: grid scaling factors cancel
 
-macro fdotg(f,g) ( f*g )//EOM
+macro gdotf(g,f) ( g*f )//EOM
 
-macro udotv(u,v) ( u*v + u#y*v#y IFMACRO(component,3)+ u#z*v#z ENDIFMACRO) //EOM
+macro vdotu(v, u) ( v*u + v#y*u#y IFMACRO(component,3)+ v#z*u#z ENDIFMACRO) //EOM
 
 macro divu(ik, u) ( dx(u) + dy(u#y) IFMACRO(component,3) + (ik)*u#z ENDIFMACRO ) // velocity divergence
 

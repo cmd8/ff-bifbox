@@ -34,6 +34,6 @@ varf vJ(defu(um), defu(v))
 // MASS MATRIX
 varf vM(defu(um), defu(v))
       = int2d(Th)(
-          (fdotg(vT,umT) + udotv(um, v))/ubT
+          (gdotf(vT, umT) + vdotu(v, um))/ubT
       )
       + BoundaryConditions(m, um, ub);

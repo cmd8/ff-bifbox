@@ -3,16 +3,15 @@
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
-// NOTE: This file should not be changed unless you know what you're doing.
+// EXAMPLE USAGE:
+//  Load mesh and save in work directory
+// mpirun -n 1 FreeFem++-mpi -v 0 importgmsh.edp -gmshdir <GMSHDIR> -mshi <FILEIN> -workdir <FFDIR>
 //
 load "gmsh"
 include "getARGV.idp"
-string gmshdir = getARGV("-gmshdir","./gmsh/");
-string meshfile = getARGV("-msh", "");
-string workdir = getARGV("-workdir","./data/");
-// stored in .msh format (gmsh)
-mesh Th  = gmshload(gmshdir + meshfile + ".msh");
-
+string gmshdir = getARGV("-gmshdir","./gmsh/"); // path to gmsh file
+string meshfile = getARGV("-mshi", ""); // mesh filename
+string workdir = getARGV("-workdir","./data/"); // path to FreeFEM work directory
+mesh Th  = gmshload(gmshdir + meshfile + ".msh"); // stored in .msh format (gmsh)
 cout << " Mesh '" + meshfile + ".msh' created with " << Th.nv << " vertices, " << Th.nt << " triangles, " << Th.nbe << " boundary elements." << endl;
-
-savemesh(Th, workdir + meshfile + ".msh");
+savemesh(Th, workdir + meshfile + ".msh"); // save mesh to FreeFEM directory
