@@ -140,7 +140,6 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
         if(mpirank == 0) {
           dlambda1 = qdiff(qdiff.n-2); // Extract parameter value from state vector on proc 0
           dlambda2 = qdiff(qdiff.n-1); // Extract parameter value from state vector on proc 0
-          cout << dlambda1 << " " << dlambda2 << endl;
         }
         broadcast(processor(0), dlambda1);
         broadcast(processor(0), dlambda2);
