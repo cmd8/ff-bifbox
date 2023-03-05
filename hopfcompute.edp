@@ -1,0 +1,365 @@
+//
+// hopfcompute.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// EXAMPLE USAGE:
+//  Initialize with Hopf guess from base file, solve on same mesh
+// mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -param <PARAM> -bfi <FILEIN> -mfi <FILEIN> -hfo <FILEOUT>
+//
+//  Initialize with Hopf from base and mode file, solve on same mesh
+// mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -param <PARAM> -hfi <FILEIN> -hfo <FILEOUT>
+//
+//  Initialize with Hopf guess from file on a mesh from file
+// mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -param <PARAM> -mshi <MESHIN> -bfi <FILEIN> -mfi <FILEIN> -hfo <FILEOUT>
+//
+//  Initialize with Hopf from file, adapt mesh/solution
+// mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -param <PARAM> -hfi <FILEIN> -hfo <FILEOUT> -msho <MESHOUT>
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
+/*
+RESIDUAL EVALUATION IN MINIMALLY AUGMENTED FORMULATION
+ We can directly compute the residual using the varf vR().
+ To build Ra, we must additionally compute the Hopf residual augmentation:
+     g = v'*(1i*omega*M + J)*w = v'*L*w
+ where g is the Hopf residual and v & w are the adjoint & direct eigenvectors.
+ g, v, and w, can be found using minimially augmented systems:
+ (For more details, see Govaerts, (2000), Ch. 4, particularly page 87.)
+       ┌           ┐┌   ┐   ┌   ┐
+       | -L     p0 || w |   | 0 |
+  (1)  |           ||   | = |   |
+       | q0'    0  || g |   | 1 |
+       └           ┘└   ┘   └   ┘
+ where q0, p0 are initial approximations of the direct & adjoint eigenvectors.
+ This implies:
+      L*w = p0*g  and  q0'*w = 1
+ so
+     w = L^-1*p0*g  and  g = 1.0/(q0'*L^-1*p0)
+
+ At g = 0, we have L*w = 0 and q0'*w = 1.
+
+ Similarly, we can find the adjoint eigenmode using the related system:
+                        ┌             ┐
+       ┌               ┐| -L       p0 |   ┌        ┐
+  (2)  |  v'   conj(h) ||             | = | 0    1 |
+       └               ┘| q0'     0   |   └        ┘
+                        └             ┘
+ This implies:
+      v'*L = conj(h)*q0'  and  v'*p0 = 1
+   or, taking the complex conjugate transpose:
+        ┌           ┐┌   ┐   ┌   ┐
+        | -L'    q0 || v |   | 0 |
+  (2')  |           ||   | = |   |
+        | p0'    0  || h |   | 1 |
+        └           ┘└   ┘   └   ┘
+ giving, equivalently,
+      L'*v = q0*h  and  p0'*v = 1
+ so
+     v = L'^-1*q0*h  and  h = 1.0/(p0'*L'^-1*q0)
+
+ At h = 0, we have L'*v = 0 and p0'*v = 1, so v'*L = 0 and v'*p0 = 1.
+
+ It can be confirmed that g = conj(h) and that g = v'*L*w, h = w'*L'*v.
+
+JACOBIAN CONSTRUCTION IN MINIMALLY AUGMENTED FORMULATION
+ Having computed the RHS of the augmented system in funcRa, we now have
+ to build the complex augmented Jacobian matrix for the Newton scheme:
+       ┌                                  ┐┌         ┐   ┌   ┐
+       | J        dJ/dlambda    0         || dq      |   | R |
+  (3)  |                                  || dlambda | = |   |
+       | dg/dq'   dg/dlambda    dg/domega || domega  |   | g |
+       └                                  ┘└         ┘   └   ┘
+ where g = v'*L*w
+ which gives, in real arithmetic:
+    J*dq           + dJ/dlambda*dlambda                                = R
+    real(dg/dq)*dq + real(dg/dlambda)*dlambda + real(dg/domega)*domega = real(g)
+   -imag(dg/dq)*dq + imag(dg/dlambda)*dlambda + imag(dg/domega)*domega = imag(g)
+
+ To determine the matrix entries, we differentiate Eq. (1) along each
+ z in q, lambda, omega to find:
+       ┌           ┐┌       ┐   ┌         ┐
+       | -L     p0 || dw/dz |   | dL/dz*w |
+  (4)  |           ||       | = |         |
+       | q0'    0  || dg/dz |   | 0       |
+       └           ┘└       ┘   └         ┘
+ We now left-multiply Eq. (4) by [ v'   conj(h) ], finding due to Eq. (2) that:
+
+  (5)  dg/dz = v'*dL/dz*w
+
+ So we can write (3) explicitly as
+       ┌                                                          ┐┌         ┐   ┌         ┐
+       |  dR/dq              dJ/dlambda              0            || dq      |   | R       |
+  (3)  |  real(v'*dL/dq*w)   real(v'*dL/dlambda*w)  -imag(v'*M*w) || dlambda | = | real(g) |
+       | -imag(v'*dL/dq*w)   imag(v'*dL/dlambda*w)   real(v'*M*w) || domega  |   | imag(g) |
+       └                                                          ┘└         ┘   └         ┘
+*/
+
+load "iovtk"
+load "PETSc-complex"
+include "solversettings.idp"
+include "solvermacros.idp"
+// arguments
+string meshfilein = getARGV("-mshi", "");
+string meshfileout = getARGV("-msho", "");
+string hopffilein = getARGV("-hfi", "");
+string basefilein = getARGV("-bfi", "");
+string modefilein = getARGV("-mfi", "");
+string hopffileout = getARGV("-hfo", "");
+bool zerofreq = getARGV("-zero", 0);
+bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
+int meshsplit = getARGV("-split", 1); // toggle whether mesh is split for P1 representation in Paraview
+string param = getARGV("-param","");
+real eps = getARGV("-eps", 1e-7);
+string ksptype = getARGV("-ksp_type", "preonly");
+string pctype = getARGV("-pc_type", "lu");
+real snesrtol = getARGV("-snes_rtol", 0.0);
+real snesdivergencetolerance = getARGV("-snes_divergence_tolerance", 1.0e30);
+string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
+int m;
+real omega;
+// load macros
+macro Hessian()1 // EOM
+
+if (hopffilein == "" && basefilein == "" && modefilein != "")
+  basefilein = readbasename(workdir + modefilein + ".mode");
+assert(basefilein != "" || hopffilein != "");
+if (meshfilein == ""){
+  if (basefilein != "") meshfilein = readmeshname(workdir + basefilein + ".base");
+  else if (hopffilein != "") meshfilein = readmeshname(workdir + hopffilein + ".hopf");
+}
+// Load mesh, make FE basis
+Th = readmeshN(workdir + meshfilein + meshext);
+Thg = Th;
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+XMh<complex> defu(ub), defu(um), defu(uma);
+if (hopffilein != "")
+  ub[].re = loadhopf(workdir, hopffilein, meshfilein, um[], uma[], m, omega);
+else {
+  complex eigenvalue;
+  ub[].re = loadbase(workdir, basefilein, meshfilein);
+  um[] = loadmode(workdir, modefilein, meshfilein, m, eigenvalue);
+  omega = imag(eigenvalue);
+}
+real lambda = getlambda(param);
+// Create distributed Mat
+Mat<complex> J;
+createMatu(Th, J, Pk);
+complex ik, iomega;
+IFMACRO(formulation,incomp)
+include "eqns_incomp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmach)
+include "eqns_lowmach.idp"
+ENDIFMACRO
+IFMACRO(formulation,comp)
+include "eqns_comp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmachreact)
+include "eqns_lowmachreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,compreact)
+include "eqns_compreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,custom)
+include "eqns_custom.idp"
+ENDIFMACRO
+// MESH ADAPTATION
+bool noadapt = (meshfileout == "");
+if (meshfileout == "")
+  meshfileout = meshfilein;
+else {
+  complex[int] q;
+  ChangeNumbering(J, ub[], q);
+  ChangeNumbering(J, ub[], q, inverse = true);
+  ChangeNumbering(J, um[], q);
+  ChangeNumbering(J, um[], q, inverse = true);
+  ChangeNumbering(J, uma[], q);
+  ChangeNumbering(J, uma[], q, inverse = true);
+  XMhg defu(ubG), defu(umrG), defu(umiG), defu(umarG), defu(umaiG), defu(tempu);
+  for[i, v : restu] tempu[][v] = real(ub[][i]);
+  mpiAllReduce(tempu[], ubG[], mpiCommWorld, mpiSUM);
+  for[i, v : restu] tempu[][v] = real(um[][i]);
+  mpiAllReduce(tempu[], umrG[], mpiCommWorld, mpiSUM);
+  for[i, v : restu] tempu[][v] = imag(um[][i]);
+  mpiAllReduce(tempu[], umiG[], mpiCommWorld, mpiSUM);
+  for[i, v : restu] tempu[][v] = real(uma[][i]);
+  mpiAllReduce(tempu[], umarG[], mpiCommWorld, mpiSUM);
+  for[i, v : restu] tempu[][v] = imag(uma[][i]);
+  mpiAllReduce(tempu[], umaiG[], mpiCommWorld, mpiSUM);
+  if(mpirank == 0) Thg = adaptmesh(Thg, adaptu(ubG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG),
+                                   hmin = getARGV("-hmin",1.0e-6),
+                                   hmax = getARGV("-hmax",1.0),
+                                   err = getARGV("-err", 1.0e-2),
+                                   errg = getARGV("-errg", 0.1),
+                                   nbvx = int(getARGV("-nbvx",1e6)),
+                                   nbsmooth = int(getARGV("-nbsmooth",5)),
+                                   ratio = getARGV("-ratio",1.8),
+                                   anisomax = getARGV("-anisomax",1.0),
+                                   rescaling = bool(getARGV("-rescaling", 1)),
+                                   power = getARGV("-power", 1.0),
+                                   thetamax = getARGV("-thmax", 10.0)
+                                   );
+  broadcast(processor(0), Thg);
+  defu(ubG) = defu(ubG);
+  defu(umrG) = defu(umrG);
+  defu(umiG) = defu(umiG);
+  defu(umarG) = defu(umarG);
+  defu(umaiG) = defu(umaiG);
+  Th = Thg;
+  {
+    Mat<complex> Adapt;
+    createMatu(Th, Adapt, Pk);
+    J = Adapt;
+  }
+  defu(ub) = initu(0.0);
+  defu(um) = initu(0.0);
+  defu(uma) = initu(0.0);
+  restu.resize(ub[].n); // Change size of restriction operator
+  restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
+  ub[].re = ubG[](restu);
+  um[].re = umrG[](restu);
+  um[].im = umiG[](restu);
+  uma[].re = umarG[](restu);
+  uma[].im = umaiG[](restu);
+}
+// Build bordered block matrix from only Mat components
+Mat<complex> JlPM(J.n, mpirank == 0 ? 2 : 0), gqPM(J.n, mpirank == 0 ? 2 : 0), glPM(mpirank == 0 ? 2 : 0, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
+Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
+complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
+// FUNCTIONS
+  func complex[int] funcRa(complex[int]& qa) {
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      if(mpirank == 0) {
+        lambda = real(qa(qa.n-2)); // Extract parameter value from state vector on proc 0
+        omega = zerofreq ? 0.0 : real(qa(qa.n-1)); // Extract frequency value from state vector on proc 0
+      }
+      broadcast(processor(0), lambda);
+      broadcast(processor(0), omega);
+      updatelambda(param, lambda);
+      complex[int] Ra, R = vR(0, XMh, tgv = -1);
+      ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
+      iomega = 1i*omega;
+      ik = 1i*real(m);
+      J = vJ(XMh, XMh, tgv = -1);
+      KSPSolve(J, pP, qm);
+      KSPSolveHermitianTranspose(J, qP, qma);
+      ChangeNumbering(J, R, qP, inverse = true);
+      ChangeNumbering(J, um[], qm, inverse = true);
+      complex g = 1.0/J(R, um[]);
+      qm *= g; // rescale direct mode
+      qma *= conj(g); // rescale adjoint mode
+      if(mpirank == 0) {
+        Ra.resize(Ra.n+2); // Append 0 to residual vector on proc 0
+        Ra(Ra.n-2) = real(g);
+        Ra(Ra.n-1) = imag(g);
+      }
+      return Ra;
+  }
+
+  func int funcJa(complex[int]& qa) {
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      if(mpirank == 0) {
+        lambda = real(qa(qa.n-2)); // Extract parameter value from state vector on proc 0
+        omega = zerofreq ? 0.0 : real(qa(qa.n-1)); // Extract frequency value from state vector on proc 0
+      }
+      broadcast(processor(0), lambda);
+      broadcast(processor(0), omega);
+      ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+      ChangeNumbering(J, uma[], qma, inverse = true);
+      ik = 1i*real(m);
+      iomega = 1i*omega;
+      updatelambda(param, lambda + eps);
+      complex[int] Jl = vR(0, XMh, tgv = -1);
+      complex[int] Hl = vJq(0, XMh, tgv = -10);
+      updatelambda(param, lambda);
+      complex[int] temp, bm = vR(0, XMh, tgv = -1);
+      Jl -= bm;
+      Jl /= eps;
+      bm = vJq(0, XMh, tgv = -10);
+      Hl -= bm;
+      Hl /= eps;
+      bm = vMq(0, XMh, tgv = -10);
+      ChangeNumbering(J, Jl, temp);
+      {
+        complex[int, int] tempPmd(temp.n, 2); // vector to dense array
+        for[i,v : temp.re] if(v == 0.0) v = -1e+30; // indexing trick
+        tempPmd(:, 0).re = temp.re; // assigning the one and only column of the dense array
+        tempPmd(:, 1).re = -1e+30; // assigning the one and only column of the dense array
+        matrix<complex> tempPms = tempPmd; // dense array to sparse matrix
+        for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
+        ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+      }
+      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+      MatMultHermitianTranspose(H, qma, temp); // compute (dL/dq*w)'*v
+      if(zerofreq) temp.im = 0.0;
+      {
+        complex[int, int] tempPmd(temp.n, 2); // vector to dense array
+        for[i,v : temp.re] if(v == 0.0) v = -1e+30; // indexing trick
+        for[i,v : temp.im] if(v == 0.0) v = 1e+30; // indexing trick
+        tempPmd(:, 0).re = temp.re; // assigning the one and only column of the dense array
+        tempPmd(:, 1).re = -temp.im; // assigning the one and only column of the dense array
+        matrix<complex> tempPms = tempPmd; // dense array to sparse matrix
+        for[i,j,v : tempPms] if(abs(real(v)+1e+30) < 1e-29) v = 0.0; // indexing trick
+        for[i,j,v : tempPms] if(abs(imag(v)+1e+30) < 1e-29) v = 0.0; // indexing trick
+        ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
+      }
+      complex gl = J(uma[], Hl);
+      complex gw = J(uma[], bm);
+      {
+        matrix<complex> tempPms = [[real(gl),-imag(gw)],[imag(gl),real(gw)]];
+        ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
+      }
+      ik = 0.0;
+      iomega = 0.0;
+      J = vJ(XMh, XMh, tgv = -1);
+      return 0;
+  }
+
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
+set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+
+// Initialize
+complex[int] qa;
+ChangeNumbering(J, ub[], qa);
+if(mpirank == 0) {
+  qa.resize(qa.n+2);
+  qa(qa.n-2) = lambda;
+  qa(qa.n-1) = omega;
+}
+ChangeNumbering(J, um[], qP);
+if (hopffilein == ""){
+  iomega = 1i*omega;
+  ik = 1i*real(m);
+  J = vJ(XMh, XMh, tgv = -1);
+  KSPSolveHermitianTranspose(J, qP, pP);
+} else {
+  ChangeNumbering(J, uma[], pP);
+}
+// solve nonlinear problem with SNES
+int ret;
+SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_rtol " + snesrtol
+                                                        + " -snes_linesearch_type " + sneslinesearchtype
+                                                        + " -snes_divergence_tolerance " + snesdivergencetolerance
+                                                        + " -snes_monitor -snes_converged_reason "
+                                                        );
+if (ret > 0) { // Save solution if solver converged and output file is given
+  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
+  if(mpirank == 0) {
+    lambda = real(qa(qa.n-2));
+    omega = zerofreq ? 0.0 : real(qa(qa.n-1)); // Extract frequency value from state vector on proc 0
+  }
+  broadcast(processor(0), lambda);
+  broadcast(processor(0), omega);
+  updatelambda(param, lambda);
+  ChangeNumbering(J, um[], qm, inverse = true);
+  ChangeNumbering(J, uma[], qma, inverse = true);
+  um[] /= sqrt(J(um[], um[]));
+  uma[] /= sqrt(J(uma[], uma[]));
+  if(mpirank==0 && !noadapt) { // Save adapted mesh
+    cout << "  Saving adapted mesh '" + meshfileout + meshext + "' in '" + workdir + "'." << endl;
+    savemesh(Thg, workdir + meshfileout + meshext);
+  }
+  savehopf(workdir, hopffileout, "", meshfileout, m, omega, true, true, paraviewflag);
+}

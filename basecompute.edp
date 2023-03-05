@@ -95,7 +95,7 @@ ChangeNumbering(J, ub[], q);
 bool noadapt = (meshfileout == "");
 if(noadapt) meshfileout = meshfilein; // If no output meshfile, don't adapt
 else { // else  output meshfile is given, adapt mesh
-  ChangeNumbering(J, ub[], q, inverse = true, exchange = true); // PETSc to FF numbering
+  ChangeNumbering(J, ub[], q, inverse = true, exchange = false); // PETSc to FF numbering
   XMhg defu(uG), defu(tempu); // create private global FE functions
   for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln

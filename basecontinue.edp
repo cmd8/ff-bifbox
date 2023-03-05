@@ -225,12 +225,11 @@ while (count < maxcount){
     h0 /= f;
     if (alpha < 0) {
       h0 *= -1.0;
-      real[int] q = qa(0:qa.n - (mpirank == 0 ? 2 : 1));
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
       if(mpirank == 0) lambda = qa(qa.n-1);
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
       if(mpirank == 0) cout << "\tFold detected. Orientation reversed." << endl;
-      ChangeNumbering(J, ub[], q, inverse = true);
       savebase(workdir, basefileout + count + "foldguess", "", meshfile, true, true, paraviewflag);
     }
     if ((meshfileout != "") && (count % savecount == 0)){
@@ -303,11 +302,10 @@ while (count < maxcount){
               + " "); // solve nonlinear problem with SNES
       assert(ret > 0);
     }
-    real[int] q = qa(0:qa.n - (mpirank == 0 ? 2 : 1));
+    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
     if(mpirank == 0) lambda = qa(qa.n-1);
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
-    ChangeNumbering(J, ub[], q, inverse = true);
     savebase(workdir, basefileout + count, basefileout, meshfile, (count % savecount == 0), true, paraviewflag);
     yqP0 = yqP;
   } else {

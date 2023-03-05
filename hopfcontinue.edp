@@ -1,0 +1,534 @@
+//
+// hopfcontinue.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// EXAMPLE USAGE:
+//  Initialize with fold from file, solve on same mesh
+// mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -param1 <PARAM1> -param1 <PARAM2> -hfi <FILEIN> -hfo <FILEOUT>
+//
+//  Initialize with fold from file, adapt mesh/solution
+// mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -param1 <PARAM1> -param1 <PARAM2> -hfi <FILEIN> -hfo <FILEOUT> -msho <MESHOUT>
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
+load "iovtk"
+load "PETSc-complex"
+include "solversettings.idp"
+include "solvermacros.idp"
+// arguments
+string meshfileout = getARGV("-msho", "");
+string hopffilein = getARGV("-hfi", "");
+string hopffileout = getARGV("-hfo", "");
+bool zerofreq = getARGV("-zero", 0);
+bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
+int meshsplit = getARGV("-split", 1); // toggle whether mesh is split for P1 representation in Paraview
+int count = getARGV("-count", 0);
+int savecount = getARGV("-scount", 1);
+int maxcount = getARGV("-maxcount", 100);
+real h0 = getARGV("-h0", 1.0);
+string param1 = getARGV("-param1","");
+string param2 = getARGV("-param2","");
+real fmax = getARGV("-fmax", 2.0);
+real kappamax = getARGV("-kmax", 0.5);
+real deltamax = getARGV("-dmax", 4.0);
+real alphamax = getARGV("-amax", 30.)*pi/180.0;
+int monotone = getARGV("-mono", 0);
+real eps = getARGV("-eps", 1e-7);
+string ksptype = getARGV("-ksp_type", "preonly");
+string pctype = getARGV("-pc_type", "lu");
+real snesrtol = getARGV("-snes_rtol", 0.0);
+int snesmaxit = getARGV("-snes_max_it", 10);
+string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
+int m;
+real omega;
+
+// load macros
+macro Hessian()1 // EOM
+
+assert(hopffilein != "");
+// Load mesh, make FE basis
+string meshfile, meshfilein;
+if (count == 0) {
+  meshfile = readmeshname(workdir + hopffilein + ".hopf");
+  meshfilein = meshfile;
+} else {
+  meshfile = readmeshname(workdir + hopffilein + count + ".hopf");
+  meshfilein = meshfile(0:meshfile.rfind(count)-1);
+}
+Th = readmeshN(workdir + meshfile + meshext);
+Thg = Th;
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+XMh<complex> defu(ub), defu(yb), defu(um), defu(uma);
+if (count == 0){
+  ub[].re = loadhopf(workdir, hopffilein, meshfile, um[], uma[], m, omega);
+  if(mpirank == 0) printstats(workdir + hopffileout + ".txt", meshfile, m, omega);
+} else {
+  ub[].re = loadhopf(workdir, hopffilein + count, meshfile, um[], uma[], m, omega);
+}
+real lambda1 = getlambda(param1);
+real lambda2 = getlambda(param2);
+// Create distributed Mat
+Mat<complex> J;
+createMatu(Th, J, Pk);
+complex ik, iomega;
+IFMACRO(formulation,incomp)
+include "eqns_incomp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmach)
+include "eqns_lowmach.idp"
+ENDIFMACRO
+IFMACRO(formulation,comp)
+include "eqns_comp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmachreact)
+include "eqns_lowmachreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,compreact)
+include "eqns_compreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,custom)
+include "eqns_custom.idp"
+ENDIFMACRO
+
+// Build bordered block matrix from only Mat components
+Mat<complex> JlPM(J.n, mpirank == 0 ? 3 : 0), gqPM(J.n, mpirank == 0 ? 3 : 0), glPM(mpirank == 0 ? 3 : 0, mpirank == 0 ? 3 : 0); // Initialize Mat objects for bordered matrix
+Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
+
+complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 3 : 0));
+int it, internalit, adaptflag;
+real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
+// FUNCTIONS
+  func complex[int] funcRa(complex[int]& qa) {
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      if(mpirank == 0) {
+        lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
+        omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
+        lambda2 = real(qa(qa.n-1)); // Extract parameter value from state vector on proc 0
+      }
+      broadcast(processor(0), lambda1);
+      broadcast(processor(0), omega);
+      broadcast(processor(0), lambda2);
+      updatelambda(param1, lambda1);
+      updatelambda(param2, lambda2);
+      complex[int] Ra, R = vR(0, XMh, tgv = -1);
+      ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
+      iomega = 1i*omega;
+      ik = 1i*real(m);
+      J = vJ(XMh, XMh, tgv = -1);
+      KSPSolve(J, pP, qm);
+      KSPSolveHermitianTranspose(J, qP, qma);
+      ChangeNumbering(J, yb[], qP, inverse = true);
+      ChangeNumbering(J, um[], qm, inverse = true);
+      complex g = 1.0/J(yb[], um[]);
+      qm *= g; // rescale direct mode
+      qma *= conj(g); // rescale adjoint mode
+      if(mpirank == 0) {
+        Ra.resize(Ra.n+3); // Append 0 to residual vector on proc 0
+        Ra(Ra.n-3) = real(g);
+        Ra(Ra.n-2) = imag(g);
+        Ra(Ra.n-1) = 0.0;
+      }
+      res = sqrt(real(J(R, R)) + abs(g)^2);
+      string text1;
+      if (!adaptflag) text1 = count + "-" + it;
+      else text1 = "A" + (count-1) + "-" + it;
+      if(internalit > 0) text1 = text1 + ">" + internalit;
+      if (it == 0){
+        kappa = 0.0;
+        maxdelta = 0.0;
+        alpha = 0.0;
+        delta = abs(h0);
+        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
+      } else {
+        real dlambda1, domega, dlambda2;
+        complex[int] qdiff  = qa - qap;
+        if(mpirank == 0) {
+          dlambda1 = real(qdiff(qdiff.n-3)); // Extract parameter value from state vector on proc 0
+          domega = zerofreq ? 0.0 : real(qdiff(qdiff.n-2)); // Extract parameter value from state vector on proc 0
+          dlambda2 = real(qdiff(qdiff.n-1)); // Extract parameter value from state vector on proc 0
+          cout << dlambda1 << " " << domega << " " << dlambda2 << endl;
+        }
+        broadcast(processor(0), dlambda1);
+        broadcast(processor(0), domega);
+        broadcast(processor(0), dlambda2);
+        ChangeNumbering(J, R, qdiff(0:qdiff.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = false);
+        delta = sqrt(real(J(R, R)) + dlambda1^2 + domega^2 + dlambda2^2); // distance to curve
+        ChangeNumbering(J, R, yqP0, inverse = true, exchange = false);
+        ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
+        alpha = (real(J(R, yb[])) + yl10*yl1 + yw0*yw + 1.0)/sqrt((real(J(R, R)) + yl10^2 + yw0^2 + 1.0)*(real(J(yb[], yb[])) + yl1^2 + yw^2 + 1.0));
+        kappa = max(delta/deltap, kappa);
+        maxdelta = max(delta, maxdelta);
+        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(alpha)*acos(abs(alpha))*180./pi) << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
+      }
+      f = max(acos(abs(alpha))/alphamax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
+      if (it > 0 && !adaptflag && (f > fmax || it-1 >= snesmaxit || res*(monotone!=0) > resp)) Ra(0) = NaN();
+      ++internalit;
+      return Ra;
+  }
+
+  func int funcJa(complex[int]& qa) {
+      ++it;
+      internalit = 0;
+      qap = qa;
+      resp = res;
+      deltap = delta;
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      if(mpirank == 0) {
+        lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
+        omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
+        lambda2 = real(qa(qa.n-1)); // Extract parameter value from state vector on proc 0
+      }
+      broadcast(processor(0), lambda1);
+      broadcast(processor(0), omega);
+      broadcast(processor(0), lambda2);
+      ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+      ChangeNumbering(J, uma[], qma, inverse = true);
+      ik = 1i*real(m);
+      iomega = 1i*omega;
+      updatelambda(param1, lambda1 + eps);
+      updatelambda(param2, lambda2);
+      complex[int] Jl1 = vR(0, XMh, tgv = -1);
+      complex[int] Hl1 = vJq(0, XMh, tgv = -10);
+      updatelambda(param1, lambda1);
+      updatelambda(param2, lambda2 + eps);
+      complex[int] Jl2 = vR(0, XMh, tgv = -1);
+      complex[int] Hl2 = vJq(0, XMh, tgv = -10);
+      updatelambda(param2, lambda2);
+      complex[int] a0 = vR(0, XMh, tgv = -1);
+      Jl1 -= a0;
+      Jl2 -= a0;
+      Jl1 /= eps;
+      Jl2 /= eps;
+      complex[int] bm = vJq(0, XMh, tgv = -10);
+      Hl1 -= bm;
+      Hl2 -= bm;
+      Hl1 /= eps;
+      Hl2 /= eps;
+      complex[int] Jl1P, Jl2P;
+      ChangeNumbering(J, Jl1, Jl1P); // FreeFEM to PETSc
+      ChangeNumbering(J, Jl2, Jl2P); // FreeFEM to PETSc
+      {
+        complex[int] temp1 = Jl1P, temp2 = Jl2P;
+        complex[int, int] tempPmd(temp1.n, 3); // vector to dense array
+        for[i,v : temp1.re] if(v == 0.0) v = -1e+30; // indexing trick
+        for[i,v : temp2.re] if(v == 0.0) v = -1e+30; // indexing trick
+        tempPmd(:, 0).re = temp1.re; // assigning the one and only column of the dense array
+        tempPmd(:, 1).re = -1e+30; // assigning the one and only column of the dense array
+        tempPmd(:, 2).re = temp2.re; // assigning the one and only column of the dense array
+        matrix<complex> tempPms = tempPmd; // dense array to sparse matrix
+        for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
+        ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+      }
+      bm = vMq(0, XMh, tgv = -10);
+      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+      complex gl1 = J(uma[], Hl1);
+      complex gw = J(uma[], bm);
+      complex gl2 = J(uma[], Hl2);
+      ik = 0.0;
+      iomega = 0.0;
+      J = vJ(XMh, XMh, tgv = -1);
+      KSPSolve(J, Jl2P, yqP); //x
+      KSPSolve(J, Jl1P, Jl2P); //b
+      ChangeNumbering(J, yb[], yqP, inverse = true);
+      ChangeNumbering(J, a0, Jl2P, inverse = true);
+      MatMultHermitianTranspose(H, qma, Jl1P); // gqr,i
+      if(zerofreq) Jl1P.im = 0.0;
+      ChangeNumbering(J, bm, Jl1P, inverse = true);
+      Jl1.re = bm.re;
+      Jl1.im = 0.0;
+      real d11 = real(gl1) - real(J(Jl1, a0));
+      real c = -imag(gw)/d11;
+      yl1 = (real(gl2) - real(J(Jl1, yb[])))/d11;
+      Jl1.re = bm.im;
+      d11 = imag(gl1) + real(J(Jl1, a0));
+      yw = (imag(gl2) - d11*yl1 + real(J(Jl1, yb[])))/(real(gw) - d11*c);
+      yl1 -= c*yw;
+      yqP -= yl1*Jl2P;
+      {
+        complex[int] temp1 = Jl1P, temp3 = yqP;
+        complex[int, int] tempPmd(temp1.n, 3); // vector to dense array
+        for[i,v : temp1.re] if(v == 0.0) v = -1e+30; // indexing trick
+        for[i,v : temp1.im] if(v == 0.0) v = 1e+30; // indexing trick
+        for[i,v : temp3.re] if(v == 0.0) v = -1e+30; // indexing trick
+        tempPmd(:, 0).re = temp1.re; // assigning the one and only column of the dense array
+        tempPmd(:, 1).re = -temp1.im; // assigning the one and only column of the dense array
+        tempPmd(:, 2).re = temp3.re; // assigning the one and only column of the dense array
+        matrix<complex> tempPms = tempPmd; // dense array to sparse matrix
+        for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
+        ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
+      }
+      {
+        matrix<complex> tempPms = [[real(gl1),-imag(gw), real(gl2)],
+                                   [imag(gl1), real(gw), imag(gl2)],
+                                   [yl1,        yw,     -1.0]];
+        ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
+      }
+      return 0;
+  }
+
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
+set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+
+// PREDICTOR
+complex[int] qa;
+ChangeNumbering(J, ub[], qa);
+ChangeNumbering(J, ub[], qa, inverse = true, exchange = true);
+ChangeNumbering(J, um[], qm);
+ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+ChangeNumbering(J, uma[], qma);
+ChangeNumbering(J, uma[], qma, inverse = true);
+if(mpirank == 0) {
+  qa.resize(qa.n+3);
+  qa(qa.n-3) = lambda1;
+  qa(qa.n-2) = omega;
+  qa(qa.n-1) = lambda2;
+}
+{
+  ik = 1i*real(m);
+  iomega = 1i*omega;
+  updatelambda(param1, lambda1 + eps);
+  updatelambda(param2, lambda2);
+  complex[int] Jl1 = vR(0, XMh, tgv = -1);
+  complex[int] Hl1 = vJq(0, XMh, tgv = -10);
+  updatelambda(param1, lambda1);
+  updatelambda(param2, lambda2 + eps);
+  complex[int] Jl2 = vR(0, XMh, tgv = -1);
+  complex[int] Hl2 = vJq(0, XMh, tgv = -10);
+  updatelambda(param2, lambda2);
+  complex[int] a0 = vR(0, XMh, tgv = -1);
+  Jl1 -= a0;
+  Jl1 /= eps;
+  Jl2 -= a0;
+  Jl2 /= eps;
+  complex[int] bm = vJq(0, XMh, tgv = -10);
+  Hl1 -= bm;
+  Hl1 /= eps;
+  Hl2 -= bm;
+  Hl2 /= eps;
+  bm = vMq(0, XMh, tgv = -10);
+  H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+  complex gl1 = J(uma[], Hl1);
+  complex gw = J(uma[], bm);
+  complex gl2 = J(uma[], Hl2);
+  ik = 0.0;
+  iomega = 0.0;
+  J = vJ(XMh, XMh, tgv = -1);
+  complex[int] Jl1P, Jl2P;
+  ChangeNumbering(J, Jl1, Jl1P);
+  ChangeNumbering(J, Jl2, Jl2P);
+  KSPSolve(J, Jl2P, yqP); //x
+  KSPSolve(J, Jl1P, Jl2P); //b
+  ChangeNumbering(J, yb[], yqP, inverse = true);
+  ChangeNumbering(J, a0, Jl2P, inverse = true);
+  ChangeNumbering(J, uma[], qma);
+  MatMultHermitianTranspose(H, qma, Jl1P); // gqr,i
+  if(zerofreq) Jl1P.im = 0.0;
+  ChangeNumbering(J, bm, Jl1P, inverse = true);
+  Jl1.re = bm.re;
+  Jl1.im = 0.0;
+  real d11 = real(gl1) - real(J(Jl1, a0));
+  real c = -imag(gw)/d11;
+  yl1 = (real(gl2) - real(J(Jl1, yb[])))/d11;
+  Jl1.re = bm.im;
+  d11 = imag(gl1) + real(J(Jl1, a0));
+  yw = (imag(gl2) - d11*yl1 + real(J(Jl1, yb[])))/(real(gw) - d11*c);
+  yl1 -= c*yw;
+  yqP -= yl1*Jl2P;
+}
+yqP0 = yqP;
+yl10 = yl1;
+yw0 = yw;
+ChangeNumbering(J, um[], qP);
+ChangeNumbering(J, uma[], pP);
+while (count < maxcount){
+  complex[int] qa0 = qa;
+  ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false); // PETSc to FreeFEM
+  real h = h0/sqrt(real(J(yb[], yb[])) + yl1^2 + yw^2 + 1.0); // use FreeFEM numbering here
+  qa(0:qa.n - (mpirank == 0 ? 4 : 1)) -= (h*yqP);
+  if (mpirank == 0) {
+    qa(qa.n-3) -= h*yl1;
+    qa(qa.n-2) -= h*yw;
+    qa(qa.n-1) += h; // -= (-1.0*h)
+    lambda1 = real(qa(qa.n-3));
+    omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
+    lambda2 = real(qa(qa.n-1));
+  }
+  broadcast(processor(0), lambda1);
+  broadcast(processor(0), omega);
+  broadcast(processor(0), lambda2);
+  updatelambda(param1, lambda1);
+  updatelambda(param2, lambda2);
+  // CORRECTOR LOOP
+  int ret;
+  it = 0;
+  internalit = 0;
+  adaptflag = 0;
+  SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
+            sparams = " -snes_rtol " + snesrtol
+                    + " -snes_linesearch_type " + sneslinesearchtype
+                    + " -snes_max_it " + snesmaxit
+                    + " -snes_converged_reason "
+                    + " "); // solve nonlinear problem with SNES
+  if (ret > 0) {
+    ++count;
+    h0 /= f;
+    if (alpha < 0) {
+      h0 *= -1.0;
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
+      if(mpirank == 0) {
+        lambda1 = real(qa(qa.n-3));
+        omega = real(qa(qa.n-2));
+        lambda2 = real(qa(qa.n-1));
+      }
+      broadcast(processor(0), lambda1);
+      broadcast(processor(0), omega);
+      broadcast(processor(0), lambda2);
+      updatelambda(param1, lambda1);
+      updatelambda(param2, lambda2);
+      if(mpirank == 0) cout << "\tSign change detected. Orientation reversed." << endl;
+      ChangeNumbering(J, um[], qm, inverse = true);
+      ChangeNumbering(J, uma[], qma, inverse = true);
+      savehopf(workdir, hopffileout + count + "signswitch", "", meshfile, m, omega, true, true, paraviewflag);
+    }
+    if ((meshfileout != "") && (count % savecount == 0)){
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = false);
+      if(mpirank == 0) {
+        lambda1 = real(qa(qa.n-3));
+        omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
+        lambda2 = real(qa(qa.n-1));
+      }
+      broadcast(processor(0), lambda1);
+      broadcast(processor(0), omega);
+      broadcast(processor(0), lambda2);
+      updatelambda(param1, lambda1);
+      updatelambda(param2, lambda2);
+      ChangeNumbering(J, um[], qm, inverse = true);
+      ChangeNumbering(J, uma[], qma, inverse = true);
+      ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
+      XMhg defu(uG), defu(umrG), defu(umiG), defu(umarG), defu(umaiG), defu(yG), defu(tempu);
+      for[i, v : restu] tempu[][v] = real(ub[][i]);
+      mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
+      for[i, v : restu] tempu[][v] = real(um[][i]);
+      mpiAllReduce(tempu[], umrG[], mpiCommWorld, mpiSUM);
+      for[i, v : restu] tempu[][v] = imag(um[][i]);
+      mpiAllReduce(tempu[], umiG[], mpiCommWorld, mpiSUM);
+      for[i, v : restu] tempu[][v] = real(uma[][i]);
+      mpiAllReduce(tempu[], umarG[], mpiCommWorld, mpiSUM);
+      for[i, v : restu] tempu[][v] = imag(uma[][i]);
+      mpiAllReduce(tempu[], umaiG[], mpiCommWorld, mpiSUM);
+      for[i, v : restu] tempu[][v] = real(yb[][i]);
+      mpiAllReduce(tempu[], yG[], mpiCommWorld, mpiSUM);
+      if(mpirank == 0) Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptu(yG),
+                                       hmin = getARGV("-hmin",1.0e-6),
+                                       hmax = getARGV("-hmax",1.0),
+                                       err = getARGV("-err", 1.0e-2),
+                                       errg = getARGV("-errg", 0.1),
+                                       nbvx = int(getARGV("-nbvx",1e6)),
+                                       nbsmooth = int(getARGV("-nbsmooth",5)),
+                                       ratio = getARGV("-ratio",1.8),
+                                       anisomax = getARGV("-anisomax",1.0),
+                                       rescaling = bool(getARGV("-rescaling", 1)),
+                                       power = getARGV("-power", 1.0),
+                                       thetamax = getARGV("-thmax", 10.0)
+                                       );
+      broadcast(processor(0), Thg); // broadcast global mesh to all processors
+      defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
+      defu(yG) = defu(yG); //interpolate global solution from old mesh to new mesh
+      defu(umrG) = defu(umrG);
+      defu(umiG) = defu(umiG);
+      defu(umarG) = defu(umarG);
+      defu(umaiG) = defu(umaiG);
+      Th = Thg;
+      {
+        Mat<complex> Adapt;
+        createMatu(Th, Adapt, Pk);
+        J = Adapt;
+      }
+      defu(ub) = initu(0.0);
+      defu(yb) = initu(0.0);
+      defu(um) = initu(0.0);
+      defu(uma) = initu(0.0);
+      restu.resize(ub[].n); // Change size of restriction operator
+      restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
+      ub[].re = uG[](restu);
+      um[].re = umrG[](restu);
+      um[].im = umiG[](restu);
+      uma[].re = umarG[](restu);
+      uma[].im = umaiG[](restu);
+      {
+        Mat<complex> Adapt0(J), Adapt1(J.n, mpirank == 0 ? 3 : 0), Adapt2(J.n, mpirank == 0 ? 3 : 0); // Initialize Mat objects for bordered matrix
+        H = Adapt0;
+        JlPM = Adapt1;
+        gqPM = Adapt2;
+        Ja = [[J,JlPM],[gqPM',glPM]]; // make dummy Jacobian
+      }
+      set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
+      set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+      qa.resize(J.n);
+      ChangeNumbering(J, ub[], qa);
+      if(mpirank == 0) {
+        qa.resize(qa.n+3);
+        qa(qa.n-3) = lambda1;
+        qa(qa.n-2) = omega;
+        qa(qa.n-1) = lambda2;
+      }
+      qm.resize(J.n);
+      ChangeNumbering(J, um[], qm);
+      qma.resize(J.n);
+      ChangeNumbering(J, uma[], qma);
+      pP.resize(J.n);
+      pP = qma;
+      qP.resize(J.n);
+      qP = qm;
+      yqP.resize(J.n);
+      ChangeNumbering(J, yb[], yqP);
+      yqP0.resize(J.n);
+      yqP0 = yqP;
+      qa0.resize(qa.n);
+      qap.resize(qa.n);
+      meshfile = meshfileout + count;
+      savemesh(Thg, workdir + meshfile + meshext);
+      int ret;
+      it = 0;
+      internalit = 0;
+      adaptflag = 1;
+      SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
+      sparams = " -snes_rtol " + snesrtol
+              + " -snes_linesearch_type " + sneslinesearchtype
+              + " -snes_converged_reason "
+              + " "); // solve nonlinear problem with SNES
+      assert(ret > 0);
+    }
+    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
+    if(mpirank == 0) {
+      lambda1 = real(qa(qa.n-3));
+      omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
+      lambda2 = real(qa(qa.n-1));
+    }
+    broadcast(processor(0), lambda1);
+    broadcast(processor(0), omega);
+    broadcast(processor(0), lambda2);
+    updatelambda(param1, lambda1);
+    updatelambda(param2, lambda2);
+    ChangeNumbering(J, um[], qm, inverse = true);
+    ChangeNumbering(J, uma[], qma, inverse = true);
+    savehopf(workdir, hopffileout + count, hopffileout, meshfileout, m, omega, (count % savecount == 0), true, paraviewflag);
+    yqP0 = yqP;
+    qP = qm;
+    pP = qma;
+    yl10 = yl1;
+    yw0 = yw;
+  } else {
+    if (mpirank == 0){
+      if(res*(monotone!=0) >= resp) cout << "\tResidual norm failed to decrease. Reattempting with smaller step." << endl;
+      if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;
+      if(it >= snesmaxit) cout << "\tFailed to converge within limit of " + snesmaxit + " iterations. Reattempting with smaller step." << endl;
+      if(maxdelta >= deltamax) cout << "\tStep size exceeds " << deltamax << "." << endl;
+      if(acos(abs(alpha)) >= alphamax) cout << "\tAngle exceeds " << (alphamax*180./pi) << " degrees." << endl;
+    }
+    h0 /= fmax;
+    qa = qa0;
+  }
+}

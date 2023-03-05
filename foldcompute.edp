@@ -30,7 +30,7 @@ string basefilein = getARGV("-bfi", "");
 string foldfileout = getARGV("-ffo", "");
 bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
 int meshsplit = getARGV("-split",1); // toggle whether mesh is split for P1 representation in Paraview
-string param = getARGV("-param","Re");
+string param = getARGV("-param","");
 real eps = getARGV("-eps", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
@@ -60,7 +60,7 @@ real lambda = getlambda(param);
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
-real ik = 0.0, iomega = 0.0;
+real ik, iomega;
 IFMACRO(formulation,incomp)
 include "eqns_incomp.idp"
 ENDIFMACRO
@@ -84,9 +84,13 @@ ENDIFMACRO
 bool noadapt = (meshfileout == "");
 if (noadapt) meshfileout = meshfilein; // If no output meshfile, don't adapt
 else { // else  output meshfile is given, adapt mesh
-  ub[] .*= J.D;
-  um[] .*= J.D;
-  uma[] .*= J.D;
+  real[int] q;
+  ChangeNumbering(J, ub[], q);
+  ChangeNumbering(J, ub[], q, inverse = true);
+  ChangeNumbering(J, um[], q);
+  ChangeNumbering(J, um[], q, inverse = true);
+  ChangeNumbering(J, uma[], q);
+  ChangeNumbering(J, uma[], q, inverse = true);
   XMhg defu(uG), defu(umG), defu(umaG), defu(tempu); // create private global FE functions
   for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
@@ -162,18 +166,17 @@ real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-      ChangeNumbering(J, uma[], qma, inverse = true, exchange = true);
+      ChangeNumbering(J, uma[], qma, inverse = true);
       updatelambda(param, lambda + eps);
       real[int] Jl = vR(0, XMh, tgv = -1);
       real[int] Hl = vJq(0, XMh, tgv = -10);
       updatelambda(param, lambda);
-      real[int] a0 = vR(0, XMh, tgv = -1);
+      real[int] temp, a0 = vR(0, XMh, tgv = -1);
       Jl -= a0;
       Jl /= eps;
       a0 = vJq(0, XMh, tgv = -10);
       Hl -= a0;
       Hl /= eps;
-      real[int] temp;
       ChangeNumbering(J, Jl, temp); // FreeFEM to PETSc
       {
         real[int, int] tempPmd(temp.n, 1); // vector to dense array
@@ -194,15 +197,13 @@ real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
         ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       }
       {
-        real[int, int] tempPmd(1, 1); // vector to dense array
-        tempPmd(0, 0) = J(uma[], Hl); // assigning the one and only column of the dense array
-        matrix tempPms = tempPmd; // dense array to sparse matrix
+        matrix tempPms = [[J(uma[], Hl)]]; // dense array to sparse matrix
         ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       }
       return 0;
   }
 
-set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
 set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
 
 // Initialize

@@ -4,7 +4,7 @@ string EPSparams = " -eps_pos_gen_non_hermitian ";
 // RESIDUAL VECTOR
 varf vR(defu(um), defu(v))
       = int2d(Th)(
-          vY*ubR*(ugradf(ub, 0, ubY) + ubY*Daexp(ub)) + ubT^(params["a"])*diff(0, vY, 0, ubY)/(params["Le"]*params["Pe"])
+        vY*ubR*(ugradf(ub, 0, ubY) + ubY*Daexp(ub)) + ubT^(params["a"])*diff(0, vY, 0, ubY)/(params["Le"]*params["Pe"])
         + vR*(ugradf(ub, 0, ubR) + ubR*divu(0, ub))
         + ubR*ugradu(v, ub, 0, ub) - 1.0/(params["ga"]*params["Ma"]^2)*divu(0, v)*(ubR*ubT - 1.0) + ubT^(params["a"])*visc(0, v, 0, ub)/params["Re"]
         + vT*(ubR*(ugradf(ub, 0, ubT) - params["ga"]*params["dT"]*ubY*Daexp(ub)) + (params["ga"] - 1.0)*ubR*ubT*divu(0, ub))
@@ -35,7 +35,7 @@ varf vJ(defu(um), defu(v))
 // MASS MATRIX
 varf vM(defu(um), defu(v))
       = int2d(Th)(
-          gdotf(vR, umR) + ubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
+        gdotf(vR, umR) + ubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
       )
       + HomBoundaryConditions(m, um);
 
@@ -78,13 +78,15 @@ varf vH(defu(dub), defu(v))
 
 varf vMq(defu(dum), defu(v))
       = int2d(Th)(
-          1i*(gdotf(vR, umR) + ubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um)))
+          gdotf(vR, umR) + ubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
       )
       + HomBoundaryConditions(m, dum);
-/*
+ENDIFMACRO
+IFMACRO(HessianVec)
 varf vHq(defu(dum), defu(v))
       = int2d(Th)(
-        vY*(dubR*(ugradf(um, 0, ubY) + ugradf(ub, ik, umY)) + ubR*(ugradf(um, 0, dubY) + ugradf(dub, ik, umY)) + umR*(ugradf(dub, 0, ubY) + ugradf(ub, 0, dubY))
+        iomega*dubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
+        + vY*(dubR*(ugradf(um, 0, ubY) + ugradf(ub, ik, umY)) + ubR*(ugradf(um, 0, dubY) + ugradf(dub, ik, umY)) + umR*(ugradf(dub, 0, ubY) + ugradf(ub, 0, dubY))
         + (dubR*umY + umR*dubY + (dubR*ubY + ubR*dubY)*umT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^2.) - 2.*dubT*ubR*ubY*umT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^3.) + (ubR*umY + umR*ubY + ubR*ubY*umT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^2.))*dubT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^2.))*Daexp(ub))
         + params["a"]*ubT^(params["a"]-1.)*(dubT*diff(0, vY, ik, umY) + (params["a"]-1.)*dubT/ubT*umT*diff(0, vY, 0, ubY) + umT*diff(0, vY, 0, dubY))/(params["Le"]*params["Pe"])
         + vR*(ugradf(dub, ik, umR) + ugradf(um, 0, dubR) + umR*divu(0, dub) + dubR*divu(ik, um))
@@ -99,5 +101,5 @@ varf vHq(defu(dum), defu(v))
       - int1d(Th, BCopen) (
         params["a"]*ubT^(params["a"]-1.)*(dubT*ndotvisc(v, ik, um) + umT*ndotvisc(v, 0, dub) + (params["a"]-1.)*dubT/ubT*umT*ndotvisc(v, 0, ub))/params["Re"]
       )
-      + BoundaryConditions(0, dum, ub);*/
+      + HomBoundaryConditions(0, dum);
 ENDIFMACRO

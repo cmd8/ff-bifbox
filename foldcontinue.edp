@@ -1,5 +1,5 @@
 //
-// foldcompute.edp
+// foldcontinue.edp
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
@@ -26,8 +26,8 @@ int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
 real h0 = getARGV("-h0", 1.0);
-string param1 = getARGV("-param1","Re");
-string param2 = getARGV("-param2","Sw");
+string param1 = getARGV("-param1","");
+string param2 = getARGV("-param2","");
 real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 0.5);
 real deltamax = getARGV("-dmax", 4.0);
@@ -39,7 +39,7 @@ string pctype = getARGV("-pc_type", "lu");
 real snesrtol = getARGV("-snes_rtol", 0.0);
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
-int m = 0;
+int m;
 
 // load macros
 macro Hessian()1 // EOM
@@ -91,9 +91,8 @@ include "eqns_custom.idp"
 ENDIFMACRO
 
 // Build bordered block matrix from only Mat components
-Mat H(J);
 Mat JlPM(J.n, mpirank == 0 ? 2 : 0), gqPM(J.n, mpirank == 0 ? 2 : 0), glPM(mpirank == 0 ? 2 : 0, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
-Mat Ja = [[J,JlPM],[gqPM',glPM]]; // make dummy Jacobian
+Mat H(J), Ja = [[J,JlPM],[gqPM',glPM]]; // make dummy Jacobian
 
 real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 2 : 0));
 int it, internalit, adaptflag;
@@ -137,14 +136,15 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << "." << endl;
       } else {
         real dlambda1, dlambda2;
+        real[int] qdiff  = qa - qap;
         if(mpirank == 0) {
-          dlambda1 = lambda1 - qap(qap.n-2); // Extract parameter value from state vector on proc 0
-          dlambda2 = lambda2 - qap(qap.n-1); // Extract parameter value from state vector on proc 0
+          dlambda1 = qdiff(qdiff.n-2); // Extract parameter value from state vector on proc 0
+          dlambda2 = qdiff(qdiff.n-1); // Extract parameter value from state vector on proc 0
+          cout << dlambda1 << " " << dlambda2 << endl;
         }
         broadcast(processor(0), dlambda1);
         broadcast(processor(0), dlambda2);
-        real[int] qdiff  = qa(0:qa.n - (mpirank == 0 ? 3 : 1)) - qap(0:qap.n - (mpirank == 0 ? 3 : 1));
-        ChangeNumbering(J, R, qdiff, inverse = true, exchange = false);
+        ChangeNumbering(J, R, qdiff(0:qdiff.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = false);
         delta = sqrt(J(R, R) + dlambda1^2 + dlambda2^2); // distance to curve
         ChangeNumbering(J, R, yqP0, inverse = true, exchange = false);
         ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
@@ -173,7 +173,7 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
       broadcast(processor(0), lambda1);
       broadcast(processor(0), lambda2);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-      ChangeNumbering(J, uma[], qma, inverse = true, exchange = true);
+      ChangeNumbering(J, uma[], qma, inverse = true);
       updatelambda(param1, lambda1 + eps);
       updatelambda(param2, lambda2);
       real[int] Jl1 = vR(0, XMh, tgv = -1);
@@ -203,23 +203,21 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
         for[i,v : temp2] if(v == 0.0) v = -1e+30; // indexing trick
         tempPmd(:, 0) = temp1; // assigning the first column of the dense array
         tempPmd(:, 1) = temp2; // assigning the second column of the dense array
-        for[i,j,v : tempPmd] if(v == 0.0) v = -1e+30; // indexing trick
         matrix tempPms = tempPmd; // dense array to sparse matrix
         for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
         ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       }
+      H = vH(XMh, XMh, tgv = -10);
+      real gl1 = J(uma[], Hl1);
+      real gl2 = J(uma[], Hl2);
       KSPSolve(J, Jl2P, yqP);
       KSPSolve(J, Jl1P, Jl2P);
       ChangeNumbering(J, yb[], yqP, inverse = true);
       ChangeNumbering(J, a0, Jl2P, inverse = true);
-      H = vH(XMh, XMh, tgv = -10);
       MatMultTranspose(H, qma, Jl1P);
       ChangeNumbering(J, Jl1, Jl1P, inverse = true);
-      real gl1 = J(uma[], Hl1);
-      real gl2 = J(uma[], Hl2);
       yl1 = (gl2 - J(Jl1, yb[]))/(gl1 - J(Jl1, a0));
-      yb[] -= yl1*a0;
-      ChangeNumbering(J, yb[], yqP);
+      yqP -= yl1*Jl2P;
       {
         real[int] temp1 = Jl1P, temp2 = yqP;
         real[int, int] tempPmd(temp1.n, 2); // vector to dense array
@@ -232,19 +230,14 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
         ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       }
       {
-        real[int, int] tempPmd(2, 2); // vector to dense array
-        tempPmd(0, 0) = gl1;
-        tempPmd(1, 0) = gl2;
-        tempPmd(0, 1) = yl1;
-        tempPmd(1, 1) = -1.0;
-        matrix tempPms = tempPmd; // dense array to sparse matrix
+        matrix tempPms = [[gl1, gl2],[yl1,-1.0]];
         ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       }
       return 0;
   }
 
 // fix indexing problem
-set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
 set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
 
 // PREDICTOR
@@ -254,15 +247,13 @@ ChangeNumbering(J, ub[], qa, inverse = true, exchange = true);
 ChangeNumbering(J, um[], qm);
 ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
 ChangeNumbering(J, uma[], qma);
-ChangeNumbering(J, uma[], qma, inverse = true, exchange = true);
+ChangeNumbering(J, uma[], qma, inverse = true);
 if(mpirank == 0) {
   qa.resize(qa.n+2);
   qa(qa.n-2) = lambda1;
   qa(qa.n-1) = lambda2;
 }
 {
-  broadcast(processor(0), lambda1);
-  broadcast(processor(0), lambda2);
   updatelambda(param1, lambda1 + eps);
   updatelambda(param2, lambda2);
   real[int] Jl1 = vR(0, XMh, tgv = -1);
@@ -282,31 +273,33 @@ if(mpirank == 0) {
   Hl1 /= eps;
   Hl2 -= a0;
   Hl2 /= eps;
+  H = vH(XMh, XMh, tgv = -10);
   J = vJ(XMh, XMh, tgv = -1);
   real[int] Jl1P, Jl2P;
-  ChangeNumbering(J, Jl2, Jl2P);
-  KSPSolve(J, Jl2P, yqP);
-  ChangeNumbering(J, yb[], yqP, inverse = true, exchange = true);
-  ChangeNumbering(J, Jl1, Jl1P);
-  KSPSolve(J, Jl1P, Jl2P);
-  ChangeNumbering(J, a0, Jl2P, inverse = true, exchange = true);
-  H = vH(XMh, XMh, tgv = -10);
-  ChangeNumbering(J, uma[], qma);
-  MatMultTranspose(H, qma, Jl1P);
-  ChangeNumbering(J, Jl1, Jl1P, inverse = true, exchange = true);
+  ChangeNumbering(J, Hl1, Jl1P);
+  ChangeNumbering(J, Hl1, Jl1P, inverse = true);
+  ChangeNumbering(J, Hl2, Jl2P);
+  ChangeNumbering(J, Hl2, Jl2P, inverse = true);
   real gl1 = J(uma[], Hl1);
   real gl2 = J(uma[], Hl2);
+  ChangeNumbering(J, Jl1, Jl1P);
+  ChangeNumbering(J, Jl2, Jl2P);
+  KSPSolve(J, Jl2P, yqP);
+  KSPSolve(J, Jl1P, Jl2P);
+  ChangeNumbering(J, yb[], yqP, inverse = true);
+  ChangeNumbering(J, a0, Jl2P, inverse = true);
+  MatMultTranspose(H, qma, Jl1P);
+  ChangeNumbering(J, Jl1, Jl1P, inverse = true);
   yl1 = (gl2 - J(Jl1, yb[]))/(gl1 - J(Jl1, a0));
-  yb[] -= yl1*a0;
-  ChangeNumbering(J, yb[], yqP);
+  yqP -= yl1*Jl2P;
 }
 yqP0 = yqP;
 yl10 = yl1;
-ChangeNumbering(J, um[], qP);
-ChangeNumbering(J, uma[], pP);
+qP = qm;
+pP = qma;
 while (count < maxcount){
   real[int] qa0 = qa;
-  ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false); // PETSc to FreeFEM
+  ChangeNumbering(J, yb[], yqP, inverse = true); // PETSc to FreeFEM
   real h = h0/sqrt(J(yb[], yb[]) + yl1^2 + 1.0); // use FreeFEM numbering here
   qa(0:qa.n - (mpirank == 0 ? 3 : 1)) -= (h*yqP);
   if (mpirank == 0) {
@@ -335,7 +328,7 @@ while (count < maxcount){
     h0 /= f;
     if (alpha < 0) {
       h0 *= -1.0;
-      real[int] q = qa(0:qa.n - (mpirank == 0 ? 3 : 1));
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
       if(mpirank == 0) {
         lambda1 = qa(qa.n-2);
         lambda2 = qa(qa.n-1);
@@ -345,13 +338,12 @@ while (count < maxcount){
       updatelambda(param1, lambda1);
       updatelambda(param2, lambda2);
       if(mpirank == 0) cout << "\tSign change detected. Orientation reversed." << endl;
-      ChangeNumbering(J, ub[], q, inverse = true);
       ChangeNumbering(J, um[], qm, inverse = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      savefold(workdir, foldfileout + count + "cuspguess", "", meshfile, true, true, paraviewflag);
+      savefold(workdir, foldfileout + count + "signswitch", "", meshfile, true, true, paraviewflag);
     }
     if ((meshfileout != "") && (count % savecount == 0)){
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = false);
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
       if(mpirank == 0) {
         lambda1 = qa(qa.n-2);
         lambda2 = qa(qa.n-1);
@@ -362,7 +354,7 @@ while (count < maxcount){
       updatelambda(param2, lambda2);
       ChangeNumbering(J, um[], qm, inverse = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
+      ChangeNumbering(J, yb[], yqP, inverse = true);
       XMhg defu(uG), defu(umG), defu(umaG), defu(yG), defu(tempu);
       for[i, v : restu] tempu[][v] = ub[][i];
       mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
@@ -372,7 +364,7 @@ while (count < maxcount){
       mpiAllReduce(tempu[], umG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
       for[i, v : restu] tempu[][v] = uma[][i]; // populate local portion of global soln
       mpiAllReduce(tempu[], umaG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
-      if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
+      if(mpirank == 0) // Perform mesh adaptation (serially) on processor 0
         Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptu(umaG),
                         hmin = getARGV("-hmin",1.0e-6),
                         hmax = getARGV("-hmax",1.0),
@@ -386,7 +378,6 @@ while (count < maxcount){
                         power = getARGV("-power", 1.0),
                         thetamax = getARGV("-thmax", 10.0)
                         );
-      }
       broadcast(processor(0), Thg); // broadcast global mesh to all processors
       defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
       defu(yG) = defu(yG); //interpolate global solution from old mesh to new mesh
@@ -415,7 +406,7 @@ while (count < maxcount){
         gqPM = Adapt2;
         Ja = [[J,JlPM],[gqPM',glPM]]; // make dummy Jacobian
       }
-      set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
+      set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
       set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
       qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
@@ -451,7 +442,7 @@ while (count < maxcount){
               + " "); // solve nonlinear problem with SNES
       assert(ret > 0);
     }
-    real[int] q = qa(0:qa.n - (mpirank == 0 ? 3 : 1));
+    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
     if(mpirank == 0) {
       lambda1 = qa(qa.n-2);
       lambda2 = qa(qa.n-1);
@@ -460,7 +451,6 @@ while (count < maxcount){
     broadcast(processor(0), lambda2);
     updatelambda(param1, lambda1);
     updatelambda(param2, lambda2);
-    ChangeNumbering(J, ub[], q, inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
     ChangeNumbering(J, uma[], qma, inverse = true);
     savefold(workdir, foldfileout + count, foldfileout, meshfile, (count % savecount == 0), true, paraviewflag);

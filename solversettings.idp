@@ -18,7 +18,7 @@ verbosity = getARGV("-v",0);
 // Define parameter and monitor names
 IFMACRO(formulation,incomp)
   string[int] paramnames = ["Re"]; // set parameter names
-  string[int] monitornames = [""]; // set monitor names
+  string[int] monitornames = ["Cd"]; // set monitor names
   macro pressure()1//EOM
 ENDIFMACRO
 IFMACRO(formulation,lowmach)
@@ -87,6 +87,24 @@ IFMACRO(!InitialConditions)
 ENDIFMACRO
 // Boundary labels and boundary conditions
 IFMACRO(!custom)
+/*
+int BCnull = 0;
+int BCaxis = 1;
+int BCopen = 2;
+int BCinflow = 3;
+int BCwall = 4;
+int BCslip = 5;
+macro BoundaryConditions(m, u, U)
+  on(BCwall, u = U, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO IFMACRO(temperature) ,u#T = U#T - 1.0 ENDIFMACRO )
++ on(BCslip, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO )
++ on(BCinflow, u = U - 1., u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO IFMACRO(species) ,u#Y = U#Y - 1.0 ENDIFMACRO IFMACRO(temperature) ,u#T = U#T - 1.0 ENDIFMACRO )
+// EOM
+macro HomBoundaryConditions(m, u)
+  on(BCwall, u = 0, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0 ENDIFMACRO )
++ on(BCslip, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO )
++ on(BCinflow, u = 0., u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO IFMACRO(species) ,u#Y = 0.0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0.0 ENDIFMACRO )
+// EOM
+*/
 int BCnull = 0;
 int BCaxis = 1;
 int BCopen = 2;

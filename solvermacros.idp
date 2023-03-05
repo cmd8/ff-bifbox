@@ -6,7 +6,7 @@
 // NOTE: This file should not be changed unless you know what you're doing.
 //
 
-cout.precision(8);
+cout.precision(12);
 string workdir = getARGV("-dir","./data/"); // set working directory
 // Define local/global mesh variables
 meshN Th; // local mesh
@@ -174,7 +174,7 @@ macro savefold(workdir, foldfileout, statsfile, meshfile, saveflag, monitorflag,
 macro savehopf(workdir, hopffileout, statsfile, meshfile, m, omega, saveflag, monitorflag, paraviewflag){
   XMhg defu(tempu), defu(ubg);
   XMhg<complex> defu(cplxu), defu(umg), defu(umag);
-  for[i, v : restu] tempu[][v] = ub[][i];
+  for[i, v : restu] tempu[][v] = real(ub[][i]);
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
   for[i, v : restu] cplxu[][v] = um[][i];
   mpiAllReduce(cplxu[], umg[], mpiCommWorld, mpiSUM);

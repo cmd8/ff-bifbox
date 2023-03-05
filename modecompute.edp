@@ -20,6 +20,7 @@ include "solvermacros.idp"
 string basefilein = getARGV("-bfi", "");
 string foldfilein = getARGV("-ffi", "");
 string modefilein = getARGV("-mfi", "");
+string hopffilein = getARGV("-hfi", "");
 string evalfileout = getARGV("-vfo", "");
 string modefileout = getARGV("-mfo", "");
 bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
@@ -33,9 +34,8 @@ string sttype = getARGV("-st_type", "sinvert");
 string stpctype = getARGV("-st_pc_type", "lu");
 // other variables
 complex[int] val(epsnev);
-complex eigenvalue, ik;
 
-if (foldfilein =="" && basefilein == "") basefilein = readbasename(workdir + modefilein + ".mode");
+if (hopffilein == "" && foldfilein == "" && basefilein == ""  && modefilein != "") basefilein = readbasename(workdir + modefilein + ".mode");
 string meshfile;
 if(foldfilein != "") meshfile = readmeshname(workdir + foldfilein + ".fold");
 else meshfile = readmeshname(workdir + basefilein + ".base");
@@ -53,15 +53,15 @@ if(foldfilein != "") {
   savebase(workdir, modefileout, "", meshfile, true, true, paraviewflag);
   basefilein = modefileout;
 } else if(hopffilein != "") {
-  real[int] qm, qma;
+  complex[int] qm, qma;
   int m;
   real omega;
-  ub[] = loadhopf(workdir, hopffilein, meshfilein, qm, qma, m, omega);
+  ub[] = loadhopf(workdir, hopffilein, meshfile, qm, qma, m, omega);
   savebase(workdir, modefileout, "", meshfile, true, true, paraviewflag);
   basefilein = modefileout;
 }
-XMh<PetscScalar>[int] defu(vec)(epsnev);
-XMh<PetscScalar> defu(um);
+XMh<complex>[int] defu(vec)(epsnev);
+XMh<complex> defu(um);
 
 if (epstarget == "" && modefilein != "") {
   complex target = readmodeeval(workdir + modefilein + ".mode", m);
@@ -69,11 +69,11 @@ if (epstarget == "" && modefilein != "") {
   epstarget = string(target);
 } else if (epstarget == "") epstarget = "0+0i";
 
-Mat<PetscScalar> J;
+Mat<complex> J;
 createMatu(Th, J, Pk);
-Mat<PetscScalar> M(J);
-ik = 1i*real(m);
-real iomega = 0.0;
+Mat<complex> M(J);
+complex ik = 1i*real(m);
+complex iomega = 0.0; // Let PETSc/SLEPc do the shift
 IFMACRO(formulation,incomp)
 include "eqns_incomp.idp"
 ENDIFMACRO
@@ -94,7 +94,7 @@ include "eqns_custom.idp"
 ENDIFMACRO
 
 {
-  matrix<PetscScalar> Jtemp = vJ(XMh, XMh, tgv = -2);
+  matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -2);
   if (adj) Jtemp = -Jtemp';
   else Jtemp = -Jtemp;
   J = Jtemp;
@@ -117,9 +117,11 @@ if (evalfileout != "" && mpirank == 0){
 }
 if (modefileout != ""){
   for (int i = 0; i < k; ++i){
-    eigenvalue = val(i);
+    complex eigenvalue = val(i);
     um[] = vec[i][];
-    um[] .*= J.D;
+    complex[int] dummy;
+    ChangeNumbering(J, um[], dummy);
+    ChangeNumbering(J, um[], dummy, inverse = true);
     savemode(workdir, modefileout + "_" + i, basefilein, meshfile, m, eigenvalue, paraviewflag);
   }
 }
