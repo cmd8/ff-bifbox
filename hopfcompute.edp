@@ -208,11 +208,9 @@ else {
   defu(umarG) = defu(umarG);
   defu(umaiG) = defu(umaiG);
   Th = Thg;
-  {
-    Mat<complex> Adapt;
-    createMatu(Th, Adapt, Pk);
-    J = Adapt;
-  }
+  Mat<complex> Adapt;
+  createMatu(Th, Adapt, Pk);
+  J = Adapt;
   defu(ub) = initu(0.0);
   defu(um) = initu(0.0);
   defu(uma) = initu(0.0);
@@ -253,7 +251,7 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       if(mpirank == 0) {
         Ra.resize(Ra.n+2); // Append 0 to residual vector on proc 0
         Ra(Ra.n-2) = real(g);
-        Ra(Ra.n-1) = imag(g);
+        Ra(Ra.n-1) = zerofreq ? 0.0 : imag(g);
       }
       return Ra;
   }
@@ -274,43 +272,30 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       complex[int] Jl = vR(0, XMh, tgv = -1);
       complex[int] Hl = vJq(0, XMh, tgv = -10);
       updatelambda(param, lambda);
-      complex[int] temp, bm = vR(0, XMh, tgv = -1);
+      complex[int] temp1(qm.n), temp2(qm.n), bm = vR(0, XMh, tgv = -1);
       Jl -= bm;
       Jl /= eps;
       bm = vJq(0, XMh, tgv = -10);
       Hl -= bm;
       Hl /= eps;
-      bm = vMq(0, XMh, tgv = -10);
-      ChangeNumbering(J, Jl, temp);
-      {
-        complex[int, int] tempPmd(temp.n, 2); // vector to dense array
-        for[i,v : temp.re] if(v == 0.0) v = -1e+30; // indexing trick
-        tempPmd(:, 0).re = temp.re; // assigning the one and only column of the dense array
-        tempPmd(:, 1).re = -1e+30; // assigning the one and only column of the dense array
-        matrix<complex> tempPms = tempPmd; // dense array to sparse matrix
-        for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
-        ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      }
+      ChangeNumbering(J, Jl, temp1);
+      matrix<complex> tempPms = [[temp1, 0.0]]; // dense array to sparse matrix
+      ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
-      MatMultHermitianTranspose(H, qma, temp); // compute (dL/dq*w)'*v
-      if(zerofreq) temp.im = 0.0;
-      {
-        complex[int, int] tempPmd(temp.n, 2); // vector to dense array
-        for[i,v : temp.re] if(v == 0.0) v = -1e+30; // indexing trick
-        for[i,v : temp.im] if(v == 0.0) v = 1e+30; // indexing trick
-        tempPmd(:, 0).re = temp.re; // assigning the one and only column of the dense array
-        tempPmd(:, 1).re = -temp.im; // assigning the one and only column of the dense array
-        matrix<complex> tempPms = tempPmd; // dense array to sparse matrix
-        for[i,j,v : tempPms] if(abs(real(v)+1e+30) < 1e-29) v = 0.0; // indexing trick
-        for[i,j,v : tempPms] if(abs(imag(v)+1e+30) < 1e-29) v = 0.0; // indexing trick
-        ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-      }
+      MatMultHermitianTranspose(H, qma, temp1); // compute (dL/dq*w)'*v
+      if(!zerofreq) temp2.re = -temp1.im;
+      temp1.im = 0.0;
+      tempPms = [[temp1, temp2]]; // dense array to sparse matrix
+      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       complex gl = J(uma[], Hl);
-      complex gw = J(uma[], bm);
-      {
-        matrix<complex> tempPms = [[real(gl),-imag(gw)],[imag(gl),real(gw)]];
-        ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
+      if(zerofreq)
+        tempPms = [[real(gl), 0.0], [0.0, 1.0]];
+      else {
+        bm = vMq(0, XMh, tgv = -10);
+        complex gw = J(uma[], bm);
+        tempPms = [[real(gl),-imag(gw)],[imag(gl),real(gw)]];
       }
+      ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       ik = 0.0;
       iomega = 0.0;
       J = vJ(XMh, XMh, tgv = -1);

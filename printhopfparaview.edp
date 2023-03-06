@@ -1,0 +1,56 @@
+//
+// printhopfparaview.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// EXAMPLE USAGE:
+//  Print hopf solution to single .vtu file:
+// mpirun -n 1 FreeFem++-mpi -v 0 printhopfparaview.edp -hfi <FILEIN> -split 2
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
+load "iovtk"
+include "solversettings.idp"
+include "solvermacros.idp"
+// arguments
+string hopffilein = getARGV("-hfi", "");
+string hopffileout = getARGV("-hfo", hopffilein);
+int meshsplit = getARGV("-split",1);
+if (mpirank==0){
+  string meshfile = readmeshname(workdir + hopffilein + ".hopf");
+  // Load mesh
+  Thg = readmesh(workdir + meshfile + meshext);
+  XMhg defu(ub);
+  XMhg<complex> defu(um), defu(uma);
+  restu = 0:XMhg.ndof-1;
+  real omega;
+  int m;
+  ub[] = loadhopf(workdir, hopffilein, meshfile, um[], uma[], m, omega);
+  cout << "  Saving '" + hopffileout + "_hopf_[base,dirmode_real,dirmode_imag,adjmode_real,adjmode_imag].vtu' in '" + workdir + "'." << endl;
+  if (meshsplit != 1){
+    meshN Thgs = trunc(Thg, 1, split = meshsplit);
+    fespace XMhs(Thgs, Pk);
+    XMhs defu(ubs) = defu(ub);
+    XMhs<complex> defu(ums) = defu(um);
+    XMhs<complex> defu(umas) = defu(uma);
+    savevtk(workdir + hopffileout + "_hopf_base.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
+    ubs[] = ums[].re;
+    savevtk(workdir + hopffileout + "_hopf_dirmode_real.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
+    ubs[] = ums[].im;
+    savevtk(workdir + hopffileout + "_hopf_dirmode_imag.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
+    ubs[] = umas[].re;
+    savevtk(workdir + hopffileout + "_hopf_adjmode_real.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
+    ubs[] = umas[].im;
+    savevtk(workdir + hopffileout + "_hopf_adjmode_imag.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
+  } else {
+    savevtk(workdir + hopffileout + "_hopf_base.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
+    ub[] = um[].re;
+    savevtk(workdir + hopffileout + "_hopf_dirmode_real.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
+    ub[] = um[].im;
+    savevtk(workdir + hopffileout + "_hopf_dirmode_imag.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
+    ub[] = uma[].re;
+    savevtk(workdir + hopffileout + "_hopf_adjmode_real.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
+    ub[] = uma[].im;
+    savevtk(workdir + hopffileout + "_hopf_adjmode_imag.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
+  }
+}

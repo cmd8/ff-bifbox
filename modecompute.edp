@@ -18,8 +18,8 @@ include "solversettings.idp"
 include "solvermacros.idp"
 // arguments
 string basefilein = getARGV("-bfi", "");
-string foldfilein = getARGV("-ffi", "");
 string modefilein = getARGV("-mfi", "");
+string foldfilein = getARGV("-ffi", "");
 string hopffilein = getARGV("-hfi", "");
 string evalfileout = getARGV("-vfo", "");
 string modefileout = getARGV("-mfo", "");
@@ -65,7 +65,7 @@ XMh<complex> defu(um);
 
 if (epstarget == "" && modefilein != "") {
   complex target = readmodeeval(workdir + modefilein + ".mode", m);
-  if (adj > 0) target = conj(target);
+  if (adj) target = conj(target);
   epstarget = string(target);
 } else if (epstarget == "") epstarget = "0+0i";
 

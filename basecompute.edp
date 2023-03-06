@@ -85,10 +85,7 @@ ENDIFMACRO
 IFMACRO(formulation,custom)
 include "eqns_custom.idp"
 ENDIFMACRO
-set(J, sparams = " -ksp_type " + ksptype
-               + " -pc_type " + pctype
-               + " " + KSPparams
-               );
+set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
 real[int] q;
 ChangeNumbering(J, ub[], q);
 // MESH ADAPTATION
@@ -116,15 +113,10 @@ else { // else  output meshfile is given, adapt mesh
   broadcast(processor(0), Thg); // broadcast global mesh to all processors
   defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
   Th = Thg; //Reinitialize local mesh with global mesh
-  { // Partition new mesh and update the PETSc numbering
-    Mat Adapt;
-    createMatu(Th, Adapt, Pk);
-    J = Adapt;
-    set(J, sparams = " -ksp_type " + ksptype
-                   + " -pc_type " + pctype
-                   + " " + KSPparams
-                   );
-  }
+  Mat Adapt;
+  createMatu(Th, Adapt, Pk); // Partition new mesh and update the PETSc numbering
+  J = Adapt;
+  set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
   defu(ub) = initu(0.0); // set local values to zero
   restu.resize(ub[].n); // Change size of restriction operator
   restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh

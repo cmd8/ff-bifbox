@@ -118,11 +118,9 @@ else { // else  output meshfile is given, adapt mesh
   defu(umG) = defu(umG); //interpolate global solution from old mesh to new mesh
   defu(umaG) = defu(umaG); //interpolate global solution from old mesh to new mesh
   Th = Thg; //Reinitialize local mesh with global mesh
-  { // Partition new mesh and update the PETSc numbering
-    Mat Adapt;
-    createMatu(Th, Adapt, Pk);
-    J = Adapt;
-  }
+  Mat Adapt; // Partition new mesh and update the PETSc numbering
+  createMatu(Th, Adapt, Pk);
+  J = Adapt;
   defu(ub) = initu(0.0); // set local values to zero
   defu(um) = initu(0.0); // set local values to zero
   defu(uma) = initu(0.0); // set local values to zero
@@ -178,28 +176,14 @@ real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       Hl -= a0;
       Hl /= eps;
       ChangeNumbering(J, Jl, temp); // FreeFEM to PETSc
-      {
-        real[int, int] tempPmd(temp.n, 1); // vector to dense array
-        for[i,v : temp] if(v == 0.0) v = -1e+30; // indexing trick
-        tempPmd(:, 0) = temp; // assigning the one and only column of the dense array
-        matrix tempPms = tempPmd; // dense array to sparse matrix
-        for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
-        ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      }
+      matrix tempPms = [[temp]]; // dense array to sparse matrix
+      ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       H = vH(XMh, XMh, tgv = -10);
       MatMultTranspose(H, qma, temp);
-      {
-        real[int, int] tempPmd(temp.n, 1); // vector to dense array
-        for[i,v : temp] if(v == 0.0) v = -1e+30; // indexing trick
-        tempPmd(:, 0) = temp; // assigning the one and only column of the dense array
-        matrix tempPms = tempPmd; // dense array to sparse matrix
-        for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
-        ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-      }
-      {
-        matrix tempPms = [[J(uma[], Hl)]]; // dense array to sparse matrix
-        ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-      }
+      tempPms = [[temp]]; // dense array to sparse matrix
+      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
+      tempPms = [[J(uma[], Hl)]]; // dense array to sparse matrix
+      ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       return 0;
   }
 

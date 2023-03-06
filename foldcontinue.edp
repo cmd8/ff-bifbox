@@ -33,7 +33,8 @@ real kappamax = getARGV("-kmax", 0.5);
 real deltamax = getARGV("-dmax", 4.0);
 real alphamax = getARGV("-amax", 30.)*pi/180.0;
 int monotone = getARGV("-mono", 0);
-real eps = getARGV("-eps", 1e-7);
+real eps1 = getARGV("-eps1", 1e-7);
+real eps2 = getARGV("-eps2", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
 real snesrtol = getARGV("-snes_rtol", 0.0);
@@ -92,7 +93,7 @@ ENDIFMACRO
 
 // Build bordered block matrix from only Mat components
 Mat JlPM(J.n, mpirank == 0 ? 2 : 0), gqPM(J.n, mpirank == 0 ? 2 : 0), glPM(mpirank == 0 ? 2 : 0, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
-Mat H(J), Ja = [[J,JlPM],[gqPM',glPM]]; // make dummy Jacobian
+Mat H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 
 real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 2 : 0));
 int it, internalit, adaptflag;
@@ -173,65 +174,44 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
       broadcast(processor(0), lambda2);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      updatelambda(param1, lambda1 + eps);
+      updatelambda(param1, lambda1 + eps1);
       updatelambda(param2, lambda2);
       real[int] Jl1 = vR(0, XMh, tgv = -1);
       real[int] Hl1 = vJq(0, XMh, tgv = -10);
       updatelambda(param1, lambda1);
-      updatelambda(param2, lambda2 + eps);
+      updatelambda(param2, lambda2 + eps2);
       real[int] Jl2 = vR(0, XMh, tgv = -1);
       real[int] Hl2 = vJq(0, XMh, tgv = -10);
       updatelambda(param2, lambda2);
-      real[int] a0 = vR(0, XMh, tgv = -1);
+      real[int] Jl1P, Jl2P, a0 = vR(0, XMh, tgv = -1);
       Jl1 -= a0;
       Jl2 -= a0;
-      Jl1 /= eps;
-      Jl2 /= eps;
+      Jl1 /= eps1;
+      Jl2 /= eps2;
       a0 = vJq(0, XMh, tgv = -10);
       Hl1 -= a0;
       Hl2 -= a0;
-      Hl1 /= eps;
-      Hl2 /= eps;
-      real[int] Jl1P, Jl2P;
-      ChangeNumbering(J, Jl1, Jl1P); // FreeFEM to PETSc
-      ChangeNumbering(J, Jl2, Jl2P); // FreeFEM to PETSc
-      {
-        real[int] temp1 = Jl1P, temp2 = Jl2P;
-        real[int, int] tempPmd(temp1.n, 2); // vector to dense array
-        for[i,v : temp1] if(v == 0.0) v = -1e+30; // indexing trick
-        for[i,v : temp2] if(v == 0.0) v = -1e+30; // indexing trick
-        tempPmd(:, 0) = temp1; // assigning the first column of the dense array
-        tempPmd(:, 1) = temp2; // assigning the second column of the dense array
-        matrix tempPms = tempPmd; // dense array to sparse matrix
-        for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
-        ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      }
-      H = vH(XMh, XMh, tgv = -10);
+      Hl1 /= eps1;
+      Hl2 /= eps2;
       real gl1 = J(uma[], Hl1);
       real gl2 = J(uma[], Hl2);
+      H = vH(XMh, XMh, tgv = -10);
+      ChangeNumbering(J, Jl1, Jl1P); // FreeFEM to PETSc
+      ChangeNumbering(J, Jl2, Jl2P); // FreeFEM to PETSc
+      matrix tempPms = [[Jl1P, Jl2P]]; // dense array to sparse matrix
+      ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       KSPSolve(J, Jl2P, yqP);
       KSPSolve(J, Jl1P, Jl2P);
+      MatMultTranspose(H, qma, Jl1P);
       ChangeNumbering(J, yb[], yqP, inverse = true);
       ChangeNumbering(J, a0, Jl2P, inverse = true);
-      MatMultTranspose(H, qma, Jl1P);
       ChangeNumbering(J, Jl1, Jl1P, inverse = true);
       yl1 = (gl2 - J(Jl1, yb[]))/(gl1 - J(Jl1, a0));
       yqP -= yl1*Jl2P;
-      {
-        real[int] temp1 = Jl1P, temp2 = yqP;
-        real[int, int] tempPmd(temp1.n, 2); // vector to dense array
-        for[i,v : temp1] if(v == 0.0) v = -1e+30; // indexing trick
-        for[i,v : temp2] if(v == 0.0) v = -1e+30; // indexing trick
-        tempPmd(:, 0) = temp1; // assigning the first column of the dense array
-        tempPmd(:, 1) = temp2; // assigning the second column of the dense array
-        matrix tempPms = tempPmd; // dense array to sparse matrix
-        for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
-        ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-      }
-      {
-        matrix tempPms = [[gl1, gl2],[yl1,-1.0]];
-        ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-      }
+      tempPms = [[Jl1P, yqP]]; // dense array to sparse matrix
+      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
+      tempPms = [[gl1, gl2],[yl1,-1.0]];
+      ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       return 0;
   }
 
@@ -253,41 +233,36 @@ if(mpirank == 0) {
   qa(qa.n-1) = lambda2;
 }
 {
-  updatelambda(param1, lambda1 + eps);
+  updatelambda(param1, lambda1 + eps1);
   updatelambda(param2, lambda2);
   real[int] Jl1 = vR(0, XMh, tgv = -1);
   real[int] Hl1 = vJq(0, XMh, tgv = -10);
   updatelambda(param1, lambda1);
-  updatelambda(param2, lambda2 + eps);
+  updatelambda(param2, lambda2 + eps2);
   real[int] Jl2 = vR(0, XMh, tgv = -1);
   real[int] Hl2 = vJq(0, XMh, tgv = -10);
   updatelambda(param2, lambda2);
-  real[int] a0 = vR(0, XMh, tgv = -1);
+  real[int] Jl1P, Jl2P, a0 = vR(0, XMh, tgv = -1);
   Jl1 -= a0;
-  Jl1 /= eps;
+  Jl1 /= eps1;
   Jl2 -= a0;
-  Jl2 /= eps;
+  Jl2 /= eps2;
   a0 = vJq(0, XMh, tgv = -10);
   Hl1 -= a0;
-  Hl1 /= eps;
+  Hl1 /= eps1;
   Hl2 -= a0;
-  Hl2 /= eps;
-  H = vH(XMh, XMh, tgv = -10);
+  Hl2 /= eps2;
   J = vJ(XMh, XMh, tgv = -1);
-  real[int] Jl1P, Jl2P;
-  ChangeNumbering(J, Hl1, Jl1P);
-  ChangeNumbering(J, Hl1, Jl1P, inverse = true);
-  ChangeNumbering(J, Hl2, Jl2P);
-  ChangeNumbering(J, Hl2, Jl2P, inverse = true);
   real gl1 = J(uma[], Hl1);
   real gl2 = J(uma[], Hl2);
+  H = vH(XMh, XMh, tgv = -10);
   ChangeNumbering(J, Jl1, Jl1P);
   ChangeNumbering(J, Jl2, Jl2P);
   KSPSolve(J, Jl2P, yqP);
   KSPSolve(J, Jl1P, Jl2P);
+  MatMultTranspose(H, qma, Jl1P);
   ChangeNumbering(J, yb[], yqP, inverse = true);
   ChangeNumbering(J, a0, Jl2P, inverse = true);
-  MatMultTranspose(H, qma, Jl1P);
   ChangeNumbering(J, Jl1, Jl1P, inverse = true);
   yl1 = (gl2 - J(Jl1, yb[]))/(gl1 - J(Jl1, a0));
   yqP -= yl1*Jl2P;
@@ -383,11 +358,9 @@ while (count < maxcount){
       defu(umG) = defu(umG); //interpolate global solution from old mesh to new mesh
       defu(umaG) = defu(umaG); //interpolate global solution from old mesh to new mesh
       Th = Thg;
-      {
-        Mat Adapt;
-        createMatu(Th, Adapt, Pk);
-        J = Adapt;
-      }
+      Mat Adapt;
+      createMatu(Th, Adapt, Pk);
+      J = Adapt;
       defu(ub) = initu(0.0);
       defu(yb) = initu(0.0);
       defu(um) = initu(0.0);
@@ -398,13 +371,11 @@ while (count < maxcount){
       yb[] = yG[](restu);
       um[] = umG[](restu);
       uma[] = umaG[](restu);
-      {
-        Mat Adapt0(J), Adapt1(J.n, mpirank == 0 ? 2 : 0), Adapt2(J.n, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
-        H = Adapt0;
-        JlPM = Adapt1;
-        gqPM = Adapt2;
-        Ja = [[J,JlPM],[gqPM',glPM]]; // make dummy Jacobian
-      }
+      Mat Adapt0(J), Adapt1(J.n, mpirank == 0 ? 2 : 0), Adapt2(J.n, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
+      H = Adapt0;
+      JlPM = Adapt1;
+      gqPM = Adapt2;
+      Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
       set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
       set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
       qa.resize(J.n);

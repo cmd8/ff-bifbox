@@ -151,27 +151,12 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta;
       if (it == 1 | refactor >= it) J = vJ(XMh, XMh, tgv = -1);
       Jl -= R;
       Jl /= eps;
-      real[int] JlP;
-      ChangeNumbering(J, Jl, JlP); // FreeFEM to PETSc
-      KSPSolve(J, JlP, yqP); // compute tangent vector in PETSc numbering
-      {
-        real[int] temp = JlP;
-        real[int, int] JlPmd(temp.n, 1); // vector to dense array
-        for[i,v : temp] if(v == 0.0) v = -1e+30; // indexing trick
-        JlPmd(:, 0) = temp; // assigning the one and only column of the dense array
-        matrix JlPms = JlPmd; // dense array to sparse matrix
-        for[i,j,v : JlPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
-        ChangeOperator(JlPM, JlPms, parent = Ja); // send to Mat
-      }
-      {
-        real[int] temp = yqP;
-        real[int, int] yqPmd(temp.n, 1); // vector to dense array
-        for[i,v : temp] if(v == 0.0) v = -1e+30;
-        yqPmd(:, 0) = temp; // assigning the one and only column of the dense array
-        matrix yqPms = yqPmd; // dense array to sparse matrix
-        for[i,j,v : yqPms] if(abs(v+1e+30) < 1e-29) v = 0.0;
-        ChangeOperator(yqPM, yqPms, parent = Ja); // send to Mat
-      }
+      ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
+      matrix tempPms = [[yqP]]; // dense array to sparse matrix
+      ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+      KSPSolve(J, yqP, yqP); // compute tangent vector in PETSc numbering
+      tempPms = [[yqP]]; // dense array to sparse matrix
+      ChangeOperator(yqPM, tempPms, parent = Ja); // send to Mat
       return 0;
   }
 
@@ -194,8 +179,8 @@ broadcast(processor(0), lambda);
   J = vJ(XMh, XMh, tgv = -1);
   Jl -= R;
   Jl /= eps;
-  ChangeNumbering(J, Jl, yqP0); // FreeFEM to PETSc
-  KSPSolve(J, yqP0, yqP);
+  ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
+  KSPSolve(J, yqP, yqP);
   yqP0 = yqP;
 }
 while (count < maxcount){
@@ -260,21 +245,19 @@ while (count < maxcount){
       defu(uG) = defu(uG);
       defu(yG) = defu(yG);
       Th = Thg;
-      { Mat Adapt;
-        createMatu(Th, Adapt, Pk);
-        J = Adapt;
-      }
+      Mat Adapt;
+      createMatu(Th, Adapt, Pk);
+      J = Adapt;
       defu(ub) = initu(0.0);
       defu(yb) = initu(0.0);
       restu.resize(ub[].n); // Change size of restriction operator
       restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
       ub[] = uG[](restu);
       yb[] = yG[](restu);
-      { Mat Adapt1(J.n, mpirank == 0 ? 1 : 0), Adapt2(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
-        JlPM = Adapt1;
-        yqPM = Adapt2;
-        Ja = [[J,JlPM],[yqPM',-1.0]]; // make dummy Jacobian
-      }
+      Mat Adapt1(J.n, mpirank == 0 ? 1 : 0), Adapt2(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
+      JlPM = Adapt1;
+      yqPM = Adapt2;
+      Ja = [[J,JlPM],[yqPM',-1.0]]; // make dummy Jacobian
       set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
       set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
       qa.resize(J.n);

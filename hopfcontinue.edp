@@ -34,7 +34,8 @@ real kappamax = getARGV("-kmax", 0.5);
 real deltamax = getARGV("-dmax", 4.0);
 real alphamax = getARGV("-amax", 30.)*pi/180.0;
 int monotone = getARGV("-mono", 0);
-real eps = getARGV("-eps", 1e-7);
+real eps1 = getARGV("-eps1", 1e-7);
+real eps2 = getARGV("-eps2", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
 real snesrtol = getARGV("-snes_rtol", 0.0);
@@ -187,40 +188,29 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       ChangeNumbering(J, uma[], qma, inverse = true);
       ik = 1i*real(m);
       iomega = 1i*omega;
-      updatelambda(param1, lambda1 + eps);
+      updatelambda(param1, lambda1 + eps1);
       updatelambda(param2, lambda2);
       complex[int] Jl1 = vR(0, XMh, tgv = -1);
       complex[int] Hl1 = vJq(0, XMh, tgv = -10);
       updatelambda(param1, lambda1);
-      updatelambda(param2, lambda2 + eps);
+      updatelambda(param2, lambda2 + eps2);
       complex[int] Jl2 = vR(0, XMh, tgv = -1);
       complex[int] Hl2 = vJq(0, XMh, tgv = -10);
       updatelambda(param2, lambda2);
       complex[int] a0 = vR(0, XMh, tgv = -1);
       Jl1 -= a0;
       Jl2 -= a0;
-      Jl1 /= eps;
-      Jl2 /= eps;
-      complex[int] bm = vJq(0, XMh, tgv = -10);
+      Jl1 /= eps1;
+      Jl2 /= eps2;
+      complex[int] Jl1P, Jl2P, bm = vJq(0, XMh, tgv = -10);
       Hl1 -= bm;
       Hl2 -= bm;
-      Hl1 /= eps;
-      Hl2 /= eps;
-      complex[int] Jl1P, Jl2P;
+      Hl1 /= eps1;
+      Hl2 /= eps2;
       ChangeNumbering(J, Jl1, Jl1P); // FreeFEM to PETSc
       ChangeNumbering(J, Jl2, Jl2P); // FreeFEM to PETSc
-      {
-        complex[int] temp1 = Jl1P, temp2 = Jl2P;
-        complex[int, int] tempPmd(temp1.n, 3); // vector to dense array
-        for[i,v : temp1.re] if(v == 0.0) v = -1e+30; // indexing trick
-        for[i,v : temp2.re] if(v == 0.0) v = -1e+30; // indexing trick
-        tempPmd(:, 0).re = temp1.re; // assigning the one and only column of the dense array
-        tempPmd(:, 1).re = -1e+30; // assigning the one and only column of the dense array
-        tempPmd(:, 2).re = temp2.re; // assigning the one and only column of the dense array
-        matrix<complex> tempPms = tempPmd; // dense array to sparse matrix
-        for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
-        ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      }
+      matrix<complex> tempPms = [[Jl1P,0,Jl2P]]; // dense array to sparse matrix
+      ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       bm = vMq(0, XMh, tgv = -10);
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
       complex gl1 = J(uma[], Hl1);
@@ -246,25 +236,16 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       yw = (imag(gl2) - d11*yl1 + real(J(Jl1, yb[])))/(real(gw) - d11*c);
       yl1 -= c*yw;
       yqP -= yl1*Jl2P;
-      {
-        complex[int] temp1 = Jl1P, temp3 = yqP;
-        complex[int, int] tempPmd(temp1.n, 3); // vector to dense array
-        for[i,v : temp1.re] if(v == 0.0) v = -1e+30; // indexing trick
-        for[i,v : temp1.im] if(v == 0.0) v = 1e+30; // indexing trick
-        for[i,v : temp3.re] if(v == 0.0) v = -1e+30; // indexing trick
-        tempPmd(:, 0).re = temp1.re; // assigning the one and only column of the dense array
-        tempPmd(:, 1).re = -temp1.im; // assigning the one and only column of the dense array
-        tempPmd(:, 2).re = temp3.re; // assigning the one and only column of the dense array
-        matrix<complex> tempPms = tempPmd; // dense array to sparse matrix
-        for[i,j,v : tempPms] if(abs(v+1e+30) < 1e-29) v = 0.0; // indexing trick
-        ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-      }
-      {
-        matrix<complex> tempPms = [[real(gl1),-imag(gw), real(gl2)],
-                                   [imag(gl1), real(gw), imag(gl2)],
-                                   [yl1,        yw,     -1.0]];
-        ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-      }
+      if(!zerofreq) Jl2P.re = -Jl1P.im;
+      Jl1P.im = 0.0;
+      Jl2P.im = 0.0;
+      tempPms = [[Jl1P, Jl2P, yqP]]; // dense array to sparse matrix
+      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
+      if(zerofreq)
+        tempPms = [[real(gl1), 0.0, real(gl2)], [0.0, 1.0, 0.0], [yl1, 0.0, -1.0]];
+      else
+        tempPms = [[real(gl1), -imag(gw), real(gl2)], [imag(gl1), real(gw), imag(gl2)], [yl1, yw, -1.0]];
+      ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       return 0;
   }
 
@@ -288,25 +269,25 @@ if(mpirank == 0) {
 {
   ik = 1i*real(m);
   iomega = 1i*omega;
-  updatelambda(param1, lambda1 + eps);
+  updatelambda(param1, lambda1 + eps1);
   updatelambda(param2, lambda2);
   complex[int] Jl1 = vR(0, XMh, tgv = -1);
   complex[int] Hl1 = vJq(0, XMh, tgv = -10);
   updatelambda(param1, lambda1);
-  updatelambda(param2, lambda2 + eps);
+  updatelambda(param2, lambda2 + eps2);
   complex[int] Jl2 = vR(0, XMh, tgv = -1);
   complex[int] Hl2 = vJq(0, XMh, tgv = -10);
   updatelambda(param2, lambda2);
   complex[int] a0 = vR(0, XMh, tgv = -1);
   Jl1 -= a0;
-  Jl1 /= eps;
+  Jl1 /= eps1;
   Jl2 -= a0;
-  Jl2 /= eps;
-  complex[int] bm = vJq(0, XMh, tgv = -10);
+  Jl2 /= eps2;
+  complex[int] Jl1P, Jl2P, bm = vJq(0, XMh, tgv = -10);
   Hl1 -= bm;
-  Hl1 /= eps;
+  Hl1 /= eps1;
   Hl2 -= bm;
-  Hl2 /= eps;
+  Hl2 /= eps2;
   bm = vMq(0, XMh, tgv = -10);
   H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
   complex gl1 = J(uma[], Hl1);
@@ -315,7 +296,6 @@ if(mpirank == 0) {
   ik = 0.0;
   iomega = 0.0;
   J = vJ(XMh, XMh, tgv = -1);
-  complex[int] Jl1P, Jl2P;
   ChangeNumbering(J, Jl1, Jl1P);
   ChangeNumbering(J, Jl2, Jl2P);
   KSPSolve(J, Jl2P, yqP); //x
@@ -441,11 +421,9 @@ while (count < maxcount){
       defu(umarG) = defu(umarG);
       defu(umaiG) = defu(umaiG);
       Th = Thg;
-      {
-        Mat<complex> Adapt;
-        createMatu(Th, Adapt, Pk);
-        J = Adapt;
-      }
+      Mat<complex> Adapt;
+      createMatu(Th, Adapt, Pk);
+      J = Adapt;
       defu(ub) = initu(0.0);
       defu(yb) = initu(0.0);
       defu(um) = initu(0.0);
@@ -457,13 +435,11 @@ while (count < maxcount){
       um[].im = umiG[](restu);
       uma[].re = umarG[](restu);
       uma[].im = umaiG[](restu);
-      {
-        Mat<complex> Adapt0(J), Adapt1(J.n, mpirank == 0 ? 3 : 0), Adapt2(J.n, mpirank == 0 ? 3 : 0); // Initialize Mat objects for bordered matrix
-        H = Adapt0;
-        JlPM = Adapt1;
-        gqPM = Adapt2;
-        Ja = [[J,JlPM],[gqPM',glPM]]; // make dummy Jacobian
-      }
+      Mat<complex> Adapt0(J), Adapt1(J.n, mpirank == 0 ? 3 : 0), Adapt2(J.n, mpirank == 0 ? 3 : 0); // Initialize Mat objects for bordered matrix
+      H = Adapt0;
+      JlPM = Adapt1;
+      gqPM = Adapt2;
+      Ja = [[J,JlPM],[gqPM',glPM]]; // make dummy Jacobian
       set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
       set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
       qa.resize(J.n);
