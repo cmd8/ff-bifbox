@@ -32,8 +32,6 @@ int epsnev = getARGV("-eps_nev", 1);
 bool strictnev = getARGV("-strict", 0);
 string sttype = getARGV("-st_type", "sinvert");
 string stpctype = getARGV("-st_pc_type", "lu");
-// other variables
-complex[int] val(epsnev);
 
 if (hopffilein == "" && foldfilein == "" && basefilein == ""  && modefilein != "") basefilein = readbasename(workdir + modefilein + ".mode");
 string meshfile;
@@ -60,6 +58,7 @@ if(foldfilein != "") {
   savebase(workdir, modefileout, "", meshfile, true, true, paraviewflag);
   basefilein = modefileout;
 }
+complex[int] val(epsnev);
 XMh<complex>[int] defu(vec)(epsnev);
 XMh<complex> defu(um);
 

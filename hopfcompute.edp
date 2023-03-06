@@ -279,7 +279,7 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       Hl -= bm;
       Hl /= eps;
       ChangeNumbering(J, Jl, temp1);
-      matrix<complex> tempPms = [[temp1, 0.0]]; // dense array to sparse matrix
+      matrix<complex> tempPms = [[temp1, 0]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
       MatMultHermitianTranspose(H, qma, temp1); // compute (dL/dq*w)'*v
@@ -289,7 +289,7 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       complex gl = J(uma[], Hl);
       if(zerofreq)
-        tempPms = [[real(gl), 0.0], [0.0, 1.0]];
+        tempPms = [[real(gl), 0], [0, 1.0]];
       else {
         bm = vMq(0, XMh, tgv = -10);
         complex gw = J(uma[], bm);
