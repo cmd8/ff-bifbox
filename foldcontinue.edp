@@ -97,7 +97,7 @@ Mat H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 
 real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 2 : 0));
 int it, internalit, adaptflag;
-real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yl2, yl20;
+real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
@@ -148,7 +148,7 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yl2, yl20;
         delta = sqrt(J(R, R) + dlambda1^2 + dlambda2^2); // distance to curve
         ChangeNumbering(J, R, yqP0, inverse = true, exchange = false);
         ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
-        alpha = (J(R, yb[]) + yl10*yl1 + yl20*yl2)/sqrt((J(R, R) + yl10^2 + yl20^2)*(J(yb[], yb[]) + yl1^2 + yl2^2));
+        alpha = (J(R, yb[]) + yl10*yl1 + 1.0)/sqrt((J(R, R) + yl10^2 + 1.0)*(J(yb[], yb[]) + yl1^2 + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(alpha)*acos(abs(alpha))*180./pi) << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << "." << endl;
@@ -198,13 +198,14 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yl2, yl20;
       ChangeNumbering(J, Jl2, Jl2P); // FreeFEM to PETSc
       matrix tempPms = [[Jl1P, Jl2P]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      MatMultTranspose(H, qma, yqP);
-      tempPms = [[yqP, 0]]; // dense array to sparse matrix
+      MatMultTranspose(H, qma, Jl1P);
+      tempPms = [[Jl1P, 0]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-      yqP *= 2.0;
-      yl1 = J(uma[], Hl1);
-      yl2 = J(uma[], Hl2);
-      tempPms = [[yl1, 0], [-yl1, yl2]];
+      real gl1 = J(uma[], Hl1);
+      real gl2 = J(uma[], Hl2);
+      yqP = -(1.0/gl2)*Jl1P;
+      yl1 = -gl1/gl2;
+      tempPms = [[gl1, gl2], [yl1, -1.0]];
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       return 0;
   }
@@ -241,23 +242,22 @@ if(mpirank == 0) {
   Hl2 /= eps2;
   H = vH(XMh, XMh, tgv = -10);
   MatMultTranspose(H, qma, yqP);
-  yqP *= 2.0;
-  yl1 = J(uma[], Hl1);
-  yl2 = J(uma[], Hl2);
+  yl1 = J(uma[], Hl2);
+  yqP /= -yl1;
+  yl1 = -J(uma[], Hl1)/yl1;
 }
 yqP0 = yqP;
 yl10 = yl1;
-yl20 = yl2;
 qP = qm;
 pP = qma;
 while (count < maxcount){
   real[int] qa0 = qa;
   ChangeNumbering(J, yb[], yqP, inverse = true); // PETSc to FreeFEM
-  real h = h0/sqrt(J(yb[], yb[]) + yl1^2 + yl2^2); // use FreeFEM numbering here
+  real h = h0/sqrt(J(yb[], yb[]) + yl1^2 + 1.0); // use FreeFEM numbering here
   qa(0:qa.n - (mpirank == 0 ? 3 : 1)) -= (h*yqP);
   if (mpirank == 0) {
     qa(qa.n-2) -= h*yl1;
-    qa(qa.n-1) -= h*yl2;
+    qa(qa.n-1) += h;
     lambda1 = qa(qa.n-2);
     lambda2 = qa(qa.n-1);
   }
@@ -411,7 +411,6 @@ while (count < maxcount){
     qP = qm;
     pP = qma;
     yl10 = yl1;
-    yl20 = yl2;
   } else {
     if (mpirank == 0){
       if(res*(monotone!=0) >= resp) cout << "\tResidual norm failed to decrease. Reattempting with smaller step." << endl;

@@ -272,13 +272,14 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       complex[int] Jl = vR(0, XMh, tgv = -1);
       complex[int] Hl = vJq(0, XMh, tgv = -10);
       updatelambda(param, lambda);
-      complex[int] temp1(qm.n), temp2(qm.n), bm = vR(0, XMh, tgv = -1);
+      complex[int] temp1, temp2(qm.n), bm = vR(0, XMh, tgv = -1);
       Jl -= bm;
       Jl /= eps;
       bm = vJq(0, XMh, tgv = -10);
       Hl -= bm;
       Hl /= eps;
       ChangeNumbering(J, Jl, temp1);
+      temp1.im = 0.0;
       matrix<complex> tempPms = [[temp1, 0]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
@@ -293,7 +294,7 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       else {
         bm = vMq(0, XMh, tgv = -10);
         complex gw = J(uma[], bm);
-        tempPms = [[real(gl),-imag(gw)],[imag(gl),real(gw)]];
+        tempPms = [[real(gl), -imag(gw)], [imag(gl), real(gw)]];
       }
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       ik = 0.0;

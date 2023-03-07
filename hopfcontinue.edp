@@ -99,7 +99,7 @@ Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 
 complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 3 : 0));
 int it, internalit, adaptflag;
-real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0, yl2, yl20;
+real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
 // FUNCTIONS
   func complex[int] funcRa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
@@ -149,7 +149,6 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0, yl
           dlambda1 = real(qdiff(qdiff.n-3)); // Extract parameter value from state vector on proc 0
           domega = zerofreq ? 0.0 : real(qdiff(qdiff.n-2)); // Extract parameter value from state vector on proc 0
           dlambda2 = real(qdiff(qdiff.n-1)); // Extract parameter value from state vector on proc 0
-          cout << dlambda1 << " " << domega << " " << dlambda2 << endl;
         }
         broadcast(processor(0), dlambda1);
         broadcast(processor(0), domega);
@@ -158,7 +157,7 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0, yl
         delta = sqrt(real(J(R, R)) + dlambda1^2 + domega^2 + dlambda2^2); // distance to curve
         ChangeNumbering(J, R, yqP0, inverse = true, exchange = false);
         ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
-        alpha = (real(J(R, yb[])) + yl10*yl1 + yw0*yw + yl20*yl2)/sqrt((real(J(R, R)) + yl10^2 + yw0^2 + yl20^2)*(real(J(yb[], yb[])) + yl1^2 + yw^2 + yl2^2));
+        alpha = (real(J(R, yb[])) + yl10*yl1 + yw0*yw + 1.0)/sqrt((real(J(R, R)) + yl10^2 + yw0^2 + 1.0)*(real(J(yb[], yb[])) + yl1^2 + yw^2 + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(alpha)*acos(abs(alpha))*180./pi) << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
@@ -210,33 +209,33 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0, yl
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
       ChangeNumbering(J, Jl1, Jl1P); // FreeFEM to PETSc
       ChangeNumbering(J, Jl2, Jl2P); // FreeFEM to PETSc
+      Jl1P.im = 0.0;
+      Jl2P.im = 0.0;
       matrix<complex> tempPms = [[Jl1P, 0, Jl2P]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       MatMultHermitianTranspose(H, qma, yqP); // gqr,i
       Jl1P.re = yqP.re;
-      Jl1P.im = 0.0;
+      if(zerofreq) tempPms = [[Jl1P, 0, 0]]; // dense array to sparse matrix
+      else {
+        Jl2P.re = -yqP.im;
+        tempPms = [[Jl1P, Jl2P, 0]]; // dense array to sparse matrix
+      }
+      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       complex gl1 = J(uma[], Hl1);
       complex gl2 = J(uma[], Hl2);
+      yl1 = -real(gl1)/real(gl2);
       if(zerofreq) {
-        tempPms = [[Jl1P, 0, 0]]; // dense array to sparse matrix
-        ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-        tempPms = [[real(gl1), 0, 0], [0, 1.0, 0], [-real(gl1), 0, real(gl2)]];
+        tempPms = [[real(gl1), 0, real(gl2)], [0, 1.0, 0], [yl1, 0, -1.0]];
         yw = 0.0;
       } else {
-        Jl2P.re = -yqP.im;
-        Jl2P.im = 0.0;
-        tempPms = [[Jl1P, Jl2P, 0]]; // dense array to sparse matrix
-        ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
         bm = vMq(0, XMh, tgv = -10);
         complex gw = J(uma[], bm);
-        tempPms = [[real(gl1), -imag(gw), 0], [real(gl1), real(gw), 0], [-real(gl1), 0, real(gl2)]];
-        yw = -2.0*imag(gw);
+        tempPms = [[real(gl1), -imag(gw), real(gl2)], [imag(gl1), real(gw), imag(gl2)], [yl1, 0, -1.0]];
+        yw = imag(gw)/real(gl2);
       }
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-      yqP *= 2.0;
+      yqP /= -real(gl2);
       yqP.im = 0.0;
-      yl1 = real(gl1);
-      yl2 = real(gl2);
       ik = 0.0;
       iomega = 0.0;
       J = vJ(XMh, XMh, tgv = -1);
@@ -270,38 +269,40 @@ if(mpirank == 0) {
   updatelambda(param2, lambda2 + eps2);
   complex[int] Hl2 = vJq(0, XMh, tgv = -10);
   updatelambda(param2, lambda2);
-  complex[int] a0 = vJq(0, XMh, tgv = -10);
-  Hl1 -= a0;
+  complex[int] bm = vJq(0, XMh, tgv = -10);
+  Hl1 -= bm;
   Hl1 /= eps1;
-  Hl2 -= a0;
+  Hl2 -= bm;
   Hl2 /= eps2;
   H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
   MatMultHermitianTranspose(H, qma, yqP); // gqr,i
-  yqP *= 2.0;
+  yqP = conj(yqP);
+  complex gl1 = J(uma[], Hl1);
+  complex gl2 = J(uma[], Hl2);
+  yqP /= -real(gl2);
   yqP.im = 0.0;
-  yl1 = real(J(uma[], Hl1));
+  yl1 = -real(gl1)/real(gl2);
   if(zerofreq) yw = 0.0;
   else {
-    a0 = vMq(0, XMh, tgv = -10);
-    yw = -imag(J(uma[], a0));
+    bm = vMq(0, XMh, tgv = -10);
+    complex gw = J(uma[], bm);
+    yw = imag(gw)/real(gl2);
   }
-  yl2 = real(J(uma[], Hl2));
 }
 yqP0 = yqP;
 yl10 = yl1;
 yw0 = yw;
-yl20 = yl2;
 ChangeNumbering(J, um[], qP);
 ChangeNumbering(J, uma[], pP);
 while (count < maxcount){
   complex[int] qa0 = qa;
   ChangeNumbering(J, yb[], yqP, inverse = true); // PETSc to FreeFEM
-  real h = h0/sqrt(real(J(yb[], yb[])) + yl1^2 + yw^2 + yl2^2); // use FreeFEM numbering here
+  real h = h0/sqrt(real(J(yb[], yb[])) + yl1^2 + yw^2 + 1.0); // use FreeFEM numbering here
   qa(0:qa.n - (mpirank == 0 ? 4 : 1)) -= (h*yqP);
   if (mpirank == 0) {
     qa(qa.n-3) -= h*yl1;
     qa(qa.n-2) -= h*yw;
-    qa(qa.n-1) -= h*yl2;
+    qa(qa.n-1) += h;
     lambda1 = real(qa(qa.n-3));
     omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
     lambda2 = real(qa(qa.n-1));
@@ -471,7 +472,6 @@ while (count < maxcount){
     pP = qma;
     yl10 = yl1;
     yw0 = yw;
-    yl20 = yl2;
   } else {
     if (mpirank == 0){
       if(res*(monotone!=0) >= resp) cout << "\tResidual norm failed to decrease. Reattempting with smaller step." << endl;
