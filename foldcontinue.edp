@@ -92,8 +92,9 @@ include "eqns_custom.idp"
 ENDIFMACRO
 
 // Build bordered block matrix from only Mat components
-Mat JlPM(J.n, mpirank == 0 ? 2 : 0), gqPM(J.n, mpirank == 0 ? 2 : 0), glPM(mpirank == 0 ? 2 : 0, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
-Mat H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
+Mat JlPM(J.n, mpirank == 0 ? 1 : 0), gqPM(J.n, mpirank == 0 ? 1 : 0), glPM(mpirank == 0 ? 1 : 0, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
+Mat JlPMa(J.n + (mpirank == 0 ? 1 : 0), mpirank == 0 ? 1 : 0), yqPMa(J.n + (mpirank == 0 ? 1 : 0), mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
+Mat H(J), Ja = [[J, JlPM], [gqPM', glPM]], Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; // make dummy Jacobian
 
 real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 2 : 0));
 int it, internalit, adaptflag;
@@ -144,10 +145,10 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
         }
         broadcast(processor(0), dlambda1);
         broadcast(processor(0), dlambda2);
-        ChangeNumbering(J, R, qdiff(0:qdiff.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = false);
+        ChangeNumbering(J, R, qdiff(0:qdiff.n - (mpirank == 0 ? 3 : 1)), inverse = true);
         delta = sqrt(J(R, R) + dlambda1^2 + dlambda2^2); // distance to curve
-        ChangeNumbering(J, R, yqP0, inverse = true, exchange = false);
-        ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
+        ChangeNumbering(J, R, yqP0, inverse = true);
+        ChangeNumbering(J, yb[], yqP, inverse = true);
         alpha = (J(R, yb[]) + yl10*yl1 + 1.0)/sqrt((J(R, R) + yl10^2 + 1.0)*(J(yb[], yb[]) + yl1^2 + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
@@ -183,7 +184,7 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
       real[int] Jl2 = vR(0, XMh, tgv = -1);
       real[int] Hl2 = vJq(0, XMh, tgv = -10);
       updatelambda(param2, lambda2);
-      real[int] Jl1P, Jl2P, a0 = vR(0, XMh, tgv = -1);
+      real[int] a0 = vR(0, XMh, tgv = -1);
       Jl1 -= a0;
       Jl2 -= a0;
       Jl1 /= eps1;
@@ -193,26 +194,38 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
       Hl2 -= a0;
       Hl1 /= eps1;
       Hl2 /= eps2;
-      H = vH(XMh, XMh, tgv = -10);
-      ChangeNumbering(J, Jl1, Jl1P); // FreeFEM to PETSc
-      ChangeNumbering(J, Jl2, Jl2P); // FreeFEM to PETSc
-      matrix tempPms = [[Jl1P, Jl2P]]; // dense array to sparse matrix
+      ChangeNumbering(J, Jl1, yqP); // FreeFEM to PETSc
+      matrix tempPms = [[yqP]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      MatMultTranspose(H, qma, Jl1P);
-      tempPms = [[Jl1P, 0]]; // dense array to sparse matrix
-      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-      real gl1 = J(uma[], Hl1);
-      real gl2 = J(uma[], Hl2);
-      yqP = -(1.0/gl2)*Jl1P;
-      yl1 = -gl1/gl2;
-      tempPms = [[gl1, gl2], [yl1, -1.0]];
+      tempPms = [[J(uma[], Hl1)]];
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
+      H = vH(XMh, XMh, tgv = -10);
+      MatMultTranspose(H, qma, yqP);
+      tempPms = [[yqP]];
+      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
+      ChangeNumbering(J, Jl2, yqP); // FreeFEM to PETSc
+      real gl2 = J(uma[], Hl2);
+      if (mpirank == 0) {
+        yqP.resize(yqP.n+1);
+        yqP(yqP.n-1) = gl2;
+      }
+      tempPms = [[yqP]]; // dense array to sparse matrix
+      ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
+      KSPSolve(Ja, yqP, yqP);
+      tempPms = [[yqP]]; // dense array to sparse matrix
+      ChangeOperator(yqPMa, tempPms, parent = Jaa); // send to Mat
+      if (mpirank == 0) {
+        yl1 = yqP(yqP.n-1);
+        yqP.resize(yqP.n-1);
+      }
+      broadcast(processor(0), yl1);
       return 0;
   }
 
 // fix indexing problem
-set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
-set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
+set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa, setup = 1);
+set(J, sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
 
 // PREDICTOR
 real[int] qa;
@@ -230,21 +243,45 @@ if(mpirank == 0) {
 {
   updatelambda(param1, lambda1 + eps1);
   updatelambda(param2, lambda2);
+  real[int] Jl1 = vR(0, XMh, tgv = -1);
   real[int] Hl1 = vJq(0, XMh, tgv = -10);
   updatelambda(param1, lambda1);
   updatelambda(param2, lambda2 + eps2);
+  real[int] Jl2 = vR(0, XMh, tgv = -1);
   real[int] Hl2 = vJq(0, XMh, tgv = -10);
   updatelambda(param2, lambda2);
-  real[int] a0 = vJq(0, XMh, tgv = -10);
+  real[int] a0 = vR(0, XMh, tgv = -1);
+  Jl1 -= a0;
+  Jl1 /= eps1;
+  Jl2 -= a0;
+  Jl2 /= eps2;
+  a0 = vJq(0, XMh, tgv = -10);
   Hl1 -= a0;
   Hl1 /= eps1;
   Hl2 -= a0;
   Hl2 /= eps2;
+  J = vJ(XMh, XMh, tgv = -1);
+  ChangeNumbering(J, Jl1, yqP); // FreeFEM to PETSc
+  matrix tempPms = [[yqP]]; // dense array to sparse matrix
+  ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+  tempPms = [[J(uma[], Hl1)]];
+  ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
   H = vH(XMh, XMh, tgv = -10);
   MatMultTranspose(H, qma, yqP);
-  yl1 = J(uma[], Hl2);
-  yqP /= -yl1;
-  yl1 = -J(uma[], Hl1)/yl1;
+  tempPms = [[yqP]];
+  ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
+  ChangeNumbering(J, Jl2, yqP); // FreeFEM to PETSc
+  real gl2 = J(uma[], Hl2);
+  if (mpirank == 0) {
+    yqP.resize(yqP.n+1);
+    yqP(yqP.n-1) = gl2;
+  }
+  KSPSolve(Ja, yqP, yqP);
+  if (mpirank == 0) {
+    yl1 = yqP(yqP.n-1);
+    yqP.resize(yqP.n-1);
+  }
+  broadcast(processor(0), yl1);
 }
 yqP0 = yqP;
 yl10 = yl1;
@@ -270,7 +307,7 @@ while (count < maxcount){
   it = 0;
   internalit = 0;
   adaptflag = 0;
-  SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
+  SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
             sparams = " -snes_rtol " + snesrtol
                     + " -snes_linesearch_type " + sneslinesearchtype
                     + " -snes_max_it " + snesmaxit
@@ -352,13 +389,18 @@ while (count < maxcount){
       yb[] = yG[](restu);
       um[] = umG[](restu);
       uma[] = umaG[](restu);
-      Mat Adapt0(J), Adapt1(J.n, mpirank == 0 ? 2 : 0), Adapt2(J.n, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
+      Mat Adapt0(J), Adapt1(J.n, mpirank == 0 ? 1 : 0), Adapt2(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
+      Mat Adapt3(J.n + (mpirank == 0 ? 1 : 0), mpirank == 0 ? 1 : 0), Adapt4(J.n + (mpirank == 0 ? 1 : 0), mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
       H = Adapt0;
       JlPM = Adapt1;
       gqPM = Adapt2;
+      JlPMa = Adapt3;
+      yqPMa = Adapt4;
       Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
-      set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
-      set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+      Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; // make dummy Jacobian
+      set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
+      set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa, setup = 1);
+      set(J, sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
       qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
       if(mpirank == 0) {
@@ -386,7 +428,7 @@ while (count < maxcount){
       it = 0;
       internalit = 0;
       adaptflag = 1;
-      SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
+      SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
       sparams = " -snes_rtol " + snesrtol
               + " -snes_linesearch_type " + sneslinesearchtype
               + " -snes_converged_reason "

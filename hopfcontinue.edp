@@ -94,8 +94,9 @@ include "eqns_custom.idp"
 ENDIFMACRO
 
 // Build bordered block matrix from only Mat components
-Mat<complex> JlPM(J.n, mpirank == 0 ? 3 : 0), gqPM(J.n, mpirank == 0 ? 3 : 0), glPM(mpirank == 0 ? 3 : 0, mpirank == 0 ? 3 : 0); // Initialize Mat objects for bordered matrix
-Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
+Mat<complex> JlPM(J.n, mpirank == 0 ? 2 : 0), gqPM(J.n, mpirank == 0 ? 2 : 0), glPM(mpirank == 0 ? 2 : 0, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
+Mat<complex> JlPMa(J.n + (mpirank == 0 ? 2 : 0), mpirank == 0 ? 1 : 0), yqPMa(J.n + (mpirank == 0 ? 2 : 0), mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
+Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]], Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; // make dummy Jacobian
 
 complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 3 : 0));
 int it, internalit, adaptflag;
@@ -153,10 +154,10 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
         broadcast(processor(0), dlambda1);
         broadcast(processor(0), domega);
         broadcast(processor(0), dlambda2);
-        ChangeNumbering(J, R, qdiff(0:qdiff.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = false);
+        ChangeNumbering(J, R, qdiff(0:qdiff.n - (mpirank == 0 ? 4 : 1)), inverse = true);
         delta = sqrt(real(J(R, R)) + dlambda1^2 + domega^2 + dlambda2^2); // distance to curve
-        ChangeNumbering(J, R, yqP0, inverse = true, exchange = false);
-        ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
+        ChangeNumbering(J, R, yqP0, inverse = true);
+        ChangeNumbering(J, yb[], yqP, inverse = true);
         alpha = (real(J(R, yb[])) + yl10*yl1 + yw0*yw + 1.0)/sqrt((real(J(R, R)) + yl10^2 + yw0^2 + 1.0)*(real(J(yb[], yb[])) + yl1^2 + yw^2 + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
@@ -201,49 +202,56 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       Jl2 -= a0;
       Jl1 /= eps1;
       Jl2 /= eps2;
-      complex[int] Jl1P, Jl2P, bm = vJq(0, XMh, tgv = -10);
+      complex[int] dummy(J.n), bm = vJq(0, XMh, tgv = -10);
       Hl1 -= bm;
       Hl2 -= bm;
       Hl1 /= eps1;
       Hl2 /= eps2;
-      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
-      ChangeNumbering(J, Jl1, Jl1P); // FreeFEM to PETSc
-      ChangeNumbering(J, Jl2, Jl2P); // FreeFEM to PETSc
-      Jl1P.im = 0.0;
-      Jl2P.im = 0.0;
-      matrix<complex> tempPms = [[Jl1P, 0, Jl2P]]; // dense array to sparse matrix
+      ChangeNumbering(J, Jl1, yqP); // FreeFEM to PETSc
+      matrix<complex> tempPms = [[yqP, 0]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      MatMultHermitianTranspose(H, qma, yqP); // gqr,i
-      Jl1P.re = yqP.re;
-      if(zerofreq) tempPms = [[Jl1P, 0, 0]]; // dense array to sparse matrix
-      else {
-        Jl2P.re = -yqP.im;
-        tempPms = [[Jl1P, Jl2P, 0]]; // dense array to sparse matrix
-      }
-      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       complex gl1 = J(uma[], Hl1);
-      complex gl2 = J(uma[], Hl2);
-      yl1 = -real(gl1)/real(gl2);
-      if(zerofreq) {
-        tempPms = [[real(gl1), 0, real(gl2)], [0, 1.0, 0], [yl1, 0, -1.0]];
-        yw = 0.0;
-      } else {
+      if (zerofreq) tempPms = [[real(gl1), 0], [0, 1.0]];
+      else {
         bm = vMq(0, XMh, tgv = -10);
         complex gw = J(uma[], bm);
-        tempPms = [[real(gl1), -imag(gw), real(gl2)], [imag(gl1), real(gw), imag(gl2)], [yl1, 0, -1.0]];
-        yw = imag(gw)/real(gl2);
+        tempPms = [[real(gl1), -imag(gw)], [imag(gl1), real(gw)]];
       }
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-      yqP /= -real(gl2);
+      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+      MatMultHermitianTranspose(H, qma, yqP); // gqr,i
+      if(!zerofreq) dummy.re = -yqP.im;
       yqP.im = 0.0;
+      tempPms = [[yqP, dummy]]; // dense array to sparse matrix
+      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
+      ChangeNumbering(J, Jl2, yqP); // FreeFEM to PETSc
+      complex gl2 = J(uma[], Hl2);
+      if (mpirank == 0) {
+        yqP.resize(yqP.n+2);
+        yqP(yqP.n-2) = real(gl2);
+        yqP(yqP.n-1) = zerofreq ? 0.0 : imag(gl2);
+      }
+      tempPms = [[yqP]]; // dense array to sparse matrix
+      ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
       ik = 0.0;
       iomega = 0.0;
       J = vJ(XMh, XMh, tgv = -1);
+      KSPSolve(Ja, yqP, yqP);
+      tempPms = [[yqP]]; // dense array to sparse matrix
+      ChangeOperator(yqPMa, tempPms, parent = Jaa); // send to Mat
+      if (mpirank == 0) {
+        yl1 = real(yqP(yqP.n-2));
+        yw = zerofreq ? 0.0 : real(yqP(yqP.n-1));
+        yqP.resize(yqP.n-2);
+      }
+      broadcast(processor(0), yl1);
+      broadcast(processor(0), yw);
       return 0;
   }
 
-set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
-set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
+set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa, setup = 1);
+set(J, sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
 
 // PREDICTOR
 complex[int] qa;
@@ -264,30 +272,62 @@ if(mpirank == 0) {
   iomega = 1i*omega;
   updatelambda(param1, lambda1 + eps1);
   updatelambda(param2, lambda2);
+  complex[int] Jl1 = vR(0, XMh, tgv = -1);
   complex[int] Hl1 = vJq(0, XMh, tgv = -10);
   updatelambda(param1, lambda1);
   updatelambda(param2, lambda2 + eps2);
+  complex[int] Jl2 = vR(0, XMh, tgv = -1);
   complex[int] Hl2 = vJq(0, XMh, tgv = -10);
   updatelambda(param2, lambda2);
-  complex[int] bm = vJq(0, XMh, tgv = -10);
+  complex[int] a0 = vR(0, XMh, tgv = -1);
+  Jl1 -= a0;
+  Jl2 -= a0;
+  Jl1 /= eps1;
+  Jl2 /= eps2;
+  complex[int] dummy(J.n), bm = vJq(0, XMh, tgv = -10);
   Hl1 -= bm;
-  Hl1 /= eps1;
   Hl2 -= bm;
+  Hl1 /= eps1;
   Hl2 /= eps2;
-  H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
-  MatMultHermitianTranspose(H, qma, yqP); // gqr,i
-  yqP = conj(yqP);
+  ChangeNumbering(J, Jl1, yqP); // FreeFEM to PETSc
+  matrix<complex> tempPms = [[yqP, 0]]; // dense array to sparse matrix
+  ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
   complex gl1 = J(uma[], Hl1);
-  complex gl2 = J(uma[], Hl2);
-  yqP /= -real(gl2);
-  yqP.im = 0.0;
-  yl1 = -real(gl1)/real(gl2);
-  if(zerofreq) yw = 0.0;
+  if (zerofreq) tempPms = [[real(gl1), 0], [0, 1.0]];
   else {
     bm = vMq(0, XMh, tgv = -10);
     complex gw = J(uma[], bm);
-    yw = imag(gw)/real(gl2);
+    tempPms = [[real(gl1), -imag(gw)], [imag(gl1), real(gw)]];
   }
+  ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
+  H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+  MatMultHermitianTranspose(H, qma, yqP); // gqr,i
+  if(!zerofreq) dummy.re = -yqP.im;
+  yqP.im = 0.0;
+  tempPms = [[yqP, dummy]]; // dense array to sparse matrix
+  ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
+  ChangeNumbering(J, Jl2, yqP); // FreeFEM to PETSc
+  complex gl2 = J(uma[], Hl2);
+  if (mpirank == 0) {
+    yqP.resize(yqP.n+2);
+    yqP(yqP.n-2) = real(gl2);
+    yqP(yqP.n-1) = zerofreq ? 0.0 : imag(gl2);
+  }
+  tempPms = [[yqP]]; // dense array to sparse matrix
+  ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
+  ik = 0.0;
+  iomega = 0.0;
+  J = vJ(XMh, XMh, tgv = -1);
+  KSPSolve(Ja, yqP, yqP);
+  tempPms = [[yqP]]; // dense array to sparse matrix
+  ChangeOperator(yqPMa, tempPms, parent = Jaa); // send to Mat
+  if (mpirank == 0) {
+    yl1 = real(yqP(yqP.n-2));
+    yw = zerofreq ? 0.0 : real(yqP(yqP.n-1));
+    yqP.resize(yqP.n-2);
+  }
+  broadcast(processor(0), yl1);
+  broadcast(processor(0), yw);
 }
 yqP0 = yqP;
 yl10 = yl1;
@@ -317,7 +357,7 @@ while (count < maxcount){
   it = 0;
   internalit = 0;
   adaptflag = 0;
-  SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
+  SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
             sparams = " -snes_rtol " + snesrtol
                     + " -snes_linesearch_type " + sneslinesearchtype
                     + " -snes_max_it " + snesmaxit
@@ -409,13 +449,18 @@ while (count < maxcount){
       um[].im = umiG[](restu);
       uma[].re = umarG[](restu);
       uma[].im = umaiG[](restu);
-      Mat<complex> Adapt0(J), Adapt1(J.n, mpirank == 0 ? 3 : 0), Adapt2(J.n, mpirank == 0 ? 3 : 0); // Initialize Mat objects for bordered matrix
+      Mat<complex> Adapt0(J), Adapt1(J.n, mpirank == 0 ? 2 : 0), Adapt2(J.n, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
+      Mat<complex> Adapt3(J.n + (mpirank == 0 ? 2 : 0), mpirank == 0 ? 1 : 0), Adapt4(J.n + (mpirank == 0 ? 2 : 0), mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
       H = Adapt0;
       JlPM = Adapt1;
       gqPM = Adapt2;
+      JlPMa = Adapt3;
+      yqPMa = Adapt4;
       Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
-      set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
-      set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+      Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; // make dummy Jacobian
+      set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
+      set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa, setup = 1);
+      set(J, sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
       qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
       if(mpirank == 0) {
@@ -444,7 +489,7 @@ while (count < maxcount){
       it = 0;
       internalit = 0;
       adaptflag = 1;
-      SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
+      SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
       sparams = " -snes_rtol " + snesrtol
               + " -snes_linesearch_type " + sneslinesearchtype
               + " -snes_converged_reason "
