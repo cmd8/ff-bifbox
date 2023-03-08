@@ -321,7 +321,10 @@ if(mpirank == 0) {
   ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
   ik = 0.0;
   iomega = 0.0;
+  int mm = m;
+  m = 0;
   J = vJ(XMh, XMh, tgv = -1);
+  m = mm;
   KSPSolve(Ja, yqP, yqP);
   tempPms = [[yqP]]; // dense array to sparse matrix
   ChangeOperator(yqPMa, tempPms, parent = Jaa); // send to Mat
