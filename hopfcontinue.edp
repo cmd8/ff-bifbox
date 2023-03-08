@@ -19,7 +19,7 @@ include "solvermacros.idp"
 // arguments
 string meshfileout = getARGV("-msho", "");
 string hopffilein = getARGV("-hfi", "");
-string hopffileout = getARGV("-hfo", "");
+string hopffileout = getARGV("-hfo", hopffilein);
 bool zerofreq = getARGV("-zero", 0);
 bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
 int meshsplit = getARGV("-split", 1); // toggle whether mesh is split for P1 representation in Paraview
