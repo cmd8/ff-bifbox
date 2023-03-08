@@ -97,7 +97,7 @@ else { // else  output meshfile is given, adapt mesh
   for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
   if(mpirank == 0)  // Perform mesh adaptation (serially) on processor 0
-    Thg = adaptmesh(Thg, adaptu(ubG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+    Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
   broadcast(processor(0), Thg); // broadcast global mesh to all processors
   defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
   Th = Thg; //Reinitialize local mesh with global mesh
