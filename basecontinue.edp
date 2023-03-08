@@ -3,7 +3,7 @@
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
-// EXJaMPLE USAGE:
+// EXAMPLE USAGE:
 //  Continue input file along parameter without mesh adaptation:
 // mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -bfi <FILEIN> -param <PARAM>
 //
@@ -27,6 +27,7 @@ int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
 real h0 = getARGV("-h0", 1.0);
 string param = getARGV("-param","Re");
+string adapt = getARGV("-adapt","b");
 real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 0.5);
 real deltamax = getARGV("-dmax", 4.0);
@@ -228,19 +229,10 @@ while (count < maxcount){
       mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
       for[i, v : restu] tempu[][v] = yb[][i];
       mpiAllReduce(tempu[], yG[], mpiCommWorld, mpiSUM);
-      if(mpirank == 0) Thg = adaptmesh(Thg, adaptu(uG),
-                                       hmin = getARGV("-hmin",1.0e-6),
-                                       hmax = getARGV("-hmax",1.0),
-                                       err = getARGV("-err", 1.0e-2),
-                                       errg = getARGV("-errg", 1.0e-2),
-                                       nbvx = int(getARGV("-nbvx",1e6)),
-                                       nbsmooth = int(getARGV("-nbsmooth",5)),
-                                       ratio = getARGV("-ratio",1.8),
-                                       anisomax = getARGV("-anisomax",1.0),
-                                       rescaling = bool(getARGV("-rescaling", 1)),
-                                       power = getARGV("-power", 1.0),
-                                       thetamax = getARGV("-thmax", 10.0)
-                                       );
+      if(mpirank == 0) {
+        if(adapt == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+        if(adapt == "by") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptmeshoptions);
+      }
       broadcast(processor(0), Thg);
       defu(uG) = defu(uG);
       defu(yG) = defu(yG);

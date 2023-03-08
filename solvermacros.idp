@@ -47,6 +47,20 @@ macro createMatu(th,A,P){
     createMat(th,A,P)
 } // EOM
 
+macro adaptmeshoptions()
+hmin = getARGV("-hmin",1.0e-6),
+hmax = getARGV("-hmax",1.0),
+err = getARGV("-err", 1.0e-2),
+errg = getARGV("-errg", 1.0e-2),
+nbvx = int(getARGV("-nbvx",1e6)),
+nbsmooth = int(getARGV("-nbsmooth",5)),
+ratio = getARGV("-ratio",1.8),
+anisomax = getARGV("-anisomax",1.0),
+rescaling = bool(getARGV("-rescaling", 1)),
+power = getARGV("-power", 1.0),
+thetamax = getARGV("-thmax", 10.0)
+//EOM
+
 // FUNCTIONS -------------------------------------------------------------------
 macro savebase(workdir, basefileout, statsfile, meshfile, saveflag, monitorflag, paraviewflag){
   XMhg defu(tempu), defu(ubg);

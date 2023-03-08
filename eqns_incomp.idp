@@ -56,10 +56,3 @@ varf vMq(defu(dum), defu(v))
       )
       + HomBoundaryConditions(m, dum);
 ENDIFMACRO
-IFMACRO(HessianVec)
-varf vHq(defu(dum), defu(v))
-      = int2d(Th)(
-        ugradu(v, um, 0, dub) + ugradu(v, dub, ik, um)
-      )
-      + HomBoundaryConditions(0, dum);
-ENDIFMACRO

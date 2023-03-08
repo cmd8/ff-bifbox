@@ -110,6 +110,7 @@ bool zerofreq = getARGV("-zero", 0);
 bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
 int meshsplit = getARGV("-split", 1); // toggle whether mesh is split for P1 representation in Paraview
 string param = getARGV("-param","");
+string adapt = getARGV("-adapt","b");
 real eps = getARGV("-eps", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
@@ -177,9 +178,9 @@ else {
   ChangeNumbering(J, um[], q, inverse = true);
   ChangeNumbering(J, uma[], q);
   ChangeNumbering(J, uma[], q, inverse = true);
-  XMhg defu(ubG), defu(umrG), defu(umiG), defu(umarG), defu(umaiG), defu(tempu);
+  XMhg defu(uG), defu(umrG), defu(umiG), defu(umarG), defu(umaiG), defu(tempu);
   for[i, v : restu] tempu[][v] = real(ub[][i]);
-  mpiAllReduce(tempu[], ubG[], mpiCommWorld, mpiSUM);
+  mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
   for[i, v : restu] tempu[][v] = real(um[][i]);
   mpiAllReduce(tempu[], umrG[], mpiCommWorld, mpiSUM);
   for[i, v : restu] tempu[][v] = imag(um[][i]);
@@ -188,21 +189,14 @@ else {
   mpiAllReduce(tempu[], umarG[], mpiCommWorld, mpiSUM);
   for[i, v : restu] tempu[][v] = imag(uma[][i]);
   mpiAllReduce(tempu[], umaiG[], mpiCommWorld, mpiSUM);
-  if(mpirank == 0) Thg = adaptmesh(Thg, adaptu(ubG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG),
-                                   hmin = getARGV("-hmin",1.0e-6),
-                                   hmax = getARGV("-hmax",1.0),
-                                   err = getARGV("-err", 1.0e-2),
-                                   errg = getARGV("-errg", 0.1),
-                                   nbvx = int(getARGV("-nbvx",1e6)),
-                                   nbsmooth = int(getARGV("-nbsmooth",5)),
-                                   ratio = getARGV("-ratio",1.8),
-                                   anisomax = getARGV("-anisomax",1.0),
-                                   rescaling = bool(getARGV("-rescaling", 1)),
-                                   power = getARGV("-power", 1.0),
-                                   thetamax = getARGV("-thmax", 10.0)
-                                   );
+  if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
+    if(adapt == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+    else if(adapt == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptmeshoptions);
+    else if(adapt == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+    else if(adapt == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+  } // TODO: add adaptation to endogeneity and structural sensitivity
   broadcast(processor(0), Thg);
-  defu(ubG) = defu(ubG);
+  defu(uG) = defu(uG);
   defu(umrG) = defu(umrG);
   defu(umiG) = defu(umiG);
   defu(umarG) = defu(umarG);
@@ -216,7 +210,7 @@ else {
   defu(uma) = initu(0.0);
   restu.resize(ub[].n); // Change size of restriction operator
   restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
-  ub[].re = ubG[](restu);
+  ub[].re = uG[](restu);
   um[].re = umrG[](restu);
   um[].im = umiG[](restu);
   uma[].re = umarG[](restu);
@@ -299,7 +293,10 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       ik = 0.0;
       iomega = 0.0;
+      int mm = m;
+      m = 0;
       J = vJ(XMh, XMh, tgv = -1);
+      m = mm;
       return 0;
   }
 

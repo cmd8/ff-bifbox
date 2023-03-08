@@ -28,6 +28,7 @@ int maxcount = getARGV("-maxcount", 100);
 real h0 = getARGV("-h0", 1.0);
 string param1 = getARGV("-param1","");
 string param2 = getARGV("-param2","");
+string adapt = getARGV("-adapt","b");
 real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 1.0);
 real deltamax = getARGV("-dmax", 4.0);
@@ -356,20 +357,16 @@ while (count < maxcount){
       mpiAllReduce(tempu[], umG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
       for[i, v : restu] tempu[][v] = uma[][i]; // populate local portion of global soln
       mpiAllReduce(tempu[], umaG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
-      if(mpirank == 0) // Perform mesh adaptation (serially) on processor 0
-        Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptu(umaG),
-                        hmin = getARGV("-hmin",1.0e-6),
-                        hmax = getARGV("-hmax",1.0),
-                        err = getARGV("-err", 0.01),
-                        errg = getARGV("-errg", 0.1),
-                        nbvx = int(getARGV("-nbvx",1e6)),
-                        nbsmooth = int(getARGV("-nbsmooth",5)),
-                        ratio = getARGV("-ratio",1.8),
-                        anisomax = getARGV("-anisomax",1.0),
-                        rescaling = bool(getARGV("-rescaling", 1)),
-                        power = getARGV("-power", 1.0),
-                        thetamax = getARGV("-thmax", 10.0)
-                        );
+      if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
+        if(adapt == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+        else if(adapt == "by") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptmeshoptions);
+        else if(adapt == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptmeshoptions);
+        else if(adapt == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umaG), adaptmeshoptions);
+        else if(adapt == "byd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umG), adaptmeshoptions);
+        else if(adapt == "bya") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umaG), adaptmeshoptions);
+        else if(adapt == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptu(umaG), adaptmeshoptions);
+        else if(adapt == "byda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umG), adaptu(umaG), adaptmeshoptions);
+      } // TODO: add adaptation to endogeneity and structural sensitivity
       broadcast(processor(0), Thg); // broadcast global mesh to all processors
       defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
       defu(yG) = defu(yG); //interpolate global solution from old mesh to new mesh

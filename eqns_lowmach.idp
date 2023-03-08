@@ -2,16 +2,17 @@
 string KSPparams = "";
 string EPSparams = " -eps_pos_gen_non_hermitian ";
 // RESIDUAL VECTOR
-  varf vR(defu(um), defu(v))
+varf vR(defu(um), defu(v))
       = int2d(Th)(
-          vT*ugradf(ub, 0, ubT)/ubT                 + ubT^(params["a"])*diff(0, vT, 0, ubT)/params["Pe"]
+        vT*ugradf(ub, 0, ubT)/ubT + ubT^(params["a"])*diff(0, vT, 0, ubT)/params["Pe"]
         + ugradu(v, ub, 0, ub)/ubT - divu(0, v)*ubp + ubT^(params["a"])*visc(0, v , 0, ub )/params["Re"]
-        - vp*divu(0, ub)                            - ubT^(params["a"])*diff(0, vp, 0, ubT)/params["Pe"]
+        - vp*divu(0, ub) - ubT^(params["a"])*diff(0, vp, 0, ubT)/params["Pe"]
       )
       - int1d(Th, BCopen) (
-          ubT^(params["a"])*ndotvisc(v, 0, ub)/params["Re"]
+        0.5*vdotu(v, ub)*min(0., real(ndotu(ub)))/ubT
+        + ubT^(params["a"])*ndotvisc(v, 0, ub)/params["Re"]
       )
-      + int1d(Th, BCaxis, BCopen, BCwall, BCinflow, BCslip) (
+      + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow, BCslip) (
           vp*ubT^(params["a"])*ndotgrads(ubT)/params["Pe"]
       )
       + BoundaryConditions(0, um, ub);
@@ -19,21 +20,65 @@ string EPSparams = " -eps_pos_gen_non_hermitian ";
 // JACOBIAN MATRIX
 varf vJ(defu(um), defu(v))
       = int2d(Th)(
-          vT*(ugradf(um, 0, ubT)   + ugradf(ub, ik, umT)   - ugradf(ub, 0, ubT)*umT/ubT)/ubT                       + (ubT^(params["a"])*diff(-ik, vT, ik, umT) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vT, 0, ubT))/params["Pe"]
-        +    (ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - ugradu(v, ub, 0, ub)*umT/ubT)/ubT - divu(-ik, v)*ump + (ubT^(params["a"])*visc(-ik, v , ik, um ) + params["a"]*ubT^(params["a"]-1.)*umT*visc(-ik, v , 0, ub ))/params["Re"]
-        - vp*divu(ik, um)                                                                                            - (ubT^(params["a"])*diff(-ik, vp, ik, umT) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vp, 0, ubT))/params["Pe"]
+        iomega*(gdotf(vT, umT) + vdotu(v, um))/ubT
+        + vT*(ugradf(um, 0, ubT) + ugradf(ub, ik, umT) - ugradf(ub, 0, ubT)*umT/ubT)/ubT + (ubT^(params["a"])*diff(-ik, vT, ik, umT) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vT, 0, ubT))/params["Pe"]
+        + (ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - ugradu(v, ub, 0, ub)*umT/ubT)/ubT - divu(-ik, v)*ump + (ubT^(params["a"])*visc(-ik, v , ik, um ) + params["a"]*ubT^(params["a"]-1.)*umT*visc(-ik, v , 0, ub ))/params["Re"]
+        - vp*divu(ik, um) - (ubT^(params["a"])*diff(-ik, vp, ik, umT) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vp, 0, ubT))/params["Pe"]
       )
       - int1d(Th, BCopen) (
-          (ubT^(params["a"])*ndotvisc(v, ik, um) + params["a"]*ubT^(params["a"] - 1.0)*umT*ndotvisc(v, 0, ub))/params["Re"]
+        0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(ub) + vdotu(v, ub)*ndotu(um) - vdotu(v, ub)*ndotu(ub)*umT/ubT)/ubT
+        + (ubT^(params["a"])*ndotvisc(v, ik, um) + params["a"]*ubT^(params["a"] - 1.0)*umT*ndotvisc(v, 0, ub))/params["Re"]
       )
-      + int1d(Th, BCaxis, BCopen, BCwall, BCinflow, BCslip) (
-          vp*(ubT^(params["a"])*ndotgrads(umT) + params["a"]*ubT^(params["a"]-1.)*umT*ndotgrads(ubT))/params["Pe"]
+      + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow, BCslip) (
+        vp*(ubT^(params["a"])*ndotgrads(umT) + params["a"]*ubT^(params["a"]-1.)*umT*ndotgrads(ubT))/params["Pe"]
       )
-      + BoundaryConditions(m, um, ub);
+      + HomBoundaryConditions(m, um);
 
 // MASS MATRIX
 varf vM(defu(um), defu(v))
       = int2d(Th)(
           (gdotf(vT, umT) + vdotu(v, um))/ubT
       )
-      + BoundaryConditions(m, um, ub);
+      + HomBoundaryConditions(m, um);
+
+IFMACRO(Hessian)
+varf vJq(defu(dum), defu(v))
+      = int2d(Th)(
+        iomega*(gdotf(vT, umT) + vdotu(v, um))/ubT
+        + vT*(ugradf(um, 0, ubT) + ugradf(ub, ik, umT) - ugradf(ub, 0, ubT)*umT/ubT)/ubT + (ubT^(params["a"])*diff(-ik, vT, ik, umT) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vT, 0, ubT))/params["Pe"]
+        + (ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - ugradu(v, ub, 0, ub)*umT/ubT)/ubT - divu(-ik, v)*ump + (ubT^(params["a"])*visc(-ik, v , ik, um ) + params["a"]*ubT^(params["a"]-1.)*umT*visc(-ik, v , 0, ub ))/params["Re"]
+        - vp*divu(ik, um) - (ubT^(params["a"])*diff(-ik, vp, ik, umT) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vp, 0, ubT))/params["Pe"]
+      )
+      - int1d(Th, BCopen) (
+        0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(ub) + vdotu(v, ub)*ndotu(um) - vdotu(v, ub)*ndotu(ub)*umT/ubT)/ubT
+        + (ubT^(params["a"])*ndotvisc(v, ik, um) + params["a"]*ubT^(params["a"] - 1.0)*umT*ndotvisc(v, 0, ub))/params["Re"]
+      )
+      + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow, BCslip) (
+        vp*(ubT^(params["a"])*ndotgrads(umT) + params["a"]*ubT^(params["a"]-1.)*umT*ndotgrads(ubT))/params["Pe"]
+      )
+      + HomBoundaryConditions(m, dum);
+
+varf vH(defu(dub), defu(v))
+      = int2d(Th)(
+        -iomega*(gdotf(vT, umT) + vdotu(v, um))*dubT/ubT^2
+        + vT*(ugradf(um, 0, dubT)   + ugradf(dub, ik, umT)   - ((ugradf(um, 0, ubT)   + ugradf(ub, ik, umT))*dubT   + (ugradf(dub, 0, ubT)   + ugradf(ub, 0, dubT))*umT)/ubT   + 2.0*dubT*ugradf(ub, 0, ubT)*umT/ubT^2)/ubT
+            + params["a"]*ubT^(params["a"]-1.)*(dubT*diff(-ik, vT, ik, umT) + umT*diff(-ik, vT, 0, dubT) + (params["a"]-1.)*dubT/ubT*umT*diff(-ik, vT, 0, ubT))/params["Pe"]
+        + (ugradu(v, um, 0, dub) + ugradu(v, dub, ik, um) - ((ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um))*dubT + (ugradu(v, dub, 0, ub) + ugradu(v, ub, 0, dub))*umT)/ubT + 2.0*dubT*ugradu(v, ub, 0, ub)*umT/ubT^2)/ubT
+            + params["a"]*ubT^(params["a"]-1.)*(dubT*visc(-ik, v , ik, um ) + umT*visc(-ik, v , 0, dub ) + (params["a"]-1.)*dubT/ubT*umT*visc(-ik, v , 0, ub ))/params["Re"]
+        - params["a"]*ubT^(params["a"]-1.)*(dubT*diff(-ik, vp, ik, umT) + umT*diff(-ik, vp, 0, dubT) + (params["a"]-1.)*dubT/ubT*umT*diff(-ik, vp, 0, ubT))/params["Pe"]
+      )
+      - int1d(Th, BCopen) (
+        0.5*(real(ndotu(ub)) < 0)*((vdotu(v, um)*ndotu(dub) + vdotu(v, dub)*ndotu(um))/ubT - (vdotu(v, um)*ndotu(ub) + vdotu(v, ub)*ndotu(um))*dubT/ubT^2 - (vdotu(v, dub)*ndotu(ub) + vdotu(v, ub)*ndotu(dub) - 2.0*vdotu(v, ub)*ndotu(ub)*dubT/ubT)*umT/ubT^2)
+        + params["a"]*ubT^(params["a"]-1.)*(dubT*ndotvisc(v, ik, um) + umT*ndotvisc(v, 0, dub) + (params["a"]-1.)*dubT/ubT*umT*ndotvisc(v, 0, ub))/params["Re"]
+      )
+      + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow, BCslip) (
+        vp*params["a"]*ubT^(params["a"]-1.)*(dubT*ndotgrads(umT) + umT*ndotgrads(dubT) + (params["a"]-1.)*dubT/ubT*umT*ndotgrads(ubT))/params["Pe"]
+      )
+      + HomBoundaryConditions(0, dub);
+
+varf vMq(defu(dum), defu(v))
+      = int2d(Th)(
+          (gdotf(vT, umT) + vdotu(v, um))/ubT
+      )
+      + HomBoundaryConditions(m, dum);
+ENDIFMACRO

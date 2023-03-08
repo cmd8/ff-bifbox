@@ -29,6 +29,7 @@ int maxcount = getARGV("-maxcount", 100);
 real h0 = getARGV("-h0", 1.0);
 string param1 = getARGV("-param1","");
 string param2 = getARGV("-param2","");
+string adapt = getARGV("-adapt","b");
 real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 1.0);
 real deltamax = getARGV("-dmax", 4.0);
@@ -235,7 +236,10 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
       ik = 0.0;
       iomega = 0.0;
+      int mm = m;
+      m = 0;
       J = vJ(XMh, XMh, tgv = -1);
+      m = mm;
       KSPSolve(Ja, yqP, yqP);
       tempPms = [[yqP]]; // dense array to sparse matrix
       ChangeOperator(yqPMa, tempPms, parent = Jaa); // send to Mat
@@ -414,19 +418,16 @@ while (count < maxcount){
       mpiAllReduce(tempu[], umaiG[], mpiCommWorld, mpiSUM);
       for[i, v : restu] tempu[][v] = real(yb[][i]);
       mpiAllReduce(tempu[], yG[], mpiCommWorld, mpiSUM);
-      if(mpirank == 0) Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptu(yG),
-                                       hmin = getARGV("-hmin",1.0e-6),
-                                       hmax = getARGV("-hmax",1.0),
-                                       err = getARGV("-err", 1.0e-2),
-                                       errg = getARGV("-errg", 0.1),
-                                       nbvx = int(getARGV("-nbvx",1e6)),
-                                       nbsmooth = int(getARGV("-nbsmooth",5)),
-                                       ratio = getARGV("-ratio",1.8),
-                                       anisomax = getARGV("-anisomax",1.0),
-                                       rescaling = bool(getARGV("-rescaling", 1)),
-                                       power = getARGV("-power", 1.0),
-                                       thetamax = getARGV("-thmax", 10.0)
-                                       );
+      if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
+        if(adapt == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+        else if(adapt == "by") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptmeshoptions);
+        else if(adapt == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptmeshoptions);
+        else if(adapt == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+        else if(adapt == "byd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umrG), adaptu(umiG), adaptmeshoptions);
+        else if(adapt == "bya") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+        else if(adapt == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+        else if(adapt == "byda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+      } // TODO: add adaptation to endogeneity and structural sensitivity
       broadcast(processor(0), Thg); // broadcast global mesh to all processors
       defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
       defu(yG) = defu(yG); //interpolate global solution from old mesh to new mesh

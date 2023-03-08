@@ -8,11 +8,11 @@
 // Set dimension macro for 'macro_ddm.idp' (2)
 macro dimension()2//EOM NOTE: only 2 for now
 // Set coordinate system (cartesian or cylindrical)
-macro coordinates()cartesian//EOM
+macro coordinates()cylindrical//EOM
 // Set number of vector components (2 or 3)
-macro component()2//EOM
+macro component()3//EOM
 // Set equations (incomp, lowmach, comp, lowmachreact, compreact, or custom)
-macro formulation()compreact//EOM
+macro formulation()lowmachreact//EOM
 include "macro_ddm.idp"
 verbosity = getARGV("-v",0);
 // Define parameter and monitor names
@@ -32,6 +32,7 @@ IFMACRO(formulation,comp)
   string[int] monitornames = [""]; // set monitor names
   macro temperature()1//EOM
   macro density()1//EOM
+  macro compressible()1//EOM
 ENDIFMACRO
 IFMACRO(formulation,lowmachreact)
   string[int] paramnames = ["Re","Pe","Le","dT","Ze","Da","a"]; // set parameter names
@@ -46,14 +47,13 @@ IFMACRO(formulation,compreact)
   macro species()1//EOM
   macro temperature()1//EOM
   macro density()1//EOM
+  macro compressible()1//EOM
 ENDIFMACRO
 IFMACRO(formulation,custom)
 // NOTE: Edit this one
   string[int] paramnames = ["Re","S","v0","d0","cb1","sig","cb2","kap","cw2","cw3","cv1","ct3","ct4","cw1"]; // set parameter names
   string[int] monitornames = ["Sn","minuCL","maxnu"]; // set monitor names
-  func Pk2C = [P2,P2,P2,P1];
   macro custom()1//EOM
-  macro defu2C(u)[u,u#y,u#v,u#p]//EOM
   macro defu(u)[u,u#y, IFMACRO(component,3) u#z, ENDIFMACRO u#v, u#p, u#pc]//EOM
   macro initu(i)[i, i, IFMACRO(component,3) i, ENDIFMACRO i, i, i]//EOM
   macro InitialConditions() [0,0, IFMACRO(component,3) 0, ENDIFMACRO 0, 0, 0]//EOM
@@ -68,8 +68,6 @@ IFMACRO(formulation,custom)
   string ParaviewDataName = "velocity viscosity pressure";
 ENDIFMACRO
 IFMACRO(!custom)
-  func Pk2C = [P2,P2                                           IFMACRO(species) ,P2  ENDIFMACRO IFMACRO(temperature) ,P2  ENDIFMACRO ,P1];
-  macro defu2C(u)[u,u#y                                        IFMACRO(species) ,u#Y ENDIFMACRO IFMACRO(temperature) ,u#T ENDIFMACRO IFMACRO(density) ,u#R ENDIFMACRO IFMACRO(pressure) ,u#p ENDIFMACRO]//EOM
   macro defu(u)[u,u#y    IFMACRO(component,3) ,u#z ENDIFMACRO  IFMACRO(species) ,u#Y ENDIFMACRO IFMACRO(temperature) ,u#T ENDIFMACRO IFMACRO(density) ,u#R ENDIFMACRO IFMACRO(pressure) ,u#p ENDIFMACRO]//EOM
   macro initu(i)[i, i    IFMACRO(component,3) ,i   ENDIFMACRO  IFMACRO(species) ,i   ENDIFMACRO IFMACRO(temperature) ,i   ENDIFMACRO ,i]//EOM
   func Pk = [P2,P2       IFMACRO(component,3) ,P2  ENDIFMACRO  IFMACRO(species) ,P2  ENDIFMACRO IFMACRO(temperature) ,P2  ENDIFMACRO ,P1];
@@ -105,23 +103,22 @@ macro HomBoundaryConditions(m, u)
 + on(BCinflow, u = 0., u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO IFMACRO(species) ,u#Y = 0.0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0.0 ENDIFMACRO )
 // EOM
 */
-int BCnull = 0;
+int BCinternal = 0;
 int BCaxis = 1;
 int BCopen = 2;
 int BCwall = 3;
-int BCslip = 4;
-int BCinflow = 5;
+int BCinflow = 4;
+int BCpipe = 5;
+int BCslip = 6;
 macro BoundaryConditions(m, u, U)
-  on(BCwall, u = U, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO IFMACRO(temperature) ,u#T = U#T - 1.0 ENDIFMACRO )
-+ on(BCslip, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO )
-+ on(BCinflow, u = U - 2./5., u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO IFMACRO(species) ,u#Y = U#Y - 1.0 ENDIFMACRO IFMACRO(temperature) ,u#T = U#T - 1.0 ENDIFMACRO )
+  on(BCinflow, u = U - 2.0*(1.0 - (2.0*y)^2), u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO IFMACRO(species) ,u#Y = U#Y - 1.0 ENDIFMACRO IFMACRO(temperature) ,u#T = U#T - 1.0 ENDIFMACRO )
++ on(BCwall, BCpipe, u = U, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO IFMACRO(temperature) ,u#T = U#T - 1.0 ENDIFMACRO )
 + on((abs(int(m)) != 1)*BCaxis, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO )
 + on((abs(int(m))  > 0)*BCaxis, u = U IFMACRO(species) ,u#Y = U#Y ENDIFMACRO IFMACRO(temperature) ,u#T = U#T ENDIFMACRO )
 // EOM
 macro HomBoundaryConditions(m, u)
-  on(BCwall, u = 0, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0 ENDIFMACRO )
-+ on(BCslip, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO )
-+ on(BCinflow, u = 0., u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO IFMACRO(species) ,u#Y = 0.0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0.0 ENDIFMACRO )
+  on(BCinflow, u = 0., u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO IFMACRO(species) ,u#Y = 0.0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0.0 ENDIFMACRO )
++ on(BCwall, BCpipe, u = 0, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0 ENDIFMACRO )
 + on((abs(int(m)) != 1)*BCaxis, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO )
 + on((abs(int(m))  > 0)*BCaxis, u = 0 IFMACRO(species) ,u#Y = 0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0 ENDIFMACRO )
 // EOM
@@ -215,22 +212,22 @@ macro ndotgrads(s) ( y*N.x*dx(s) + y*N.y*dy(s)) // EOM
 
 macro tdotgrads(s) (-y*N.y*dx(s) + y*N.x*dy(s)) //EOM NOTE: grid scaling factors cancel
 
-macro fdotg(f,g) ( y*f*g )//EOM
+macro gdotf(f,g) ( y*g*f )//EOM
 
-macro udotv(u,v) ( y*u*v + y*u#y*v#y IFMACRO(component,3) + y*u#z*v#z ENDIFMACRO) //EOM
+macro vdotu(v,u) ( y*v*u + y*v#y*u#y IFMACRO(component,3) + y*v#z*u#z ENDIFMACRO) //EOM
 
 macro divu(ik, u) ( y*dx(u) + y*dy(u#y) + u#y IFMACRO(component,3) + (ik)*u#z ENDIFMACRO ) // velocity divergence
 
-macro ndotvisc(v, ik, u) (N.x*(v*(y*dx(u  ) - 2./3.*divu(ik, u)) + y*v#y*dy(u  )                       IFMACRO(component,3) + v#z*(ik)*u ENDIFMACRO )
-                        + N.y*(v* y*dx(u#y)                      + v#y*(y*dy(u#y) - 2./3.*divu(ik, u)) IFMACRO(component,3) + v#z*((ik)*u#y - u#z) ENDIFMACRO )) //EOM
+macro ndotvisc(v, ik, u) (N.x*(v*(y*dx(u  ) IFMACRO(compressible,1) - 2./3.*divu(ik, u) ENDIFMACRO) + y*v#y*dy(u  )                       IFMACRO(component,3) + v#z*(ik)*u ENDIFMACRO )
+                        + N.y*(v* y*dx(u#y)                      + v#y*(y*dy(u#y) IFMACRO(compressible,1) - 2./3.*divu(ik, u) ENDIFMACRO) IFMACRO(component,3) + v#z*((ik)*u#y - u#z) ENDIFMACRO )) //EOM
 
 macro ugradu(v, U, ik, u) (  v  *(y*U*dx(u  ) + y*U#y*dy(u  ) IFMACRO(component,3) + (ik)*U#z*u ENDIFMACRO )
                            + v#y*(y*U*dx(u#y) + y*U#y*dy(u#y) IFMACRO(component,3) + (ik)*U#z*u#y - U#z*u#z ENDIFMACRO )
       IFMACRO(component,3) + v#z*(y*U*dx(u#z) + y*U#y*dy(u#z)                      + (ik)*U#z*u#z + U#z*u#y) ENDIFMACRO ) // scaled convection term
 
-macro visc(ij, v, ik, u) (   dx(v  )*(2.*y*dx(u  ) - 2./3.*divu(ik, u)) + y*dy(v  )*(dx(u#y) + dy(u  ))                     + r1*(ij)*v   *( IFMACRO(component,3) y*dx(u#z) + ENDIFMACRO (ik)*u)
-                         + y*dx(v#y)*(dx(u#y) + dy(u  ))                +   dy(v#y)*(2.*y*dy(u#y) - 2./3.*divu(ik, u))      + r1*((ij)*v#y IFMACRO(component,3) - v#z ENDIFMACRO )*((ik)*u#y IFMACRO(component,3) - u#z + y*dy(u#z) ENDIFMACRO )
-      IFMACRO(component,3) + dx(v#z)*((ik)*u + y*dx(u#z))               +   dy(v#z)*((ik)*u#y - u#z + y*dy(u#z)) ENDIFMACRO + r1*( IFMACRO(component,3) (ij)*v#z + ENDIFMACRO v#y)*( 2.*( IFMACRO(component,3) (ik)*u#z + ENDIFMACRO u#y) - 2./3.*divu(ik, u)) ) // EOM
+macro visc(ij, v, ik, u) (   dx(v  )*(2.*y*dx(u  ) IFMACRO(compressible,1) - 2./3.*divu(ik, u) ENDIFMACRO) + y*dy(v  )*(dx(u#y) + dy(u  ))                     + r1*(ij)*v   *( IFMACRO(component,3) y*dx(u#z) + ENDIFMACRO (ik)*u)
+                         + y*dx(v#y)*(dx(u#y) + dy(u  ))                +   dy(v#y)*(2.*y*dy(u#y) IFMACRO(compressible,1) - 2./3.*divu(ik, u) ENDIFMACRO)      + r1*((ij)*v#y IFMACRO(component,3) - v#z ENDIFMACRO )*((ik)*u#y IFMACRO(component,3) - u#z + y*dy(u#z) ENDIFMACRO )
+      IFMACRO(component,3) + dx(v#z)*((ik)*u + y*dx(u#z))               +   dy(v#z)*((ik)*u#y - u#z + y*dy(u#z)) ENDIFMACRO + r1*( IFMACRO(component,3) (ij)*v#z + ENDIFMACRO v#y)*( 2.*( IFMACRO(component,3) (ik)*u#z + ENDIFMACRO u#y) IFMACRO(compressible,1) - 2./3.*divu(ik, u) ENDIFMACRO) ) // EOM
 
 macro diff(ij, g, ik, f) ( y*dx(g)*dx(f) + y*dy(g)*dy(f) IFMACRO(component,3) + (ij)*(ik)*r1*g*f ENDIFMACRO ) // EOM
 
