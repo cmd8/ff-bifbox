@@ -55,8 +55,8 @@ if (count == 0) {
   meshfile = readmeshname(workdir + hopffilein + ".hopf");
   meshfilein = meshfile;
 } else {
-  meshfile = readmeshname(workdir + hopffilein + count + ".hopf");
-  meshfilein = meshfile(0:meshfile.rfind(count)-1);
+  meshfile = readmeshname(workdir + hopffilein + "_" + count + ".hopf");
+  meshfilein = meshfile(0:meshfile.rfind(count)-2);
 }
 Th = readmeshN(workdir + meshfile + meshext);
 Thg = Th;
@@ -67,7 +67,7 @@ if (count == 0){
   ub[].re = loadhopf(workdir, hopffilein, meshfile, um[], uma[], m, omega);
   if(mpirank == 0) printstats(workdir + hopffileout + ".txt", meshfile, m, omega);
 } else {
-  ub[].re = loadhopf(workdir, hopffilein + count, meshfile, um[], uma[], m, omega);
+  ub[].re = loadhopf(workdir, hopffilein + "_" + count, meshfile, um[], uma[], m, omega);
 }
 real lambda1 = getlambda(param1);
 real lambda2 = getlambda(param2);
@@ -175,7 +175,7 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       internalit = 0;
       qap = qa;
       resp = res;
-      deltap = (it == 1) ? deltamax : delta;
+      deltap = delta;
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
         lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
@@ -391,7 +391,7 @@ while (count < maxcount){
       ChangeNumbering(J, uma[], qma, inverse = true);
       um[] /= sqrt(J(um[], um[]));
       uma[] /= sqrt(J(uma[], uma[]));
-      savehopf(workdir, hopffileout + count + "signswitch", "", meshfile, m, omega, true, true, paraviewflag);
+      savehopf(workdir, hopffileout + "_" + count + "signswitch", "", meshfile, m, omega, true, true, paraviewflag);
     }
     if ((meshfileout != "") && (count % savecount == 0)){
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = false);
@@ -487,7 +487,7 @@ while (count < maxcount){
       yqP0 = yqP;
       qa0.resize(qa.n);
       qap.resize(qa.n);
-      meshfile = meshfileout + count;
+      meshfile = meshfileout + "_" + count;
       savemesh(Thg, workdir + meshfile + meshext);
       int ret;
       it = 0;
@@ -515,7 +515,7 @@ while (count < maxcount){
     ChangeNumbering(J, uma[], qma, inverse = true);
     um[] /= sqrt(J(um[], um[]));
     uma[] /= sqrt(J(uma[], uma[]));
-    savehopf(workdir, hopffileout + count, hopffileout, meshfile, m, omega, (count % savecount == 0), true, paraviewflag);
+    savehopf(workdir, hopffileout + "_" + count, hopffileout, meshfile, m, omega, (count % savecount == 0), true, paraviewflag);
     yqP0 = yqP;
     qP = qm;
     pP = qma;
