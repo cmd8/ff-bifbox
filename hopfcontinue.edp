@@ -515,7 +515,7 @@ while (count < maxcount){
     ChangeNumbering(J, uma[], qma, inverse = true);
     um[] /= sqrt(J(um[], um[]));
     uma[] /= sqrt(J(uma[], uma[]));
-    savehopf(workdir, hopffileout + count, hopffileout, meshfileout, m, omega, (count % savecount == 0), true, paraviewflag);
+    savehopf(workdir, hopffileout + count, hopffileout, meshfile, m, omega, (count % savecount == 0), true, paraviewflag);
     yqP0 = yqP;
     qP = qm;
     pP = qma;
