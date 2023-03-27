@@ -36,6 +36,7 @@ string stpctype = getARGV("-st_pc_type", "lu");
 if (hopffilein == "" && foldfilein == "" && basefilein == ""  && modefilein != "") basefilein = readbasename(workdir + modefilein + ".mode");
 string meshfile;
 if(foldfilein != "") meshfile = readmeshname(workdir + foldfilein + ".fold");
+else if(hopffilein != "") meshfile = readmeshname(workdir + hopffilein + ".hopf");
 else meshfile = readmeshname(workdir + basefilein + ".base");
 
 // Load mesh, make FE basis
