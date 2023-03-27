@@ -45,19 +45,16 @@ Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub);
-ub[] = loadbase(workdir, basefilein, meshfile);
 if(foldfilein != "") {
   real[int] qm, qma;
   ub[] = loadfold(workdir, foldfilein, meshfile, qm, qma);
-  savebase(workdir, modefileout, "", meshfile, true, true, paraviewflag);
-  basefilein = modefileout;
 } else if(hopffilein != "") {
   complex[int] qm, qma;
   int m;
   real omega;
   ub[] = loadhopf(workdir, hopffilein, meshfile, qm, qma, m, omega);
-  savebase(workdir, modefileout, "", meshfile, true, true, paraviewflag);
-  basefilein = modefileout;
+} else {
+  ub[] = loadbase(workdir, basefilein, meshfile);
 }
 complex[int] val(epsnev);
 XMh<complex>[int] defu(vec)(epsnev);
@@ -122,6 +119,15 @@ if (modefileout != ""){
     complex[int] dummy;
     ChangeNumbering(J, um[], dummy);
     ChangeNumbering(J, um[], dummy, inverse = true);
+    if (basefilein == ""){
+      complex[int] qb(ub[].n);
+      qb.re = ub[];
+      ChangeNumbering(J, qb, dummy);
+      ChangeNumbering(J, qb, dummy, inverse = true);
+      ub[] = qb.re;
+      savebase(workdir, modefileout, "", meshfile, true, true, paraviewflag);
+      basefilein = modefileout;
+    }
     savemode(workdir, modefileout + "_" + i, basefilein, meshfile, m, eigenvalue, paraviewflag);
   }
 }
