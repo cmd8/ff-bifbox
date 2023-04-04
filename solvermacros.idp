@@ -249,7 +249,7 @@ macro savehopf(workdir, hopffileout, statsfile, meshfile, m, omega, saveflag, mo
 
 func bool printstats(string outputfilename, string meshfilename, int m, real omega) {
       cout << "  Saving solution stats in '" + outputfilename + "'." << endl;
-      cout << "\t" + listparams(paramnames, params) + ", " + listparams(monitornames, monitors) << endl;
+      cout << "\t" + listparams(paramnames, params) + ", " + listparams(monitornames, monitors);
       if (omega != 0.0 | m != 0) cout << ", m = " + m + ", omega = " + omega;
       cout << "." << endl;
       { ofstream file(outputfilename, append);
