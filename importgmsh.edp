@@ -10,8 +10,13 @@
 load "gmsh"
 include "getARGV.idp"
 string gmshdir = getARGV("-gmshdir","./gmsh/"); // path to gmsh file
-string meshfile = getARGV("-mshi", ""); // mesh filename
+string meshfilein = getARGV("-mshi", ""); // mesh filename
+string meshfileout = getARGV("-msho", meshfilein); // mesh filename
 string workdir = getARGV("-workdir","./data/"); // path to FreeFEM work directory
-mesh Th  = gmshload(gmshdir + meshfile + ".msh"); // stored in .msh format (gmsh)
-cout << " Mesh '" + meshfile + ".msh' created with " << Th.nv << " vertices, " << Th.nt << " triangles, " << Th.nbe << " boundary elements." << endl;
-savemesh(Th, workdir + meshfile + ".msh"); // save mesh to FreeFEM directory
+assert(mpisize == 1);//Must be run with 1 processor
+cout << "  Loading '" + meshfilein + ".msh' in '" + gmshdir + "'." << endl;
+mesh Thg  = gmshload(gmshdir + meshfilein + ".msh"); // stored in .msh format (gmsh)
+int[int] meshlabels = labels(Thg);
+cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
+cout << "  Saving '" << meshfileout + ".msh' in '" + workdir + "'." << endl;
+savemesh(Thg, workdir + meshfileout + ".msh"); // save mesh to FreeFEM directory

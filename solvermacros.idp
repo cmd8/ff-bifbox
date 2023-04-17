@@ -70,7 +70,9 @@ macro savebase(workdir, basefileout, statsfile, meshfile, saveflag, monitorflag,
   if (mpirank == 0 && statsfile != "") printstats(workdir + statsfile + ".txt", meshfile, 0, 0);
   if (saveflag && mpirank == 0 && basefileout != ""){
     cout << "  Saving '" + basefileout + ".base' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
-    cout << "\t" + listparams(paramnames,params)  + ", " + listparams(monitornames, monitors) + "." << endl;
+    cout << "\t" + listparams(paramnames,params);
+    if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+    cout << "." << endl;
     {
       ofstream file(workdir + basefileout + ".base", binary);
       file.precision(17);
@@ -78,8 +80,10 @@ macro savebase(workdir, basefileout, statsfile, meshfile, saveflag, monitorflag,
       for (int k = 0; k < paramnames.n; ++k){
         file << paramnames[k] << "\t" << params[paramnames[k]] << endl << endl;
       }
-      for (int k = 0; k < monitornames.n; ++k){
-        file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl << endl;
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl << endl;
+        }
       }
       file << ubg[] << endl;
     }
@@ -150,7 +154,9 @@ macro savefold(workdir, foldfileout, statsfile, meshfile, saveflag, monitorflag,
   if (mpirank == 0 && statsfile != "") printstats(workdir + statsfile + ".txt", meshfile, 0, 0);
   if (saveflag && mpirank == 0 && foldfileout != ""){
     cout << "  Saving '" + foldfileout + ".fold' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
-    cout << "\t" + listparams(paramnames,params)  + ", " + listparams(monitornames, monitors) + "." << endl;
+    cout << "\t" + listparams(paramnames,params);
+    if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+    cout << "." << endl;
     {
       ofstream file(workdir + foldfileout + ".fold", binary);
       file.precision(17);
@@ -158,8 +164,10 @@ macro savefold(workdir, foldfileout, statsfile, meshfile, saveflag, monitorflag,
       for (int k = 0; k < paramnames.n; ++k){
         file << paramnames[k] << "\t" << params[paramnames[k]] << endl << endl;
       }
-      for (int k = 0; k < monitornames.n; ++k){
-        file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl << endl;
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl << endl;
+        }
       }
       file << ubg[] << endl << endl;
       file << umg[] << endl << endl;
@@ -198,7 +206,9 @@ macro savehopf(workdir, hopffileout, statsfile, meshfile, m, omega, saveflag, mo
   if (mpirank == 0 && statsfile != "") printstats(workdir + statsfile + ".txt", meshfile, m, omega);
   if (saveflag && mpirank == 0 && hopffileout != ""){
     cout << "  Saving '" + hopffileout + ".hopf' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
-    cout << "\t" + listparams(paramnames,params)  + ", m = " + m + ", omega = " + omega + ", " + listparams(monitornames, monitors) + "." << endl;
+    cout << "\t" + listparams(paramnames,params)  + ", m = " + m + ", omega = " + omega;
+    if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+    cout << "." << endl;
     {
       ofstream file(workdir + hopffileout + ".hopf", binary);
       file.precision(17);
@@ -208,8 +218,10 @@ macro savehopf(workdir, hopffileout, statsfile, meshfile, m, omega, saveflag, mo
       }
       file << "m\t" << m << endl << endl;
       file << "omega\t" << omega << endl << endl;
-      for (int k = 0; k < monitornames.n; ++k){
-        file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl << endl;
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl << endl;
+        }
       }
       file << ubg[] << endl << endl;
       file << umg[] << endl << endl;
@@ -249,7 +261,9 @@ macro savehopf(workdir, hopffileout, statsfile, meshfile, m, omega, saveflag, mo
 
 func bool printstats(string outputfilename, string meshfilename, int m, real omega) {
       cout << "  Saving solution stats in '" + outputfilename + "'." << endl;
-      cout << "\t" + listparams(paramnames, params) + ", " + listparams(monitornames, monitors);
+      cout << "\t" + listparams(paramnames, params);
+      if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+      cout << "." << endl;
       if (omega != 0.0 | m != 0) cout << ", m = " + m + ", omega = " + omega;
       cout << "." << endl;
       { ofstream file(outputfilename, append);
@@ -258,8 +272,10 @@ func bool printstats(string outputfilename, string meshfilename, int m, real ome
         for (int k = 0; k < paramnames.n; ++k){
           file << params[paramnames[k]] << "\t";
         }
-        for (int k = 0; k < monitornames.n; ++k){
-          file << monitors[monitornames[k]] << "\t";
+        if(monitornames[0] != ""){
+          for (int k = 0; k < monitornames.n; ++k){
+            file << monitors[monitornames[k]] << "\t";
+          }
         }
         if (omega != 0.0 | m != 0) file << "\t" << m << "\t" << omega;
         file << endl;
@@ -308,8 +324,10 @@ func real[int] loadbase(string directoryname, string inputfilename, string meshf
         for (int k = 0; k < paramnames.n; ++k){
           file >> paramnames[k] >> params[paramnames[k]];
         }
-        for (int k = 0; k < monitornames.n; ++k){
-          file >> monitornames[k] >> monitors[monitornames[k]];
+        if(monitornames[0] != ""){
+          for (int k = 0; k < monitornames.n; ++k){
+            file >> monitornames[k] >> monitors[monitornames[k]];
+          }
         }
         if (mpirank == 0) cout << "\t" + listparams(paramnames,params) + ", " + listparams(monitornames,monitors) << endl;
         if (filemesh == meshfilename){ // no interpolation needed
@@ -337,8 +355,10 @@ func real[int] loadfold(string directoryname, string inputfilename, string meshf
       for (int k = 0; k < paramnames.n; ++k){
         file >> paramnames[k] >> params[paramnames[k]];
       }
-      for (int k = 0; k < monitornames.n; ++k){
-        file >> monitornames[k] >> monitors[monitornames[k]];
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file >> monitornames[k] >> monitors[monitornames[k]];
+        }
       }
       if (mpirank == 0) cout << "\t" + listparams(paramnames,params) + ", " + listparams(monitornames,monitors) << endl;
       if (filemesh == meshfilename){ // no interpolation needed
@@ -375,8 +395,10 @@ func real[int] loadhopf(string directoryname, string inputfilename, string meshf
         file >> paramnames[k] >> params[paramnames[k]];
       }
       file >> dummy >> m >> dummy >> omega;
-      for (int k = 0; k < monitornames.n; ++k){
-        file >> monitornames[k] >> monitors[monitornames[k]];
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file >> monitornames[k] >> monitors[monitornames[k]];
+        }
       }
       if (mpirank == 0) cout << "\t" + listparams(paramnames,params) << ", m = " + m + ", omega = " + omega + ", " + listparams(monitornames,monitors) << endl;
       if (filemesh == meshfilename){ // no interpolation needed
