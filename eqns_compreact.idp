@@ -39,6 +39,16 @@ varf vM(defu(um), defu(v))
       )
       + HomBoundaryConditions(m, um);
 
+// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+varf vMq(defu(dum), defu(v))
+      = int2d(Th)( gdotf(vR, umR) + ubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um)) );
+
+varf vMf(deff(dum), deff(v))
+      = int2d(Th)( ubR*vdotu(v, dum) );
+
+varf vP(deff(fm), defu(v))
+      = int2d(Th)( vdotu(v, fm) );
+
 // HESSIAN MATRIX
 IFMACRO(Hessian)
 varf vJq(defu(dum), defu(v))

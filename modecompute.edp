@@ -91,12 +91,15 @@ include "eqns_custom.idp"
 ENDIFMACRO
 
 {
-  matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -2);
-  if (adj) Jtemp = -Jtemp';
-  else Jtemp = -Jtemp;
+  matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -1);
+  matrix<complex> Mtemp = vM(XMh, XMh, tgv = -10);
+  if (adj) {
+    Jtemp = -Jtemp';
+    Mtemp = Mtemp';
+  } else Jtemp = -Jtemp;
   J = Jtemp;
+  M = Mtemp;
 }
-M = vM(XMh, XMh, tgv = -20);
 
 int k = EPSSolve(J, M, vectors = vec, values = val,
                  sparams = " -st_type " + sttype

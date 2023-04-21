@@ -18,7 +18,7 @@ verbosity = getARGV("-v",0);
 // Define parameter and monitor names
 IFMACRO(formulation,incomp)
   string[int] paramnames = ["Re"]; // set parameter names
-  string[int] monitornames = ["Cd"]; // set monitor names
+  string[int] monitornames = [""]; // set monitor names
   macro pressure()1//EOM
 ENDIFMACRO
 IFMACRO(formulation,lowmach)
@@ -60,10 +60,11 @@ IFMACRO(formulation,custom)
   func Pk = [P2,P2, IFMACRO(component,3) P2, ENDIFMACRO P2, P1, P1];
   macro deff(f)[f,f#y IFMACRO(component,3) ,f#z ENDIFMACRO]//EOM
   macro initf(i)[i, i IFMACRO(component,3) ,i ENDIFMACRO]//EOM
-  func Pkf = [P2,P2 IFMACRO(component,3)  ,P2 ENDIFMACRO];
+  func Pkf = [P2,P2 IFMACRO(component,3) ,P2 ENDIFMACRO];
   macro u2u(u)[u,u#y, IFMACRO(component,3) 0, ENDIFMACRO u#v, u#p, 0]//EOM
   macro f2u(f)[f,f#y, IFMACRO(component,3) f#z,ENDIFMACRO 0, 0, 0]//EOM
-  macro adaptu(u)[u, u#y IFMACRO(component,3), u#z ENDIFMACRO] , u#v, u#p //EOM
+  macro adaptu(u)[u, u#y IFMACRO(component,3) ,u#z ENDIFMACRO] , u#v, u#p //EOM
+  macro adaptf(f)[f, f#y IFMACRO(component,3) ,f#z ENDIFMACRO] //EOM
   int[int] ParaviewOrder = [1, 1, 1];
   string ParaviewDataName = "velocity viscosity pressure";
 ENDIFMACRO
@@ -77,6 +78,7 @@ IFMACRO(!custom)
   macro u2u(u)[u,u#y     IFMACRO(component,3) ,0   ENDIFMACRO  IFMACRO(species) ,u#Y ENDIFMACRO IFMACRO(temperature) ,u#T ENDIFMACRO IFMACRO(density) ,u#R ENDIFMACRO IFMACRO(pressure) ,u#p ENDIFMACRO]//EOM
   macro f2u(f)[f,f#y     IFMACRO(component,3) ,f#z ENDIFMACRO  IFMACRO(species) ,0   ENDIFMACRO IFMACRO(temperature) ,0   ENDIFMACRO ,0]//EOM
   macro adaptu(u)[u, u#y IFMACRO(component,3) ,u#z ENDIFMACRO] IFMACRO(species) ,u#Y ENDIFMACRO IFMACRO(temperature) ,u#T ENDIFMACRO IFMACRO(density) ,u#R ENDIFMACRO IFMACRO(pressure) ,u#p ENDIFMACRO//EOM
+  macro adaptf(f)[f, f#y IFMACRO(component,3) ,f#z ENDIFMACRO] //EOM
   int[int] ParaviewOrder = [1                                  IFMACRO(species) ,1 ENDIFMACRO IFMACRO(temperature) ,1 ENDIFMACRO ,1];
   string ParaviewDataName = "velocity"  IFMACRO(species) + " species" ENDIFMACRO IFMACRO(temperature) + " temperature" ENDIFMACRO IFMACRO(density) + " density" ENDIFMACRO IFMACRO(pressure) + " pressure" ENDIFMACRO;
 ENDIFMACRO
@@ -141,12 +143,12 @@ ENDIFMACRO
 // Define solution monitors to extract
 macro getmonitors(u)
   IFMACRO(custom){
-  fespace Xh(Thg, P2);
-  Xh UX = u, UZ = u#z, UV = (1.0 + u#v*fv1(u));
+  fespace Xh1(Thg, P2);
+  Xh1 UX = u, UZ = u#z, UV = (1.0 + u#v*fv1(u));
   varf Onaxis(UX, VX) = on(BCaxis, UX = 1);
-  real[int] onaxis = Onaxis(0, Xh, tgv = 1);
+  real[int] onaxis = Onaxis(0, Xh1, tgv = 1);
   int[int] indices(onaxis.sum);
-  for(int i=0, j=0; i<Xh.ndof; ++i) if(onaxis[i]) {indices[j] = i; ++j;}
+  for(int i=0, j=0; i<Xh1.ndof; ++i) if(onaxis[i]) {indices[j] = i; ++j;}
   real[int] uonaxis(indices.n);
   for(int i=0; i<indices.n; ++i) uonaxis[i] = UX[][indices[i]];
   monitors["maxnu"] = UV[].max;
@@ -154,17 +156,17 @@ macro getmonitors(u)
   monitors["Sn"] = int1d(Thg, levelset=x)(UX*UZ*y^2)/(1e-12+int1d(Thg, levelset=x)(y*UX*UX));
   }  ENDIFMACRO
   IFMACRO(species) IFMACRO(temperature){
-  fespace Xh(Thg, P2);
+  fespace Xh1(Thg, P2);
   IFMACRO(formulation,compreact)
-  Xh RR = u#R*u#Y*exp(-params["Ze"]/params["dT"]*(1.0 + params["dT"])*(1.0 + params["dT"] - u#T)/(u#T + 1e-12)), Xpoints = x;
+  Xh1 RR = u#R*u#Y*exp(-params["Ze"]/params["dT"]*(1.0 + params["dT"])*(1.0 + params["dT"] - u#T)/(u#T + 1e-12)), Xpoints = x;
   ENDIFMACRO
   IFMACRO(formulation,lowmachreact)
-  Xh RR = u#Y/(u#T + 1e-12)*exp(-params["Ze"]/params["dT"]*(1.0 + params["dT"])*(1.0 + params["dT"] - u#T)/(u#T + 1e-12)), Xpoints = x;
+  Xh1 RR = u#Y/(u#T + 1e-12)*exp(-params["Ze"]/params["dT"]*(1.0 + params["dT"])*(1.0 + params["dT"] - u#T)/(u#T + 1e-12)), Xpoints = x;
   ENDIFMACRO
   varf Onaxis(RR, VX) = int2d(Th)(0*RR*VX) + on(BCaxis, RR = 1);
-  real[int] onaxis = Onaxis(0, Xh, tgv = 1);
+  real[int] onaxis = Onaxis(0, Xh1, tgv = 1);
   int[int] indices(onaxis.sum);
-  for(int i=0, j=0; i<Xh.ndof; ++i) if(onaxis[i]) {indices[j] = i; ++j;}
+  for(int i=0, j=0; i<Xh1.ndof; ++i) if(onaxis[i]) {indices[j] = i; ++j;}
   real[int] RRonaxis(indices.n);
   for(int i=0; i<indices.n; ++i) RRonaxis[i] = RR[][indices[i]];
   real xqmax = RRonaxis.max;

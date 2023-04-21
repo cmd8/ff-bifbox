@@ -40,3 +40,13 @@ varf vM(defu(um), defu(v))
           gdotf(vv, umv) + vdotu(um, v)
       )
       + BoundaryConditions(m, um, ub);
+
+// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+varf vMq(defu(dum), defu(v))
+      = int2d(Th)( gdotf(vv, umv) + vdotu(v, dum) );
+
+varf vMf(deff(dum), deff(v))
+      = int2d(Th)( vdotu(v, dum) );
+
+varf vP(deff(fm), defu(v))
+      = int2d(Th)( vdotu(v, fm) );

@@ -46,6 +46,11 @@ macro createMatu(th,A,P){
     NewMacro init(i)initu(i) EndMacro
     createMat(th,A,P)
 } // EOM
+macro createMatf(th,A,P){
+    NewMacro def(u)deff(u) EndMacro
+    NewMacro init(i)initf(i) EndMacro
+    createMat(th,A,P)
+} // EOM
 
 macro adaptmeshoptions()
 hmin = getARGV("-hmin",1.0e-6),
@@ -206,7 +211,7 @@ macro savehopf(workdir, hopffileout, statsfile, meshfile, m, omega, saveflag, mo
   if (mpirank == 0 && statsfile != "") printstats(workdir + statsfile + ".txt", meshfile, m, omega);
   if (saveflag && mpirank == 0 && hopffileout != ""){
     cout << "  Saving '" + hopffileout + ".hopf' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
-    cout << "\t" + listparams(paramnames,params)  + ", m = " + m + ", omega = " + omega;
+    cout << "\t" + listparams(paramnames, params)  + ", m = " + m + ", omega = " + omega;
     if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
     cout << "." << endl;
     {
@@ -254,6 +259,64 @@ macro savehopf(workdir, hopffileout, statsfile, meshfile, m, omega, saveflag, mo
         savevtk(workdir + hopffileout + "_hopf_adjmode_real.vtu", Thg, adaptu(ubg), dataname = ParaviewDataName, order = ParaviewOrder);
         ubg[] = umag[].im;
         savevtk(workdir + hopffileout + "_hopf_adjmode_imag.vtu", Thg, adaptu(ubg), dataname = ParaviewDataName, order = ParaviewOrder);
+      }
+    }
+  }
+}//EOM
+
+macro saveresolvent(workdir, resolventfileout, basefile, meshfile, m, omega, gain, paraviewflag){
+  Xhg<complex> deff(tempf), deff(fmg);
+  XMhg<complex> defu(tempu), defu(umg);
+  for[i, v : restu] tempu[][v] = um[][i];
+  mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
+  for[i, v : restf] tempf[][v] = fm[][i];
+  mpiAllReduce(tempf[], fmg[], mpiCommWorld, mpiSUM);
+  if (mpirank == 0 && resolventfileout != ""){
+    cout << "  Saving '" + resolventfileout + ".rslv' over '" + basefile + ".base' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
+    cout << "\t" + listparams(paramnames,params) + ", m = " + m + ", omega = " + omega + ", gain = " + gain + "."  << endl;
+    {
+      ofstream file(workdir + resolventfileout + ".rslv", binary);
+      file.precision(17);
+      file << "mesh\t" << meshfile << endl << endl;
+      file << "base\t" << basefile << endl << endl;
+      for (int k = 0; k < paramnames.n; ++k){
+        file << paramnames[k] << "\t" << params[paramnames[k]] << endl << endl;
+      }
+    file << "m\t" << m << endl << endl;
+    file << "omega\t" << omega << endl << endl;
+    file << "gain\t" << gain << endl << endl;
+    file << fmg[] << endl;
+    file << umg[] << endl;
+    }
+    if (paraviewflag){
+      cout << "  Saving '" + resolventfileout + "_rslv_[forcing_real,forcing_imag,response_real,response_imag].vtu' in '" + workdir + "'." << endl;
+      if (meshsplit != 1){
+        meshN Thgs = trunc(Thg, 1, split = meshsplit);
+        fespace XMhs(Thgs, Pk);
+        XMhs<complex> defu(uso) = defu(umg);
+        fespace Xhs(Thgs, Pkf);
+        Xhs<complex> deff(fso) = deff(fmg);
+        Xhg deff(fsr);
+        fsr[] = fso[].re;
+        savevtk(workdir + resolventfileout + "_mode_forcing_real.vtu", Thg, adaptf(fsr), dataname = ParaviewDataName, order = ParaviewOrder);
+        fsr[] = fso[].im;
+        savevtk(workdir + resolventfileout + "_mode_forcing_imag.vtu", Thg, adaptf(fsr), dataname = ParaviewDataName, order = ParaviewOrder);
+        XMhs defu(usr);
+        usr[] = uso[].re;
+        savevtk(workdir + resolventfileout + "_rslv_response_real.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+        usr[] = uso[].im;
+        savevtk(workdir + resolventfileout + "_rslv_response_imag.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+      } else {
+        Xhg deff(fsr);
+        fsr[] = fmg[].re;
+        savevtk(workdir + resolventfileout + "_mode_forcing_real.vtu", Thg, adaptf(fsr), dataname = ParaviewDataName, order = ParaviewOrder);
+        fsr[] = fmg[].im;
+        savevtk(workdir + resolventfileout + "_mode_forcing_imag.vtu", Thg, adaptf(fsr), dataname = ParaviewDataName, order = ParaviewOrder);
+        XMhg defu(usr);
+        usr[] = umg[].re;
+        savevtk(workdir + resolventfileout + "_mode_response_real.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+        usr[] = umg[].im;
+        savevtk(workdir + resolventfileout + "_mode_response_imag.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
       }
     }
   }
@@ -329,7 +392,11 @@ func real[int] loadbase(string directoryname, string inputfilename, string meshf
             file >> monitornames[k] >> monitors[monitornames[k]];
           }
         }
-        if (mpirank == 0) cout << "\t" + listparams(paramnames,params) + ", " + listparams(monitornames,monitors) << endl;
+        if (mpirank == 0) {
+          cout << "\t" + listparams(paramnames,params);
+          if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+          cout << "." << endl;
+        }
         if (filemesh == meshfilename){ // no interpolation needed
           file >> ubg[];
         } else { // must interpolate
@@ -360,7 +427,11 @@ func real[int] loadfold(string directoryname, string inputfilename, string meshf
           file >> monitornames[k] >> monitors[monitornames[k]];
         }
       }
-      if (mpirank == 0) cout << "\t" + listparams(paramnames,params) + ", " + listparams(monitornames,monitors) << endl;
+      if (mpirank == 0) {
+        cout << "\t" + listparams(paramnames,params);
+        if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+        cout << "." << endl;
+      }
       if (filemesh == meshfilename){ // no interpolation needed
         file >> ubg[];
         file >> umg[];
@@ -400,7 +471,11 @@ func real[int] loadhopf(string directoryname, string inputfilename, string meshf
           file >> monitornames[k] >> monitors[monitornames[k]];
         }
       }
-      if (mpirank == 0) cout << "\t" + listparams(paramnames,params) << ", m = " + m + ", omega = " + omega + ", " + listparams(monitornames,monitors) << endl;
+      if (mpirank == 0) {
+        cout << "\t" + listparams(paramnames,params) << ", m = " + m + ", omega = " + omega;
+        if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+        cout << "." << endl;
+      }
       if (filemesh == meshfilename){ // no interpolation needed
         file >> ubg[];
         file >> umg[];

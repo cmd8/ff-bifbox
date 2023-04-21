@@ -1,0 +1,133 @@
+//
+// resolventcompute.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
+load "iovtk"
+load "PETSc-complex"
+include "solversettings.idp"
+include "solvermacros.idp"
+// arguments
+string meshfilein = getARGV("-mshi", ""); // input meshfile
+string basefilein = getARGV("-bfi", "");
+string foldfilein = getARGV("-ffi", "");
+string hopffilein = getARGV("-hfi", "");
+string resolventfileout = getARGV("-rfo", "");
+bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
+int meshsplit = getARGV("-split", 1); // toggle whether mesh is split for P1 representation in Paraview
+int m = getARGV("-m", 0);
+real omega = getARGV("-omega", 0.4);
+string ksptype = getARGV("-ksp_type", "preonly"); // set -ksp_method
+string pctype = getARGV("-pc_type", "lu"); // set -pc_type
+int epsnev = getARGV("-eps_nev", 1);
+bool strictnev = getARGV("-strict", 0);
+
+if(meshfilein == ""){
+  if(basefilein != "") meshfilein = readmeshname(workdir + basefilein + ".base");
+  else if(foldfilein != "") meshfilein = readmeshname(workdir + foldfilein + ".fold");
+  else if(hopffilein != "") meshfilein = readmeshname(workdir + hopffilein + ".hopf");
+}
+// Load mesh, make FE basis
+Th = readmeshN(workdir + meshfilein + meshext);
+Thg = Th;
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+XMh defu(ub);
+fespace Xh(Th, Pkf); // local FEspace
+fespace Xhg(Thg, Pkf); // global FEspace
+restf = restrict(Xh, Xhg, n2o);
+
+if(foldfilein != "") {
+  real[int] qm, qma;
+  ub[] = loadfold(workdir, foldfilein, meshfilein, qm, qma);
+} else if(hopffilein != "") {
+  complex[int] qm, qma;
+  int mtemp;
+  real omegatemp;
+  ub[] = loadhopf(workdir, hopffilein, meshfilein, qm, qma, mtemp, omegatemp);
+} else {
+  ub[] = loadbase(workdir, basefilein, meshfilein);
+}
+complex[int] val(epsnev);
+Xh<complex>[int] deff(vec)(epsnev);
+Xh<complex> deff(fm);
+XMh<complex> defu(um);
+
+Mat<complex> L, Mf;
+createMatu(Th, L, Pk);
+Mat<complex> M(L);
+createMatf(Th, Mf, Pkf);
+complex ik = 1i*real(m);
+complex iomega = 1i*omega; // Let PETSc/SLEPc do the shift
+
+IFMACRO(formulation,incomp)
+include "eqns_incomp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmach)
+include "eqns_lowmach.idp"
+ENDIFMACRO
+IFMACRO(formulation,comp)
+include "eqns_comp.idp"
+ENDIFMACRO
+IFMACRO(formulation,lowmachreact)
+include "eqns_lowmachreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,compreact)
+include "eqns_compreact.idp"
+ENDIFMACRO
+IFMACRO(formulation,custom)
+include "eqns_custom.idp"
+ENDIFMACRO
+
+// construct matrices
+L  = vJ(XMh, XMh, tgv = -1); //Linear operator
+set(L, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
+M  = vMq(XMh, XMh); // Response Norm
+Mf = vMf(Xh, Xh); // Forcing Norm
+matrix<complex> LocPQ = vP(Xh, XMh); // Forcing/Response Correspondence
+Mat<complex> PQ(M, Mf, LocPQ);
+
+func complex[int] LHSop(complex[int]& inPETSc) {
+  complex[int] temp(XMh.ndof), outPETSc(inPETSc.n);
+  MatMult(PQ, inPETSc, outPETSc);
+  KSPSolve(L, outPETSc, temp);
+  MatMult(M, temp, outPETSc);
+  KSPSolveHermitianTranspose(L, outPETSc, temp);
+  MatMultHermitianTranspose(PQ, temp, outPETSc);
+  return outPETSc;
+}
+
+Mat<complex> LHS(Mf, LHSop);
+
+int k = EPSSolve(LHS, Mf, vectors = vec, values = val,
+                 sparams = " -eps_type krylovschur " +
+                           " -eps_largest_real " +
+                           " -eps_monitor_all " +
+                           " -eps_gen_hermitian ");
+if (strictnev) k = min(k, epsnev); // activate to limit number of eigenpairs
+if (resolventfileout != ""){
+  for (int i = 0; i < k; ++i){
+    real gain = sqrt(real(val(i)));
+    fm[] = vec[i][];
+    complex[int] gm;
+    ChangeNumbering(Mf, fm[], gm);
+    ChangeNumbering(Mf, fm[], gm, inverse = true);
+    complex[int] qm(XMh.ndof);
+    complex[int] temp(XMh.ndof);
+    MatMult(PQ, gm, temp);
+    KSPSolve(L, temp, qm);
+    ChangeNumbering(L, um[], qm, inverse = true);
+    if (basefilein == ""){
+      complex[int] qb(ub[].n);
+      qb.re = ub[];
+      ChangeNumbering(L, qb, temp);
+      ChangeNumbering(L, qb, temp, inverse = true);
+      ub[] = qb.re;
+      savebase(workdir, resolventfileout, "", meshfilein, true, true, paraviewflag);
+      basefilein = resolventfileout;
+    }
+    saveresolvent(workdir, resolventfileout + "_" + i, basefilein, meshfilein, m, omega, gain, paraviewflag);
+  }
+}
