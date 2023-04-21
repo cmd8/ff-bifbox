@@ -43,9 +43,6 @@ int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 int m;
 
-// load macros
-macro Hessian()1 // EOM
-
 assert(foldfilein != "");
 // Load mesh, make FE basis
 string meshfile, meshfilein;
@@ -179,18 +176,18 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
       updatelambda(param1, lambda1 + eps1);
       updatelambda(param2, lambda2);
       real[int] Jl1 = vR(0, XMh, tgv = -1);
-      real[int] Hl1 = vJq(0, XMh, tgv = -10);
+      real[int] Hl1 = vJ(0, XMh, tgv = -10);
       updatelambda(param1, lambda1);
       updatelambda(param2, lambda2 + eps2);
       real[int] Jl2 = vR(0, XMh, tgv = -1);
-      real[int] Hl2 = vJq(0, XMh, tgv = -10);
+      real[int] Hl2 = vJ(0, XMh, tgv = -10);
       updatelambda(param2, lambda2);
       real[int] a0 = vR(0, XMh, tgv = -1);
       Jl1 -= a0;
       Jl2 -= a0;
       Jl1 /= eps1;
       Jl2 /= eps2;
-      a0 = vJq(0, XMh, tgv = -10);
+      a0 = vJ(0, XMh, tgv = -10);
       Hl1 -= a0;
       Hl2 -= a0;
       Hl1 /= eps1;
@@ -245,18 +242,18 @@ if(mpirank == 0) {
   updatelambda(param1, lambda1 + eps1);
   updatelambda(param2, lambda2);
   real[int] Jl1 = vR(0, XMh, tgv = -1);
-  real[int] Hl1 = vJq(0, XMh, tgv = -10);
+  real[int] Hl1 = vJ(0, XMh, tgv = -10);
   updatelambda(param1, lambda1);
   updatelambda(param2, lambda2 + eps2);
   real[int] Jl2 = vR(0, XMh, tgv = -1);
-  real[int] Hl2 = vJq(0, XMh, tgv = -10);
+  real[int] Hl2 = vJ(0, XMh, tgv = -10);
   updatelambda(param2, lambda2);
   real[int] a0 = vR(0, XMh, tgv = -1);
   Jl1 -= a0;
   Jl1 /= eps1;
   Jl2 -= a0;
   Jl2 /= eps2;
-  a0 = vJq(0, XMh, tgv = -10);
+  a0 = vJ(0, XMh, tgv = -10);
   Hl1 -= a0;
   Hl1 /= eps1;
   Hl2 -= a0;

@@ -50,7 +50,7 @@ Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 // Make finite element basis
-XMh defu(ub);
+XMh defu(ub), defu(um);
 // Initialize solution with guess or file
 ub[] = loadbase(workdir, basefilein, meshfilein);
 if(foldfilein != "") {

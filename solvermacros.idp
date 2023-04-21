@@ -11,6 +11,8 @@ string workdir = getARGV("-dir","./data/"); // set working directory
 // Define local/global mesh variables
 meshN Th; // local mesh
 meshN Thg; // global mesh
+fespace Xh(Th, Pkf); // local FEspace
+fespace Xhg(Thg, Pkf); // global FEspace
 fespace XMh(Th, Pk); // local FEspace
 fespace XMhg(Thg, Pk); // global FEspace
 IFMACRO(dimension,2)
@@ -523,6 +525,38 @@ func complex[int] loadmode(string directoryname, string inputfilename, string me
         file >> umg1[];
         defu(umg) = defu(umg1);
       }
+      complex[int] qlocal = umg[](restu);
+      return qlocal;
+    }
+
+func complex[int] loadresolvent(string directoryname, string inputfilename, string meshfilename, complex[int] & fmlocal, int & m, real & omega, real & gain) {
+      Xhg<complex> deff(fmg);
+      XMhg<complex> defu(umg);
+      if (mpirank == 0) cout << "  Loading '" + inputfilename + ".rslv' over '";
+      string filemesh, basefilename, dummy;
+      real[string] tempparams;
+      ifstream file(directoryname + inputfilename + ".rslv");
+      file >> filemesh >> filemesh >> basefilename >> basefilename;
+      if (mpirank == 0) cout << basefilename + ".base' on '" + meshfilename + meshext + "' from '" + directoryname + "'." << endl;
+      for (int k = 0; k < paramnames.n; ++k){
+        file >> paramnames[k] >> tempparams[paramnames[k]];
+      }
+      file >> dummy >> m >> dummy >> omega >> dummy >> gain;
+      if (mpirank == 0) cout << "\t" + listparams(paramnames,tempparams) << ", m = " + m + ", omega = " + omega + ", gain = " + gain + "." << endl;
+      if (filemesh == meshfilename){ // no interpolation needed
+        file >> fmg[] >> umg[];
+      } else { // must interpolate
+      if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh + meshext << "'." << endl;
+        meshN Thg1 = readmeshN(directoryname + filemesh + meshext);
+        fespace Xhg1(Thg1, Pkf);
+        Xhg1<complex> deff(fmg1);
+        fespace XMhg1(Thg1, Pk);
+        XMhg1<complex> defu(umg1);
+        file >> fmg1[] >> umg1[];
+        deff(fmg) = deff(fmg1);
+        defu(umg) = defu(umg1);
+      }
+      fmlocal = fmg[](restf);
       complex[int] qlocal = umg[](restu);
       return qlocal;
     }

@@ -1,7 +1,7 @@
 // Define KSP parameters
 string KSPparams = "";
 string EPSparams = " -eps_pos_gen_non_hermitian ";
-// RESIDUAL VECTOR
+// RESIDUAL OPERATOR
   varf vR(defu(um), defu(v))
       = int2d(Th)(
         ugradu(v, ub, 0, ub) - divu(0, v)*ubp + visc(0, v, 0, ub)/params["Re"]
@@ -12,9 +12,17 @@ string EPSparams = " -eps_pos_gen_non_hermitian ";
       )
       + BoundaryConditions(0, um, ub);
 
-// JACOBIAN MATRIX
-varf vJ(defu(um), defu(v))
+// JACOBIAN OPERATOR
+varf vJ(defu(dum), defu(v))
       = int2d(Th)(
+        iomega*vdotu(v, dum)
+        + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum) - divu(-ik, v)*dump + visc(-ik, v , ik, dum )/params["Re"]
+        + vp*divu(ik, dum)
+      )
+      - int1d(Th, BCopen) (
+        ndotvisc(v, ik, dum)/params["Re"]
+      )
+      + int2d(Th)(
         iomega*vdotu(v, um)
         + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - divu(-ik, v)*ump + visc(-ik, v , ik, um )/params["Re"]
         + vp*divu(ik, um)
@@ -22,14 +30,17 @@ varf vJ(defu(um), defu(v))
       - int1d(Th, BCopen) (
         ndotvisc(v, ik, um)/params["Re"]
       )
-      + HomBoundaryConditions(m, um);
+      + HomBoundaryConditions(m, dum);
 
-// MASS MATRIX
-varf vM(defu(um), defu(v))
+// MASS OPERATOR
+varf vM(defu(dum), defu(v))
       = int2d(Th)(
-          vdotu(um, v)
+          vdotu(v, dum)
       )
-      + HomBoundaryConditions(m, um);
+      + int2d(Th)(
+          vdotu(v, um)
+      )
+      + HomBoundaryConditions(m, dum);
 
 // FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
 varf vMq(defu(dum), defu(v))
@@ -41,28 +52,9 @@ varf vMf(deff(dum), deff(v))
 varf vP(deff(fm), defu(v))
       = int2d(Th)( vdotu(v, fm) );
 
-// HESSIAN MATRIX
-IFMACRO(Hessian)
-varf vJq(defu(dum), defu(v))
-      = int2d(Th)(
-        iomega*vdotu(v, um)
-        + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - divu(-ik, v)*ump + visc(-ik, v , ik, um )/params["Re"]
-        + vp*divu(ik, um)
-      )
-      - int1d(Th, BCopen) (
-        ndotvisc(v, ik, um)/params["Re"]
-      )
-      + HomBoundaryConditions(m, dum);
-
+// HESSIAN OPERATOR
 varf vH(defu(dub), defu(v))
       = int2d(Th)(
         ugradu(v, um, 0, dub) + ugradu(v, dub, ik, um)
       )
       + HomBoundaryConditions(0, dub);
-
-varf vMq(defu(dum), defu(v))
-      = int2d(Th)(
-          vdotu(v, um)
-      )
-      + HomBoundaryConditions(m, dum);
-ENDIFMACRO

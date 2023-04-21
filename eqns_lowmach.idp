@@ -1,7 +1,7 @@
 // Define KSP parameters
 string KSPparams = "";
 string EPSparams = " -eps_pos_gen_non_hermitian ";
-// RESIDUAL VECTOR
+// RESIDUAL OPERATOR
 varf vR(defu(um), defu(v))
       = int2d(Th)(
         vT*ugradf(ub, 0, ubT)/ubT + ubT^(params["a"])*diff(0, vT, 0, ubT)/params["Pe"]
@@ -17,43 +17,22 @@ varf vR(defu(um), defu(v))
       )
       + BoundaryConditions(0, um, ub);
 
-// JACOBIAN MATRIX
-varf vJ(defu(um), defu(v))
+// JACOBIAN OPEARTOR
+varf vJ(defu(dum), defu(v))
       = int2d(Th)(
-        iomega*(gdotf(vT, umT) + vdotu(v, um))/ubT
-        + vT*(ugradf(um, 0, ubT) + ugradf(ub, ik, umT) - ugradf(ub, 0, ubT)*umT/ubT)/ubT + (ubT^(params["a"])*diff(-ik, vT, ik, umT) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vT, 0, ubT))/params["Pe"]
-        + (ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - ugradu(v, ub, 0, ub)*umT/ubT)/ubT - divu(-ik, v)*ump + (ubT^(params["a"])*visc(-ik, v , ik, um ) + params["a"]*ubT^(params["a"]-1.)*umT*visc(-ik, v , 0, ub ))/params["Re"]
-        - vp*divu(ik, um) - (ubT^(params["a"])*diff(-ik, vp, ik, umT) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vp, 0, ubT))/params["Pe"]
+        iomega*(gdotf(vT, dumT) + vdotu(v, dum))/ubT
+        + vT*(ugradf(dum, 0, ubT) + ugradf(ub, ik, dumT) - ugradf(ub, 0, ubT)*dumT/ubT)/ubT + (ubT^(params["a"])*diff(-ik, vT, ik, dumT) + params["a"]*ubT^(params["a"]-1.)*dumT*diff(-ik, vT, 0, ubT))/params["Pe"]
+        + (ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum) - ugradu(v, ub, 0, ub)*dumT/ubT)/ubT - divu(-ik, v)*dump + (ubT^(params["a"])*visc(-ik, v , ik, dum ) + params["a"]*ubT^(params["a"]-1.)*dumT*visc(-ik, v , 0, ub ))/params["Re"]
+        - vp*divu(ik, dum) - (ubT^(params["a"])*diff(-ik, vp, ik, dumT) + params["a"]*ubT^(params["a"]-1.)*dumT*diff(-ik, vp, 0, ubT))/params["Pe"]
       )
       - int1d(Th, BCopen) (
-        0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(ub) + vdotu(v, ub)*ndotu(um) - vdotu(v, ub)*ndotu(ub)*umT/ubT)/ubT
-        + (ubT^(params["a"])*ndotvisc(v, ik, um) + params["a"]*ubT^(params["a"] - 1.0)*umT*ndotvisc(v, 0, ub))/params["Re"]
+        0.5*(real(ndotu(ub)) < 0)*(vdotu(v, dum)*ndotu(ub) + vdotu(v, ub)*ndotu(dum) - vdotu(v, ub)*ndotu(ub)*dumT/ubT)/ubT
+        + (ubT^(params["a"])*ndotvisc(v, ik, dum) + params["a"]*ubT^(params["a"] - 1.0)*dumT*ndotvisc(v, 0, ub))/params["Re"]
       )
       + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow, BCslip) (
-        vp*(ubT^(params["a"])*ndotgrads(umT) + params["a"]*ubT^(params["a"]-1.)*umT*ndotgrads(ubT))/params["Pe"]
+        vp*(ubT^(params["a"])*ndotgrads(dumT) + params["a"]*ubT^(params["a"]-1.)*dumT*ndotgrads(ubT))/params["Pe"]
       )
-      + HomBoundaryConditions(m, um);
-
-// MASS MATRIX
-varf vM(defu(um), defu(v))
-      = int2d(Th)(
-          (gdotf(vT, umT) + vdotu(v, um))/ubT
-      )
-      + HomBoundaryConditions(m, um);
-
-// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
-varf vMq(defu(dum), defu(v))
-      = int2d(Th)( (gdotf(vT, dumT) + vdotu(v, dum))/ubT );
-
-varf vMf(deff(dum), deff(v))
-      = int2d(Th)( vdotu(v, dum)/ubT );
-
-varf vP(deff(fm), defu(v))
-      = int2d(Th)( vdotu(v, fm) );
-
-IFMACRO(Hessian)
-varf vJq(defu(dum), defu(v))
-      = int2d(Th)(
+      + int2d(Th)(
         iomega*(gdotf(vT, umT) + vdotu(v, um))/ubT
         + vT*(ugradf(um, 0, ubT) + ugradf(ub, ik, umT) - ugradf(ub, 0, ubT)*umT/ubT)/ubT + (ubT^(params["a"])*diff(-ik, vT, ik, umT) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vT, 0, ubT))/params["Pe"]
         + (ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - ugradu(v, ub, 0, ub)*umT/ubT)/ubT - divu(-ik, v)*ump + (ubT^(params["a"])*visc(-ik, v , ik, um ) + params["a"]*ubT^(params["a"]-1.)*umT*visc(-ik, v , 0, ub ))/params["Re"]
@@ -68,6 +47,27 @@ varf vJq(defu(dum), defu(v))
       )
       + HomBoundaryConditions(m, dum);
 
+// MASS OPERATOR
+varf vM(defu(dum), defu(v))
+      = int2d(Th)(
+          (gdotf(vT, dumT) + vdotu(v, dum))/ubT
+      )
+      + int2d(Th)(
+          (gdotf(vT, umT) + vdotu(v, um))/ubT
+      )
+      + HomBoundaryConditions(m, dum);
+
+// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+varf vMq(defu(dum), defu(v))
+      = int2d(Th)( (gdotf(vT, dumT) + vdotu(v, dum))/ubT );
+
+varf vMf(deff(dum), deff(v))
+      = int2d(Th)( vdotu(v, dum)/ubT );
+
+varf vP(deff(fm), defu(v))
+      = int2d(Th)( vdotu(v, fm) );
+
+// HESSIAN OPERATOR
 varf vH(defu(dub), defu(v))
       = int2d(Th)(
         -iomega*(gdotf(vT, umT) + vdotu(v, um))*dubT/ubT^2
@@ -85,10 +85,3 @@ varf vH(defu(dub), defu(v))
         vp*params["a"]*ubT^(params["a"]-1.)*(dubT*ndotgrads(umT) + umT*ndotgrads(dubT) + (params["a"]-1.)*dubT/ubT*umT*ndotgrads(ubT))/params["Pe"]
       )
       + HomBoundaryConditions(0, dub);
-
-varf vMq(defu(dum), defu(v))
-      = int2d(Th)(
-          (gdotf(vT, umT) + vdotu(v, um))/ubT
-      )
-      + HomBoundaryConditions(m, dum);
-ENDIFMACRO

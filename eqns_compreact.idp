@@ -1,7 +1,7 @@
 // Define KSP parameters
 string KSPparams = "";
 string EPSparams = " -eps_pos_gen_non_hermitian ";
-// RESIDUAL VECTOR
+// RESIDUAL OPERATOR
 varf vR(defu(um), defu(v))
       = int2d(Th)(
         vY*ubR*(ugradf(ub, 0, ubY) + ubY*Daexp(ub)) + ubT^(params["a"])*diff(0, vY, 0, ubY)/(params["Le"]*params["Pe"])
@@ -16,43 +16,21 @@ varf vR(defu(um), defu(v))
       )
       + BoundaryConditions(0, um, ub);
 
-// JACOBIAN MATRIX
-varf vJ(defu(um), defu(v))
+// JACOBIAN OPERATOR
+varf vJ(defu(dum), defu(v))
       = int2d(Th)(
-        iomega*(gdotf(vR, umR) + ubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um)))
-        + vY*(ubR*(ugradf(um, 0, ubY) + ugradf(ub, ik, umY)) + umR*ugradf(ub, 0, ubY) + (ubR*umY + umR*ubY + ubR*ubY*umT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^2.))*Daexp(ub)) + (ubT^(params["a"])*diff(-ik, vY, ik, umY) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vY, 0, ubY))/(params["Le"]*params["Pe"])
-        + vR*(ugradf(ub, ik, umR) + ugradf(um, 0, ubR) + umR*divu(0, ub) + ubR*divu(ik, um))
-        + ubR*(ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um)) + umR*ugradu(v, ub, 0, ub) - 1.0/(params["ga"]*params["Ma"]^2)*divu(-ik, v)*(umR*ubT + ubR*umT) + (ubT^(params["a"])*visc(-ik, v , ik, um ) + params["a"]*ubT^(params["a"]-1.)*umT*visc(-ik, v , 0, ub ))/params["Re"]
-        + vT*(ubR*(ugradf(um, 0, ubT) + ugradf(ub, ik, umT)) + umR*ugradf(ub, 0, ubT) - params["ga"]*params["dT"]*(ubR*umY + umR*ubY + ubR*ubY*umT*params["Ze"]*(1.0 + params["dT"])^2/(params["dT"]*ubT^2.))*Daexp(ub) + (params["ga"] - 1.0)*(umR*ubT*divu(0, ub) + ubR*umT*divu(0, ub) + ubR*ubT*divu(ik, um)))
-        + params["ga"]/params["Pe"]*(ubT^(params["a"])*diff(-ik, vT, ik, umT) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vT, 0, ubT))
-        - vT*params["ga"]*(params["ga"] - 1.0)*params["Ma"]^2./params["Re"]*(ubT^(params["a"])*(visc(-ik, um, 0, ub) + visc(0, ub, ik, um)) + params["a"]*ubT^(params["a"]-1.)*umT*visc(0, ub, 0, ub))
+        iomega*(gdotf(vR, dumR) + ubR*(gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum)))
+        + vY*(ubR*(ugradf(dum, 0, ubY) + ugradf(ub, ik, dumY)) + dumR*ugradf(ub, 0, ubY) + (ubR*dumY + dumR*ubY + ubR*ubY*dumT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^2.))*Daexp(ub)) + (ubT^(params["a"])*diff(-ik, vY, ik, dumY) + params["a"]*ubT^(params["a"]-1.)*dumT*diff(-ik, vY, 0, ubY))/(params["Le"]*params["Pe"])
+        + vR*(ugradf(ub, ik, dumR) + ugradf(dum, 0, ubR) + dumR*divu(0, ub) + ubR*divu(ik, dum))
+        + ubR*(ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum)) + dumR*ugradu(v, ub, 0, ub) - 1.0/(params["ga"]*params["Ma"]^2)*divu(-ik, v)*(dumR*ubT + ubR*dumT) + (ubT^(params["a"])*visc(-ik, v , ik, dum ) + params["a"]*ubT^(params["a"]-1.)*dumT*visc(-ik, v , 0, ub ))/params["Re"]
+        + vT*(ubR*(ugradf(dum, 0, ubT) + ugradf(ub, ik, dumT)) + dumR*ugradf(ub, 0, ubT) - params["ga"]*params["dT"]*(ubR*dumY + dumR*ubY + ubR*ubY*dumT*params["Ze"]*(1.0 + params["dT"])^2/(params["dT"]*ubT^2.))*Daexp(ub) + (params["ga"] - 1.0)*(dumR*ubT*divu(0, ub) + ubR*dumT*divu(0, ub) + ubR*ubT*divu(ik, dum)))
+        + params["ga"]/params["Pe"]*(ubT^(params["a"])*diff(-ik, vT, ik, dumT) + params["a"]*ubT^(params["a"]-1.)*dumT*diff(-ik, vT, 0, ubT))
+        - vT*params["ga"]*(params["ga"] - 1.0)*params["Ma"]^2./params["Re"]*(ubT^(params["a"])*(visc(-ik, dum, 0, ub) + visc(0, ub, ik, dum)) + params["a"]*ubT^(params["a"]-1.)*dumT*visc(0, ub, 0, ub))
       )
       - int1d(Th, BCopen) (
-        (ubT^(params["a"])*ndotvisc(v, ik, um) + params["a"]*ubT^(params["a"]-1.)*umT*ndotvisc(v, 0, ub))/params["Re"]
+        (ubT^(params["a"])*ndotvisc(v, ik, dum) + params["a"]*ubT^(params["a"]-1.)*dumT*ndotvisc(v, 0, ub))/params["Re"]
       )
-      + HomBoundaryConditions(m, um);
-
-// MASS MATRIX
-varf vM(defu(um), defu(v))
-      = int2d(Th)(
-        gdotf(vR, umR) + ubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
-      )
-      + HomBoundaryConditions(m, um);
-
-// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
-varf vMq(defu(dum), defu(v))
-      = int2d(Th)( gdotf(vR, umR) + ubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um)) );
-
-varf vMf(deff(dum), deff(v))
-      = int2d(Th)( ubR*vdotu(v, dum) );
-
-varf vP(deff(fm), defu(v))
-      = int2d(Th)( vdotu(v, fm) );
-
-// HESSIAN MATRIX
-IFMACRO(Hessian)
-varf vJq(defu(dum), defu(v))
-      = int2d(Th)(
+      + int2d(Th)(
         iomega*(gdotf(vR, umR) + ubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um)))
         + vY*(ubR*(ugradf(um, 0, ubY) + ugradf(ub, ik, umY)) + umR*ugradf(ub, 0, ubY) + (ubR*umY + umR*ubY + ubR*ubY*umT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^2.))*Daexp(ub)) + (ubT^(params["a"])*diff(-ik, vY, ik, umY) + params["a"]*ubT^(params["a"]-1.)*umT*diff(-ik, vY, 0, ubY))/(params["Le"]*params["Pe"])
         + vR*(ugradf(ub, ik, umR) + ugradf(um, 0, ubR) + umR*divu(0, ub) + ubR*divu(ik, um))
@@ -66,6 +44,27 @@ varf vJq(defu(dum), defu(v))
       )
       + HomBoundaryConditions(m, dum);
 
+// MASS OPERATOR
+varf vM(defu(dum), defu(v))
+      = int2d(Th)(
+        gdotf(vR, dumR) + ubR*(gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum))
+      )
+      + int2d(Th)(
+          gdotf(vR, umR) + ubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
+      )
+      + HomBoundaryConditions(m, dum);
+
+// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+varf vMq(defu(dum), defu(v))
+      = int2d(Th)( gdotf(vR, umR) + ubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um)) );
+
+varf vMf(deff(dum), deff(v))
+      = int2d(Th)( ubR*vdotu(v, dum) );
+
+varf vP(deff(fm), defu(v))
+      = int2d(Th)( vdotu(v, fm) );
+
+// HESSIAN OPERATOR
 varf vH(defu(dub), defu(v))
       = int2d(Th)(
         iomega*dubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
@@ -85,10 +84,3 @@ varf vH(defu(dub), defu(v))
         params["a"]*ubT^(params["a"]-1.)*(dubT*ndotvisc(v, ik, um) + umT*ndotvisc(v, 0, dub) + (params["a"]-1.)*dubT/ubT*umT*ndotvisc(v, 0, ub))/params["Re"]
       )
       + HomBoundaryConditions(0, dub);
-
-varf vMq(defu(dum), defu(v))
-      = int2d(Th)(
-          gdotf(vR, umR) + ubR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
-      )
-      + HomBoundaryConditions(m, dum);
-ENDIFMACRO

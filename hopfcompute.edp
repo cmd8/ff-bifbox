@@ -119,8 +119,6 @@ real snesdivergencetolerance = getARGV("-snes_divergence_tolerance", 1.0e30);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 int m;
 real omega;
-// load macros
-macro Hessian()1 // EOM
 
 if (hopffilein == "" && basefilein == "" && modefilein != "")
   basefilein = readbasename(workdir + modefilein + ".mode");
@@ -264,12 +262,12 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       iomega = 1i*omega;
       updatelambda(param, lambda + eps);
       complex[int] Jl = vR(0, XMh, tgv = -1);
-      complex[int] Hl = vJq(0, XMh, tgv = -10);
+      complex[int] Hl = vJ(0, XMh, tgv = -10);
       updatelambda(param, lambda);
       complex[int] temp1, temp2(qm.n), bm = vR(0, XMh, tgv = -1);
       Jl -= bm;
       Jl /= eps;
-      bm = vJq(0, XMh, tgv = -10);
+      bm = vJ(0, XMh, tgv = -10);
       Hl -= bm;
       Hl /= eps;
       ChangeNumbering(J, Jl, temp1);
@@ -286,7 +284,7 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       if(zerofreq)
         tempPms = [[real(gl), 0], [0, 1.0]];
       else {
-        bm = vMq(0, XMh, tgv = -10);
+        bm = vM(0, XMh, tgv = -10);
         complex gw = J(uma[], bm);
         tempPms = [[real(gl), -imag(gw)], [imag(gl), real(gw)]];
       }

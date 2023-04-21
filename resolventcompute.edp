@@ -33,11 +33,9 @@ if(meshfilein == ""){
 Th = readmeshN(workdir + meshfilein + meshext);
 Thg = Th;
 buildDmesh(Th);
+restf = restrict(Xh, Xhg, n2o);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub);
-fespace Xh(Th, Pkf); // local FEspace
-fespace Xhg(Thg, Pkf); // global FEspace
-restf = restrict(Xh, Xhg, n2o);
 
 if(foldfilein != "") {
   real[int] qm, qma;

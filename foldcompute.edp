@@ -41,9 +41,6 @@ string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -sn
 int m = 0;
 complex eigenvalue;
 
-// load macros
-macro Hessian()1 // EOM
-
 assert(basefilein != "" || foldfilein != "");
 if (meshfilein == ""){
   if (basefilein != "") meshfilein = readmeshname(workdir + basefilein + ".base");
@@ -159,12 +156,12 @@ real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeNumbering(J, uma[], qma, inverse = true);
       updatelambda(param, lambda + eps);
       real[int] Jl = vR(0, XMh, tgv = -1);
-      real[int] Hl = vJq(0, XMh, tgv = -10);
+      real[int] Hl = vJ(0, XMh, tgv = -10);
       updatelambda(param, lambda);
       real[int] temp, a0 = vR(0, XMh, tgv = -1);
       Jl -= a0;
       Jl /= eps;
-      a0 = vJq(0, XMh, tgv = -10);
+      a0 = vJ(0, XMh, tgv = -10);
       Hl -= a0;
       Hl /= eps;
       ChangeNumbering(J, Jl, temp); // FreeFEM to PETSc

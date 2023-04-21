@@ -54,7 +54,7 @@ Th = readmeshN(workdir + meshfile + meshext);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
-XMh defu(ub), defu(yb);
+XMh defu(ub), defu(um), defu(yb);
 if (count == 0){
   ub[] = loadbase(workdir, basefilein, meshfile);
   if(mpirank == 0) printstats(workdir + basefileout + ".txt", meshfile, 0, 0.0);
