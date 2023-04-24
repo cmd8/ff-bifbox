@@ -48,22 +48,22 @@ if (mpirank==0){
     int m;
     complex eigenvalue;
     um[] = loadmode(workdir, modefilein, meshfile, m, eigenvalue);
-    cout << "  Saving '" + modefileout + "_mode_[real,imag].vtu' in '" + workdir + "'." << endl;
+    cout << "  Saving '" + modefileout + "_mode.vtu' in '" + workdir + "'." << endl;
+    string pvdataname = ParaviewDataName + " " + ParaviewDataName;
+    int[int] pvorder = [ParaviewOrder,ParaviewOrder];
     if (meshsplit != 1){
       meshN Thgs = trunc(Thg, 1, split = meshsplit);
       fespace XMhs(Thgs, Pk);
       XMhs<complex> defu(uso) = defu(um);
-      XMhs defu(usr);
+      XMhs defu(usr), defu(usi);
       usr[] = uso[].re;
-      savevtk(workdir + modefileout + "_mode_real.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
-      usr[] = uso[].im;
-      savevtk(workdir + modefileout + "_mode_imag.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+      usi[] = uso[].im;
+      savevtk(workdir + modefileout + "_mode.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
     } else {
-      XMhg defu(usr);
+      XMhg defu(usr), defu(usi);
       usr[] = um[].re;
-      savevtk(workdir + modefileout + "_mode_real.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
-      usr[] = um[].im;
-      savevtk(workdir + modefileout + "_mode_imag.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+      usi[] = um[].im;
+      savevtk(workdir + modefileout + "_mode.vtu", Thg, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
     }
   } else if (resolventfilein != ""){
     string meshfile = readmeshname(workdir + resolventfilein + ".rslv");
@@ -76,34 +76,34 @@ if (mpirank==0){
     real omega;
     real gain;
     um[] = loadresolvent(workdir, resolventfilein, meshfile, fm[], m, omega, gain);
-    cout << "  Saving '" + resolventfileout + "_rslv_[forcing_real,forcing_imag,response_real,response_imag].vtu' in '" + workdir + "'." << endl;
+    cout << "  Saving '" + resolventfileout + "_rslv_[forcing,response].vtu' in '" + workdir + "'." << endl;
+    string pvdataname = ParaviewDataName + " " + ParaviewDataName;
+    int[int] pvorder = [ParaviewOrder,ParaviewOrder];
+    string pvdatanamef = ParaviewDataNamef + " " + ParaviewDataNamef;
+    int[int] pvorderf = [ParaviewOrderf,ParaviewOrderf];
     if (meshsplit != 1){
       meshN Thgs = trunc(Thg, 1, split = meshsplit);
       fespace XMhs(Thgs, Pk);
       XMhs<complex> defu(uso) = defu(um);
       fespace Xhs(Thgs, Pkf);
       Xhs<complex> deff(fso) = deff(fm);
-      Xhg deff(fsr);
+      Xhg deff(fsr), deff(fsi);
       fsr[] = fso[].re;
-      savevtk(workdir + resolventfileout + "_mode_forcing_real.vtu", Thg, adaptf(fsr), dataname = ParaviewDataName, order = ParaviewOrder);
-      fsr[] = fso[].im;
-      savevtk(workdir + resolventfileout + "_mode_forcing_imag.vtu", Thg, adaptf(fsr), dataname = ParaviewDataName, order = ParaviewOrder);
-      XMhs defu(usr);
+      fsi[] = fso[].im;
+      savevtk(workdir + resolventfileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = pvdatanamef, order = pvorderf);
+      XMhs defu(usr), defu(usi);
       usr[] = uso[].re;
-      savevtk(workdir + resolventfileout + "_rslv_response_real.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
-      usr[] = uso[].im;
-      savevtk(workdir + resolventfileout + "_rslv_response_imag.vtu", Thgs, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+      usi[] = uso[].im;
+      savevtk(workdir + resolventfileout + "_rslv_response.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
     } else {
-      Xhg deff(fsr);
+      Xhg deff(fsr), deff(fsi);
       fsr[] = fm[].re;
-      savevtk(workdir + resolventfileout + "_mode_forcing_real.vtu", Thg, adaptf(fsr), dataname = ParaviewDataName, order = ParaviewOrder);
-      fsr[] = fm[].im;
-      savevtk(workdir + resolventfileout + "_mode_forcing_imag.vtu", Thg, adaptf(fsr), dataname = ParaviewDataName, order = ParaviewOrder);
-      XMhg defu(usr);
+      fsi[] = fm[].im;
+      savevtk(workdir + resolventfileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = pvdatanamef, order = pvorderf);
+      XMhg defu(usr), defu(usi);
       usr[] = um[].re;
-      savevtk(workdir + resolventfileout + "_mode_response_real.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
-      usr[] = um[].im;
-      savevtk(workdir + resolventfileout + "_mode_response_imag.vtu", Thg, adaptu(usr), dataname = ParaviewDataName, order = ParaviewOrder);
+      usi[] = um[].im;
+      savevtk(workdir + resolventfileout + "_mode_response.vtu", Thg, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
     }
   } else if (foldfilein != ""){
     string meshfile = readmeshname(workdir + foldfilein + ".fold");
@@ -135,32 +135,31 @@ if (mpirank==0){
     real omega;
     int m;
     ub[] = loadhopf(workdir, hopffilein, meshfile, um[], uma[], m, omega);
-    cout << "  Saving '" + hopffileout + "_hopf_[base,dirmode_real,dirmode_imag,adjmode_real,adjmode_imag].vtu' in '" + workdir + "'." << endl;
+    cout << "  Saving '" + hopffileout + "_hopf_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
+    string pvdataname = ParaviewDataName + " " + ParaviewDataName;
+    int[int] pvorder = [ParaviewOrder,ParaviewOrder];
     if (meshsplit != 1){
       meshN Thgs = trunc(Thg, 1, split = meshsplit);
       fespace XMhs(Thgs, Pk);
-      XMhs defu(ubs) = defu(ub);
+      XMhs defu(ubs) = defu(ub), defu(ubsi);
       XMhs<complex> defu(ums) = defu(um);
       XMhs<complex> defu(umas) = defu(uma);
       savevtk(workdir + hopffileout + "_hopf_base.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
       ubs[] = ums[].re;
-      savevtk(workdir + hopffileout + "_hopf_dirmode_real.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
-      ubs[] = ums[].im;
-      savevtk(workdir + hopffileout + "_hopf_dirmode_imag.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
+      ubsi[] = ums[].im;
+      savevtk(workdir + hopffileout + "_hopf_dirmode.vtu", Thgs, adaptu(ubs), adaptu(ubsi), dataname = pvdataname, order = pvorder);
       ubs[] = umas[].re;
-      savevtk(workdir + hopffileout + "_hopf_adjmode_real.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
-      ubs[] = umas[].im;
-      savevtk(workdir + hopffileout + "_hopf_adjmode_imag.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
+      ubsi[] = umas[].im;
+      savevtk(workdir + hopffileout + "_hopf_adjmode.vtu", Thgs, adaptu(ubs), adaptu(ubsi), dataname = pvdataname, order = pvorder);
     } else {
       savevtk(workdir + hopffileout + "_hopf_base.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
+      XMhg defu(ubi);
       ub[] = um[].re;
-      savevtk(workdir + hopffileout + "_hopf_dirmode_real.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
-      ub[] = um[].im;
-      savevtk(workdir + hopffileout + "_hopf_dirmode_imag.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
+      ubi[] = um[].im;
+      savevtk(workdir + hopffileout + "_hopf_dirmode.vtu", Thg, adaptu(ub), adaptu(ubi), dataname = pvdataname, order = pvorder);
       ub[] = uma[].re;
-      savevtk(workdir + hopffileout + "_hopf_adjmode_real.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
-      ub[] = uma[].im;
-      savevtk(workdir + hopffileout + "_hopf_adjmode_imag.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
+      ubi[] = uma[].im;
+      savevtk(workdir + hopffileout + "_hopf_adjmode.vtu", Thg, adaptu(ub), adaptu(ubi), dataname = pvdataname, order = pvorder);
     }
   }
 }

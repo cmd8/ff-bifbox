@@ -62,11 +62,11 @@ IFMACRO(formulation,custom)
   macro initf(i)[i, i IFMACRO(component,3) ,i ENDIFMACRO]//EOM
   func Pkf = [P2,P2 IFMACRO(component,3) ,P2 ENDIFMACRO];
   macro u2u(u)[u,u#y, IFMACRO(component,3) 0, ENDIFMACRO u#v, u#p, 0]//EOM
-  macro f2u(f)[f,f#y, IFMACRO(component,3) f#z,ENDIFMACRO 0, 0, 0]//EOM
   macro adaptu(u)[u, u#y IFMACRO(component,3) ,u#z ENDIFMACRO] , u#v, u#p //EOM
   macro adaptf(f)[f, f#y IFMACRO(component,3) ,f#z ENDIFMACRO] //EOM
   int[int] ParaviewOrder = [1, 1, 1];
   string ParaviewDataName = "velocity viscosity pressure";
+  string ParaviewDataNamef = "momentum";
 ENDIFMACRO
 IFMACRO(!custom)
   macro defu(u)[u,u#y    IFMACRO(component,3) ,u#z ENDIFMACRO  IFMACRO(species) ,u#Y ENDIFMACRO IFMACRO(temperature) ,u#T ENDIFMACRO IFMACRO(density) ,u#R ENDIFMACRO IFMACRO(pressure) ,u#p ENDIFMACRO]//EOM
@@ -76,11 +76,12 @@ IFMACRO(!custom)
   macro initf(i)[i, i    IFMACRO(component,3) ,i   ENDIFMACRO]//EOM
   func Pkf = [P2,P2      IFMACRO(component,3) ,P2  ENDIFMACRO];
   macro u2u(u)[u,u#y     IFMACRO(component,3) ,0   ENDIFMACRO  IFMACRO(species) ,u#Y ENDIFMACRO IFMACRO(temperature) ,u#T ENDIFMACRO IFMACRO(density) ,u#R ENDIFMACRO IFMACRO(pressure) ,u#p ENDIFMACRO]//EOM
-  macro f2u(f)[f,f#y     IFMACRO(component,3) ,f#z ENDIFMACRO  IFMACRO(species) ,0   ENDIFMACRO IFMACRO(temperature) ,0   ENDIFMACRO ,0]//EOM
   macro adaptu(u)[u, u#y IFMACRO(component,3) ,u#z ENDIFMACRO] IFMACRO(species) ,u#Y ENDIFMACRO IFMACRO(temperature) ,u#T ENDIFMACRO IFMACRO(density) ,u#R ENDIFMACRO IFMACRO(pressure) ,u#p ENDIFMACRO//EOM
   macro adaptf(f)[f, f#y IFMACRO(component,3) ,f#z ENDIFMACRO] //EOM
   int[int] ParaviewOrder = [1                                  IFMACRO(species) ,1 ENDIFMACRO IFMACRO(temperature) ,1 ENDIFMACRO ,1];
   string ParaviewDataName = "velocity"  IFMACRO(species) + " species" ENDIFMACRO IFMACRO(temperature) + " temperature" ENDIFMACRO IFMACRO(density) + " density" ENDIFMACRO IFMACRO(pressure) + " pressure" ENDIFMACRO;
+  int[int] ParaviewOrderf = [1];
+  string ParaviewDataNamef = "momentum";
 ENDIFMACRO
 IFMACRO(!InitialConditions)
   macro InitialConditions()initu(1)//EOM
