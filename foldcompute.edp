@@ -52,8 +52,8 @@ Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(um), defu(uma);
-if (foldfilein != "") ub[] = loadfold(workdir, foldfilein, meshfilein, um[], uma[]);
-else  ub[] = loadbase(workdir, basefilein, meshfilein);
+if (foldfilein != "") ub[] = loadfold(foldfilein, meshfilein, um[], uma[]);
+else  ub[] = loadbase(basefilein, meshfilein);
 real lambda = getlambda(param);
 // Create distributed Mat
 Mat J;
@@ -222,5 +222,5 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     cout << "  Saving adapted mesh '" + meshfileout + meshext + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshfileout + meshext);
   }
-  savefold(workdir, foldfileout, "", meshfileout, true, true, paraviewflag);
+  savefold(foldfileout, "", meshfileout, true, true, paraviewflag);
 }

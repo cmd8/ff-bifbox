@@ -69,12 +69,12 @@ thetamax = getARGV("-thmax", 10.0)
 //EOM
 
 // FUNCTIONS -------------------------------------------------------------------
-macro savebase(workdir, basefileout, statsfile, meshfile, saveflag, monitorflag, paraviewflag){
+macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag, paraviewflag){
   XMhg defu(tempu), defu(ubg);
   for[i, v : restu] tempu[][v] = ub[][i];
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
   if (monitorflag) getmonitors(ubg);
-  if (mpirank == 0 && statsfile != "") printstats(workdir + statsfile + ".txt", meshfile, 0, 0);
+  if (mpirank == 0 && statsfile != "") printstats(statsfile, basefileout + ".base", meshfile, 0, 0);
   if (saveflag && mpirank == 0 && basefileout != ""){
     cout << "  Saving '" + basefileout + ".base' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
     cout << "\t" + listparams(paramnames,params);
@@ -108,48 +108,121 @@ macro savebase(workdir, basefileout, statsfile, meshfile, saveflag, monitorflag,
   }
 }//EOM
 
-macro savemode(workdir, modefileout, basefile, meshfile, m, eigenvalue, paraviewflag){
-  XMhg<complex> defu(tempu), defu(umg);
-  for[i, v : restu] tempu[][v] = um[][i];
-  mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
-  if (mpirank == 0 && modefileout != ""){
-    cout << "  Saving '" + modefileout + ".mode' over '" + basefile + ".base' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
-    cout << "\t" + listparams(paramnames,params) + ", m = " + m + ", eval = " + eigenvalue + "."  << endl;
-    {
-      ofstream file(workdir + modefileout + ".mode", binary);
-      file.precision(17);
-      file << "mesh\t" << meshfile << endl << endl;
-      file << "base\t" << basefile << endl << endl;
-      for (int k = 0; k < paramnames.n; ++k){
-        file << paramnames[k] << "\t" << params[paramnames[k]] << endl << endl;
-      }
-    file << "m\t" << m << endl << endl;
-    file << "eval\t" << eigenvalue << endl << endl;
-    file << umg[] << endl;
-    }
-    if (paraviewflag){
-      cout << "  Saving '" + modefileout + "_mode.vtu' in '" + workdir + "'." << endl;
-      string pvdataname = ParaviewDataName + " " + ParaviewDataName;
-      int[int] pvorder = [ParaviewOrder,ParaviewOrder];
-      if (meshsplit != 1){
-        meshN Thgs = trunc(Thg, 1, split = meshsplit);
-        fespace XMhs(Thgs, Pk);
-        XMhs<complex> defu(uso) = defu(umg);
-        XMhs defu(usr), defu(usi);
-        usr[] = uso[].re;
-        usi[] = uso[].im;
-        savevtk(workdir + modefileout + "_mode.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
-      } else {
-        XMhg defu(usr), defu(usi);
-        usr[] = umg[].re;
-        usi[] = umg[].im;
-        savevtk(workdir + modefileout + "_mode.vtu", Thg, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, m, saveflag, paraviewflag){
+  if (mpirank == 0 && evalsfile != "") printevals(evalsfile, basefile, meshfile, m, evals);
+  if (saveflag){
+    XMhg<complex> defu(tempu), defu(umg);
+    for (int ii = 0; ii < evals.n; ++ii){
+      um[] = evecs[ii][];
+      for[i, v : restu] tempu[][v] = um[][i];
+      mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
+      string fileout = modefileout + "_" + ii;
+      if (mpirank == 0 && modefileout != ""){
+        cout << "  Saving '" + fileout + ".mode' over '" + basefile + "' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
+        cout << "\t" + listparams(paramnames,params) + ", m = " + m + ", eval = " + evals(ii) + "."  << endl;
+        {
+          ofstream file(workdir + fileout + ".mode", binary);
+          file.precision(17);
+          file << "mesh\t" << meshfile << endl << endl;
+          file << "file\t" << basefile << endl << endl;
+          for (int k = 0; k < paramnames.n; ++k){
+            file << paramnames[k] << "\t" << params[paramnames[k]] << endl << endl;
+          }
+          file << "m\t" << m << endl << endl;
+          file << "eval\t" << evals(ii) << endl << endl;
+          file << umg[] << endl;
+        }
+        if (paraviewflag){
+          cout << "  Saving '" + modefileout + "_mode.vtu' in '" + workdir + "'." << endl;
+          string pvdataname = ParaviewDataName + " " + ParaviewDataName;
+          int[int] pvorder = [ParaviewOrder,ParaviewOrder];
+          if (meshsplit != 1){
+            meshN Thgs = trunc(Thg, 1, split = meshsplit);
+            fespace XMhs(Thgs, Pk);
+            XMhs<complex> defu(uso) = defu(umg);
+            XMhs defu(usr), defu(usi);
+            usr[] = uso[].re;
+            usi[] = uso[].im;
+            savevtk(workdir + modefileout + "_mode.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+          } else {
+            XMhg defu(usr), defu(usi);
+            usr[] = umg[].re;
+            usi[] = umg[].im;
+            savevtk(workdir + modefileout + "_mode.vtu", Thg, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+          }
+        }
       }
     }
   }
 }//EOM
 
-macro savefold(workdir, foldfileout, statsfile, meshfile, saveflag, monitorflag, paraviewflag){
+macro saveresolvent(resolventfileout, gainsfile, basefile, meshfile, fvecs, uvecs, gains, m, omega, saveflag, paraviewflag){
+  if (mpirank == 0 && gainsfile != "") printgains(gainsfile, basefile, meshfile, m, omega, gains);
+  if (saveflag){
+    Xhg<complex> deff(tempf), deff(fmg);
+    XMhg<complex> defu(tempu), defu(umg);
+    for (int ii = 0; ii < gains.n; ++ii){
+      fm[] = fvecs[ii][];
+      um[] = uvecs[ii][];
+      for[i, v : restu] tempu[][v] = um[][i];
+      mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
+      for[i, v : restf] tempf[][v] = fm[][i];
+      mpiAllReduce(tempf[], fmg[], mpiCommWorld, mpiSUM);
+      string fileout = resolventfileout + "_" + ii;
+      if (mpirank == 0 && resolventfileout != ""){
+        cout << "  Saving '" + fileout + ".rslv' over '" + basefile + "' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
+        cout << "\t" + listparams(paramnames,params) + ", m = " + m + ", omega = " + omega + ", gain = " + gains(ii) + "."  << endl;
+        {
+          ofstream file(workdir + fileout + ".rslv", binary);
+          file.precision(17);
+          file << "mesh\t" << meshfile << endl << endl;
+          file << "file\t" << basefile << endl << endl;
+          for (int k = 0; k < paramnames.n; ++k){
+            file << paramnames[k] << "\t" << params[paramnames[k]] << endl << endl;
+          }
+          file << "m\t" << m << endl << endl;
+          file << "omega\t" << omega << endl << endl;
+          file << "gain\t" << gains(ii) << endl << endl;
+          file << fmg[] << endl;
+          file << umg[] << endl;
+        }
+        if (paraviewflag){
+          cout << "  Saving '" + fileout + "_rslv_[forcing,response].vtu' in '" + workdir + "'." << endl;
+          string pvdataname = ParaviewDataName + " " + ParaviewDataName;
+          int[int] pvorder = [ParaviewOrder,ParaviewOrder];
+          string pvdatanamef = ParaviewDataNamef + " " + ParaviewDataNamef;
+          int[int] pvorderf = [ParaviewOrderf,ParaviewOrderf];
+          if (meshsplit != 1){
+            meshN Thgs = trunc(Thg, 1, split = meshsplit);
+            fespace XMhs(Thgs, Pk);
+            XMhs<complex> defu(uso) = defu(umg);
+            fespace Xhs(Thgs, Pkf);
+            Xhs<complex> deff(fso) = deff(fmg);
+            Xhg deff(fsr), deff(fsi);
+            fsr[] = fso[].re;
+            fsi[] = fso[].im;
+            savevtk(workdir + fileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = pvdatanamef, order = pvorderf);
+            XMhs defu(usr), defu(usi);
+            usr[] = uso[].re;
+            usi[] = uso[].im;
+            savevtk(workdir + fileout + "_rslv_response.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+          } else {
+            Xhg deff(fsr), deff(fsi);
+            fsr[] = fmg[].re;
+            fsi[] = fmg[].im;
+            savevtk(workdir + fileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = pvdatanamef, order = pvorderf);
+            XMhg defu(usr), defu(usi);
+            usr[] = umg[].re;
+            usi[] = umg[].im;
+            savevtk(workdir + fileout + "_mode_response.vtu", Thg, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+          }
+        }
+      }
+    }
+  }
+}//EOM
+
+macro savefold(foldfileout, statsfile, meshfile, saveflag, monitorflag, paraviewflag){
   XMhg defu(tempu), defu(ubg), defu(umg), defu(umag);
   for[i, v : restu] tempu[][v] = ub[][i];
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
@@ -158,7 +231,7 @@ macro savefold(workdir, foldfileout, statsfile, meshfile, saveflag, monitorflag,
   for[i, v : restu] tempu[][v] = uma[][i];
   mpiAllReduce(tempu[], umag[], mpiCommWorld, mpiSUM);
   if (monitorflag) getmonitors(ubg);
-  if (mpirank == 0 && statsfile != "") printstats(workdir + statsfile + ".txt", meshfile, 0, 0);
+  if (mpirank == 0 && statsfile != "") printstats(statsfile, foldfileout + ".fold", meshfile, 0, 0);
   if (saveflag && mpirank == 0 && foldfileout != ""){
     cout << "  Saving '" + foldfileout + ".fold' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
     cout << "\t" + listparams(paramnames,params);
@@ -200,7 +273,7 @@ macro savefold(workdir, foldfileout, statsfile, meshfile, saveflag, monitorflag,
   }
 }//EOM
 
-macro savehopf(workdir, hopffileout, statsfile, meshfile, m, omega, saveflag, monitorflag, paraviewflag){
+macro savehopf(hopffileout, statsfile, meshfile, m, omega, saveflag, monitorflag, paraviewflag){
   XMhg defu(tempu), defu(ubg);
   XMhg<complex> defu(cplxu), defu(umg), defu(umag);
   for[i, v : restu] tempu[][v] = real(ub[][i]);
@@ -210,7 +283,7 @@ macro savehopf(workdir, hopffileout, statsfile, meshfile, m, omega, saveflag, mo
   for[i, v : restu] cplxu[][v] = uma[][i];
   mpiAllReduce(cplxu[], umag[], mpiCommWorld, mpiSUM);
   if (monitorflag) getmonitors(ubg);
-  if (mpirank == 0 && statsfile != "") printstats(workdir + statsfile + ".txt", meshfile, m, omega);
+  if (mpirank == 0 && statsfile != "") printstats(statsfile, hopffileout + ".hopf", meshfile, m, omega);
   if (saveflag && mpirank == 0 && hopffileout != ""){
     cout << "  Saving '" + hopffileout + ".hopf' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
     cout << "\t" + listparams(paramnames, params)  + ", m = " + m + ", omega = " + omega;
@@ -265,74 +338,16 @@ macro savehopf(workdir, hopffileout, statsfile, meshfile, m, omega, saveflag, mo
   }
 }//EOM
 
-macro saveresolvent(workdir, resolventfileout, basefile, meshfile, m, omega, gain, paraviewflag){
-  Xhg<complex> deff(tempf), deff(fmg);
-  XMhg<complex> defu(tempu), defu(umg);
-  for[i, v : restu] tempu[][v] = um[][i];
-  mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
-  for[i, v : restf] tempf[][v] = fm[][i];
-  mpiAllReduce(tempf[], fmg[], mpiCommWorld, mpiSUM);
-  if (mpirank == 0 && resolventfileout != ""){
-    cout << "  Saving '" + resolventfileout + ".rslv' over '" + basefile + ".base' on '" + meshfile + meshext + "' in '" + workdir + "'." << endl;
-    cout << "\t" + listparams(paramnames,params) + ", m = " + m + ", omega = " + omega + ", gain = " + gain + "."  << endl;
-    {
-      ofstream file(workdir + resolventfileout + ".rslv", binary);
-      file.precision(17);
-      file << "mesh\t" << meshfile << endl << endl;
-      file << "base\t" << basefile << endl << endl;
-      for (int k = 0; k < paramnames.n; ++k){
-        file << paramnames[k] << "\t" << params[paramnames[k]] << endl << endl;
-      }
-    file << "m\t" << m << endl << endl;
-    file << "omega\t" << omega << endl << endl;
-    file << "gain\t" << gain << endl << endl;
-    file << fmg[] << endl;
-    file << umg[] << endl;
-    }
-    if (paraviewflag){
-      cout << "  Saving '" + resolventfileout + "_rslv_[forcing,response].vtu' in '" + workdir + "'." << endl;
-      string pvdataname = ParaviewDataName + " " + ParaviewDataName;
-      int[int] pvorder = [ParaviewOrder,ParaviewOrder];
-      string pvdatanamef = ParaviewDataNamef + " " + ParaviewDataNamef;
-      int[int] pvorderf = [ParaviewOrderf,ParaviewOrderf];
-      if (meshsplit != 1){
-        meshN Thgs = trunc(Thg, 1, split = meshsplit);
-        fespace XMhs(Thgs, Pk);
-        XMhs<complex> defu(uso) = defu(umg);
-        fespace Xhs(Thgs, Pkf);
-        Xhs<complex> deff(fso) = deff(fmg);
-        Xhg deff(fsr), deff(fsi);
-        fsr[] = fso[].re;
-        fsi[] = fso[].im;
-        savevtk(workdir + resolventfileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = pvdatanamef, order = pvorderf);
-        XMhs defu(usr), defu(usi);
-        usr[] = uso[].re;
-        usi[] = uso[].im;
-        savevtk(workdir + resolventfileout + "_rslv_response.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
-      } else {
-        Xhg deff(fsr), deff(fsi);
-        fsr[] = fmg[].re;
-        fsi[] = fmg[].im;
-        savevtk(workdir + resolventfileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = pvdatanamef, order = pvorderf);
-        XMhg defu(usr), defu(usi);
-        usr[] = umg[].re;
-        usi[] = umg[].im;
-        savevtk(workdir + resolventfileout + "_mode_response.vtu", Thg, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
-      }
-    }
-  }
-}//EOM
-
-func bool printstats(string outputfilename, string meshfilename, int m, real omega) {
-      cout << "  Saving solution stats in '" + outputfilename + "'." << endl;
+func bool printstats(string outputfilename, string filename, string meshfilename, int m, real omega) {
+      cout << "  Saving solution stats to '" + outputfilename + ".cont' in '" + workdir + "'." << endl;
       cout << "\t" + listparams(paramnames, params);
       if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
-      cout << "." << endl;
       if (omega != 0.0 | m != 0) cout << ", m = " + m + ", omega = " + omega;
       cout << "." << endl;
-      { ofstream file(outputfilename, append);
+      {
+        ofstream file(workdir + outputfilename + ".cont", append);
         file.precision(17);
-        file << meshfilename << "\t";
+        file << filename << "\t" << meshfilename << "\t";
         for (int k = 0; k < paramnames.n; ++k){
           file << params[paramnames[k]] << "\t";
         }
@@ -343,6 +358,50 @@ func bool printstats(string outputfilename, string meshfilename, int m, real ome
         }
         if (omega != 0.0 | m != 0) file << "\t" << m << "\t" << omega;
         file << endl;
+      }
+      return 0;
+    }
+
+func bool printgains(string outputfilename, string basefilename, string meshfilename, int m, real omega, real[int] & gains) {
+      cout << "  Saving " + gains.n + " optimal gain(s) to '" + outputfilename + ".gain' in '" + workdir + "'." << endl;
+      cout << "\t" + listparams(paramnames, params);
+      if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+      cout << ", m = " + m + ", omega = " + omega + "." << endl;
+      for (int kk = 0; kk < gains.n; ++kk){
+        ofstream file(workdir + outputfilename + ".gain", append);
+        file.precision(17);
+        file << basefilename << "\t" << meshfilename << "\t";
+        for (int k = 0; k < paramnames.n; ++k){
+          file << params[paramnames[k]] << "\t";
+        }
+        if(monitornames[0] != ""){
+          for (int k = 0; k < monitornames.n; ++k){
+            file << monitors[monitornames[k]] << "\t";
+          }
+        }
+        file << "\t" << m << "\t" << omega << "\t" << gains(kk) << endl;
+      }
+      return 0;
+    }
+
+func bool printevals(string outputfilename, string basefilename, string meshfilename, int m, complex[int] & eigenvalue) {
+      cout << "  Saving " + eigenvalue.n + " eigenvalues to '" + outputfilename + ".eval' in '" + workdir + "'." << endl;
+      cout << "\t" + listparams(paramnames, params);
+      if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+      cout << ", m = " + m << "." << endl;
+      for (int kk = 0; kk < eigenvalue.n; ++kk){
+        ofstream file(workdir + outputfilename + ".eval", append);
+        file.precision(17);
+        file << basefilename << "\t" << meshfilename << "\t";
+        for (int k = 0; k < paramnames.n; ++k){
+          file << params[paramnames[k]] << "\t";
+        }
+        if(monitornames[0] != ""){
+          for (int k = 0; k < monitornames.n; ++k){
+            file << monitors[monitornames[k]] << "\t";
+          }
+        }
+        file << "\t" << m << "\t" << eigenvalue(kk) << endl;
       }
       return 0;
     }
@@ -376,14 +435,14 @@ func complex readmodeeval(string inputfilename, int & m) {
 }
 
 
-func real[int] loadbase(string directoryname, string inputfilename, string meshfilename) {
+func real[int] loadbase(string inputfilename, string meshfilename) {
       XMhg defu(ubg);
       if (inputfilename == ""){
         defu(ubg) = InitialConditions;
       } else {
-        if (mpirank == 0) cout << "  Loading '" + inputfilename + ".base' on '" + meshfilename + meshext + "' from '" + directoryname + "'." << endl;
+        if (mpirank == 0) cout << "  Loading '" + inputfilename + ".base' on '" + meshfilename + meshext + "' from '" + workdir + "'." << endl;
         string filemesh;
-        ifstream file(directoryname + inputfilename + ".base");
+        ifstream file(workdir + inputfilename + ".base");
         file >> filemesh >> filemesh;
         for (int k = 0; k < paramnames.n; ++k){
           file >> paramnames[k] >> params[paramnames[k]];
@@ -402,7 +461,7 @@ func real[int] loadbase(string directoryname, string inputfilename, string meshf
           file >> ubg[];
         } else { // must interpolate
           if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh + meshext << "'." << endl;
-          meshN Thg1 = readmeshN(directoryname + filemesh + meshext);
+          meshN Thg1 = readmeshN(workdir + filemesh + meshext);
           fespace XMhg1(Thg1, Pk);
           XMhg1 defu(ubg1);
           file >> ubg1[];
@@ -414,11 +473,11 @@ func real[int] loadbase(string directoryname, string inputfilename, string meshf
       return qlocal;
     }
 
-func real[int] loadfold(string directoryname, string inputfilename, string meshfilename, real[int] & qmlocal, real[int] & qmalocal) {
+func real[int] loadfold(string inputfilename, string meshfilename, real[int] & qmlocal, real[int] & qmalocal) {
       XMhg defu(ubg), defu(umg), defu(umag);
-      if (mpirank == 0) cout << "  Loading '" + inputfilename + ".fold' on '" + meshfilename + meshext + "' from '" + directoryname + "'." << endl;
+      if (mpirank == 0) cout << "  Loading '" + inputfilename + ".fold' on '" + meshfilename + meshext + "' from '" + workdir + "'." << endl;
       string filemesh;
-      ifstream file(directoryname + inputfilename + ".fold");
+      ifstream file(workdir + inputfilename + ".fold");
       file >> filemesh >> filemesh;
       for (int k = 0; k < paramnames.n; ++k){
         file >> paramnames[k] >> params[paramnames[k]];
@@ -439,7 +498,7 @@ func real[int] loadfold(string directoryname, string inputfilename, string meshf
         file >> umag[];
       } else { // must interpolate
         if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh + meshext << "'." << endl;
-        meshN Thg1 = readmeshN(directoryname + filemesh + meshext);
+        meshN Thg1 = readmeshN(workdir + filemesh + meshext);
         fespace XMhg1(Thg1, Pk);
         XMhg1 defu(ubg1), defu(umg1), defu(umag1);
         file >> ubg1[];
@@ -456,12 +515,12 @@ func real[int] loadfold(string directoryname, string inputfilename, string meshf
       return qlocal;
     }
 
-func real[int] loadhopf(string directoryname, string inputfilename, string meshfilename, complex[int] & qmlocal, complex[int] & qmalocal, int & m, real & omega) {
+func real[int] loadhopf(string inputfilename, string meshfilename, complex[int] & qmlocal, complex[int] & qmalocal, int & m, real & omega) {
       XMhg defu(ubg);
       XMhg<complex> defu(umg), defu(umag);
-      if (mpirank == 0) cout << "  Loading '" + inputfilename + ".hopf' on '" + meshfilename + meshext + "' from '" + directoryname + "'." << endl;
+      if (mpirank == 0) cout << "  Loading '" + inputfilename + ".hopf' on '" + meshfilename + meshext + "' from '" + workdir + "'." << endl;
       string dummy, filemesh;
-      ifstream file(directoryname + inputfilename + ".hopf");
+      ifstream file(workdir + inputfilename + ".hopf");
       file >> dummy >> filemesh;
       for (int k = 0; k < paramnames.n; ++k){
         file >> paramnames[k] >> params[paramnames[k]];
@@ -483,7 +542,7 @@ func real[int] loadhopf(string directoryname, string inputfilename, string meshf
         file >> umag[];
       } else { // must interpolate
         if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh + meshext << "'." << endl;
-        meshN Thg1 = readmeshN(directoryname + filemesh + meshext);
+        meshN Thg1 = readmeshN(workdir + filemesh + meshext);
         fespace XMhg1(Thg1, Pk);
         XMhg1 defu(ubg1);
         XMhg1<complex> defu(umg1), defu(umag1);
@@ -501,14 +560,14 @@ func real[int] loadhopf(string directoryname, string inputfilename, string meshf
       return qlocal;
     }
 
-func complex[int] loadmode(string directoryname, string inputfilename, string meshfilename, int & m, complex & eigenvalue) {
+func complex[int] loadmode(string inputfilename, string meshfilename, int & m, complex & eigenvalue) {
       XMhg<complex> defu(umg);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".mode' over '";
       string filemesh, basefilename, dummy;
       real[string] tempparams;
-      ifstream file(directoryname + inputfilename + ".mode");
+      ifstream file(workdir + inputfilename + ".mode");
       file >> filemesh >> filemesh >> basefilename >> basefilename;
-      if (mpirank == 0) cout << basefilename + ".base' on '" + meshfilename + meshext + "' from '" + directoryname + "'." << endl;
+      if (mpirank == 0) cout << basefilename + ".base' on '" + meshfilename + meshext + "' from '" + workdir + "'." << endl;
       for (int k = 0; k < paramnames.n; ++k){
         file >> paramnames[k] >> tempparams[paramnames[k]];
       }
@@ -518,7 +577,7 @@ func complex[int] loadmode(string directoryname, string inputfilename, string me
         file >> umg[];
       } else { // must interpolate
       if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh + meshext << "'." << endl;
-        meshN Thg1 = readmeshN(directoryname + filemesh + meshext);
+        meshN Thg1 = readmeshN(workdir + filemesh + meshext);
         fespace XMhg1(Thg1, Pk);
         XMhg1<complex> defu(umg1);
         file >> umg1[];
@@ -528,15 +587,15 @@ func complex[int] loadmode(string directoryname, string inputfilename, string me
       return qlocal;
     }
 
-func complex[int] loadresolvent(string directoryname, string inputfilename, string meshfilename, complex[int] & fmlocal, int & m, real & omega, real & gain) {
+func complex[int] loadresolvent(string inputfilename, string meshfilename, complex[int] & fmlocal, int & m, real & omega, real & gain) {
       Xhg<complex> deff(fmg);
       XMhg<complex> defu(umg);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".rslv' over '";
       string filemesh, basefilename, dummy;
       real[string] tempparams;
-      ifstream file(directoryname + inputfilename + ".rslv");
+      ifstream file(workdir + inputfilename + ".rslv");
       file >> filemesh >> filemesh >> basefilename >> basefilename;
-      if (mpirank == 0) cout << basefilename + ".base' on '" + meshfilename + meshext + "' from '" + directoryname + "'." << endl;
+      if (mpirank == 0) cout << basefilename + ".base' on '" + meshfilename + meshext + "' from '" + workdir + "'." << endl;
       for (int k = 0; k < paramnames.n; ++k){
         file >> paramnames[k] >> tempparams[paramnames[k]];
       }
@@ -546,7 +605,7 @@ func complex[int] loadresolvent(string directoryname, string inputfilename, stri
         file >> fmg[] >> umg[];
       } else { // must interpolate
       if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh + meshext << "'." << endl;
-        meshN Thg1 = readmeshN(directoryname + filemesh + meshext);
+        meshN Thg1 = readmeshN(workdir + filemesh + meshext);
         fespace Xhg1(Thg1, Pkf);
         Xhg1<complex> deff(fmg1);
         fespace XMhg1(Thg1, Pk);

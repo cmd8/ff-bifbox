@@ -17,6 +17,7 @@ load "PETSc-complex"
 include "solversettings.idp"
 include "solvermacros.idp"
 // arguments
+string meshfilein = getARGV("-mshi", ""); // input meshfile
 string basefilein = getARGV("-bfi", "");
 string modefilein = getARGV("-mfi", "");
 string foldfilein = getARGV("-ffi", "");
@@ -27,50 +28,53 @@ bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved
 int meshsplit = getARGV("-split", 1); // toggle whether mesh is split for P1 representation in Paraview
 bool adj = getARGV("-adj",0);
 int m = getARGV("-m", 0);
+real savethresh = getARGV("-savethresh",-0.0001);
 string epstarget = getARGV("-eps_target", "0+0i");
 int epsnev = getARGV("-eps_nev", 1);
 bool strictnev = getARGV("-strict", 0);
 string sttype = getARGV("-st_type", "sinvert");
 string stpctype = getARGV("-st_pc_type", "lu");
 
-if (hopffilein == "" && foldfilein == "" && basefilein == ""  && modefilein != "") basefilein = readbasename(workdir + modefilein + ".mode");
-string meshfile;
-if(foldfilein != "") meshfile = readmeshname(workdir + foldfilein + ".fold");
-else if(hopffilein != "") meshfile = readmeshname(workdir + hopffilein + ".hopf");
-else meshfile = readmeshname(workdir + basefilein + ".base");
+if (hopffilein == "" && foldfilein == "" && basefilein == ""  && modefilein != "") {
+  string filein = readbasename(workdir + modefilein + ".mode");
+  if (filein(filein.length-5:filein.length-1) == ".fold") foldfilein = filein(0:filein.rfind(".")-2);
+  else if (filein(filein.length-5:filein.length-1) == ".hopf") hopffilein = filein(0:filein.rfind(".")-2);
+  else basefilein = filein(0:filein.rfind(".")-2);
+}
 
+if(meshfilein == ""){
+  if(foldfilein != "") meshfilein = readmeshname(workdir + foldfilein + ".fold");
+  else if(hopffilein != "") meshfilein = readmeshname(workdir + hopffilein + ".hopf");
+  else meshfilein = readmeshname(workdir + basefilein + ".base");
+}
 // Load mesh, make FE basis
-Th = readmeshN(workdir + meshfile + meshext);
+Th = readmeshN(workdir + meshfilein + meshext);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub);
 if(foldfilein != "") {
   real[int] qm, qma;
-  ub[] = loadfold(workdir, foldfilein, meshfile, qm, qma);
+  ub[] = loadfold(foldfilein, meshfilein, qm, qma);
+  basefilein = foldfilein + ".fold";
 } else if(hopffilein != "") {
   complex[int] qm, qma;
   int m;
   real omega;
-  ub[] = loadhopf(workdir, hopffilein, meshfile, qm, qma, m, omega);
+  ub[] = loadhopf(hopffilein, meshfilein, qm, qma, m, omega);
+  basefilein = hopffilein + ".hopf";
 } else {
-  ub[] = loadbase(workdir, basefilein, meshfile);
+  ub[] = loadbase(basefilein, meshfilein);
+  basefilein = basefilein + ".base";
 }
 complex[int] val(epsnev);
 XMh<complex>[int] defu(vec)(epsnev);
 XMh<complex> defu(um);
 
-if (epstarget == "0+0i" && modefilein != "") {
-  complex target = readmodeeval(workdir + modefilein + ".mode", m);
-  if (adj) target = conj(target);
-  epstarget = string(target);
-}
-
 Mat<complex> J;
 createMatu(Th, J, Pk);
 Mat<complex> M(J);
-complex ik = 1i*real(m);
-complex iomega = 0.0; // Let PETSc/SLEPc do the shift
+complex ik, iomega = 0.0; // Let PETSc/SLEPc do the shift
 IFMACRO(formulation,incomp)
 include "eqns_incomp.idp"
 ENDIFMACRO
@@ -90,46 +94,40 @@ IFMACRO(formulation,custom)
 include "eqns_custom.idp"
 ENDIFMACRO
 
-{
-  matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -1);
-  matrix<complex> Mtemp = vM(XMh, XMh, tgv = -10);
-  if (adj) {
-    Jtemp = -Jtemp';
-    Mtemp = Mtemp';
-  } else Jtemp = -Jtemp;
-  J = Jtemp;
-  M = Mtemp;
+if (epstarget == "0+0i" && modefilein != "") {
+  complex target = readmodeeval(workdir + modefilein + ".mode", m);
+  if (adj) target = conj(target);
+  epstarget = string(target);
 }
-int k = EPSSolve(J, M, vectors = vec, values = val,
+{
+  ik = 1i*real(m);
+  {
+    matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -1);
+    matrix<complex> Mtemp = vM(XMh, XMh, tgv = -10);
+    if (adj) {
+      Jtemp = -Jtemp';
+      Mtemp = Mtemp';
+    } else Jtemp = -Jtemp;
+    J = Jtemp;
+    M = Mtemp;
+  }
+  int k = EPSSolve(J, M, vectors = vec, values = val,
                  sparams = " -st_type " + sttype
                          + " -st_pc_type " + stpctype
                          + " -eps_target " + epstarget
                          + " -eps_monitor_conv " + EPSparams);
-if (strictnev) k = min(k, epsnev); // activate to limit number of eigenpairs
-if (evalfileout != "" && mpirank == 0){
-  cout << "  Writing " + k + " eigenvalues to '" + evalfileout + ".txt' in '" + workdir + "'." << endl;
-  { ofstream file(workdir + evalfileout + ".txt", append);
-    file.precision(17);
-    file.scientific;
-    for(int i = 0; i < k; ++i) file << m + "\t" + val(i) << endl;
+  if (strictnev) {// activate to limit number of eigenpairs
+    val.resize(min(k, epsnev));
+    vec.resize(min(k, epsnev));
   }
-}
-if (modefileout != ""){
-  for (int i = 0; i < k; ++i){
-    complex eigenvalue = val(i);
-    um[] = vec[i][];
-    complex[int] dummy;
-    ChangeNumbering(J, um[], dummy);
-    ChangeNumbering(J, um[], dummy, inverse = true);
-    if (basefilein == ""){
-      complex[int] qb(ub[].n);
-      qb.re = ub[];
-      ChangeNumbering(J, qb, dummy);
-      ChangeNumbering(J, qb, dummy, inverse = true);
-      ub[] = qb.re;
-      savebase(workdir, modefileout, "", meshfile, true, true, paraviewflag);
-      basefilein = modefileout;
+  if(modefileout != ""){
+    for (int ii = 0; ii < val.n; ++ii){
+      um[] = vec[ii][];
+      complex[int] temp(XMh.ndof);
+      ChangeNumbering(J, um[], temp);
+      ChangeNumbering(J, um[], temp, inverse = true);
+      vec[ii][] = um[];
     }
-    savemode(workdir, modefileout + "_" + i, basefilein, meshfile, m, eigenvalue, paraviewflag);
   }
+  savemode(modefileout, evalfileout, basefilein, meshfilein, vec, val, m, (modefileout != ""), paraviewflag);
 }

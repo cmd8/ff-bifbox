@@ -56,10 +56,10 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(um), defu(yb);
 if (count == 0){
-  ub[] = loadbase(workdir, basefilein, meshfile);
-  if(mpirank == 0) printstats(workdir + basefileout + ".txt", meshfile, 0, 0.0);
+  ub[] = loadbase(basefilein, meshfile);
+  if(mpirank == 0) printstats(basefileout, basefileout + ".base", meshfile, 0, 0.0);
 } else {
-  ub[] = loadbase(workdir, basefilein + "_" + count, meshfile);
+  ub[] = loadbase(basefilein + "_" + count, meshfile);
 }
 real lambda = getlambda(param);
 
@@ -216,7 +216,7 @@ while (count < maxcount){
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
       if(mpirank == 0) cout << "\tFold detected. Orientation reversed." << endl;
-      savebase(workdir, basefileout + "_" + count + "foldguess", "", meshfile, true, true, paraviewflag);
+      savebase(basefileout + "_" + count + "foldguess", "", meshfile, true, true, paraviewflag);
     }
     if ((meshfileout != "") && (count % savecount == 0)){
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = false);
@@ -281,7 +281,7 @@ while (count < maxcount){
     if(mpirank == 0) lambda = qa(qa.n-1);
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
-    savebase(workdir, basefileout + "_" + count, basefileout, meshfile, (count % savecount == 0), true, paraviewflag);
+    savebase(basefileout + "_" + count, basefileout, meshfile, (count % savecount == 0), true, paraviewflag);
     yqP0 = yqP;
   } else {
     if (mpirank == 0){

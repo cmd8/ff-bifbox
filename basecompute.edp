@@ -52,15 +52,15 @@ restu = restrict(XMh, XMhg, n2o);
 // Make finite element basis
 XMh defu(ub), defu(um);
 // Initialize solution with guess or file
-ub[] = loadbase(workdir, basefilein, meshfilein);
+ub[] = loadbase(basefilein, meshfilein);
 if(foldfilein != "") {
   real[int] qm, qma;
-  ub[] = loadfold(workdir, foldfilein, meshfilein, qm, qma);
+  ub[] = loadfold(foldfilein, meshfilein, qm, qma);
 } else if(hopffilein != "") {
   complex[int] qm, qma;
   int m;
   real omega;
-  ub[] = loadhopf(workdir, hopffilein, meshfilein, qm, qma, m, omega);
+  ub[] = loadhopf(hopffilein, meshfilein, qm, qma, m, omega);
 }
 // Create distributed Mat
 Mat J;
@@ -137,5 +137,5 @@ if(ret > 0) { // Save solution if solver converged and output file is given
     savemesh(Thg, workdir + meshfileout + meshext);
   }
   ChangeNumbering(J, ub[], q, inverse = true);
-  savebase(workdir, basefileout, "", meshfileout, true, true, paraviewflag);
+  savebase(basefileout, "", meshfileout, true, true, paraviewflag);
 }

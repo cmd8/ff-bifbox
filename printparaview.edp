@@ -1,11 +1,23 @@
 //
-// printbaseparaview.edp
+// printparaview.edp
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // EXAMPLE USAGE:
 //  Print base solution to single .vtu file:
-// mpirun -n 1 FreeFem++-mpi -v 0 printbaseparaview.edp -bfi <FILEIN> -split 2
+// mpirun -n 1 FreeFem++-mpi -v 0 printparaview.edp -bfi <FILEIN>
+//
+//  Print mode solution to single .vtu file:
+// mpirun -n 1 FreeFem++-mpi -v 0 printparaview.edp -mfi <FILEIN>
+//
+//  Print resolvent solution to two .vtu files:
+// mpirun -n 1 FreeFem++-mpi -v 0 printparaview.edp -rfi <FILEIN>
+//
+//  Print fold solution to three .vtu files:
+// mpirun -n 1 FreeFem++-mpi -v 0 printparaview.edp -ffi <FILEIN>
+//
+//  Print hopf solution to three .vtu files:
+// mpirun -n 1 FreeFem++-mpi -v 0 printparaview.edp -ffi <FILEIN>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
@@ -30,7 +42,7 @@ if (mpirank==0){
     Thg = readmesh(workdir + meshfile + meshext);
     XMhg defu(ub);
     restu = 0:XMhg.ndof-1;
-    ub[] = loadbase(workdir, basefilein, meshfile);
+    ub[] = loadbase(basefilein, meshfile);
     cout << "  Saving '" + basefileout + "_base.vtu' in '" + workdir + "'." << endl;
     if (meshsplit != 1){
       meshN Thgs = trunc(Thg, 1, split = meshsplit);
@@ -47,7 +59,7 @@ if (mpirank==0){
     restu = 0:XMhg.ndof-1;
     int m;
     complex eigenvalue;
-    um[] = loadmode(workdir, modefilein, meshfile, m, eigenvalue);
+    um[] = loadmode(modefilein, meshfile, m, eigenvalue);
     cout << "  Saving '" + modefileout + "_mode.vtu' in '" + workdir + "'." << endl;
     string pvdataname = ParaviewDataName + " " + ParaviewDataName;
     int[int] pvorder = [ParaviewOrder,ParaviewOrder];
@@ -75,7 +87,7 @@ if (mpirank==0){
     int m;
     real omega;
     real gain;
-    um[] = loadresolvent(workdir, resolventfilein, meshfile, fm[], m, omega, gain);
+    um[] = loadresolvent(resolventfilein, meshfile, fm[], m, omega, gain);
     cout << "  Saving '" + resolventfileout + "_rslv_[forcing,response].vtu' in '" + workdir + "'." << endl;
     string pvdataname = ParaviewDataName + " " + ParaviewDataName;
     int[int] pvorder = [ParaviewOrder,ParaviewOrder];
@@ -110,7 +122,7 @@ if (mpirank==0){
     Thg = readmesh(workdir + meshfile + meshext);
     XMhg defu(ub), defu(um), defu(uma);
     restu = 0:XMhg.ndof-1;
-    ub[] = loadfold(workdir, foldfilein, meshfile, um[], uma[]);
+    ub[] = loadfold(foldfilein, meshfile, um[], uma[]);
     cout << "  Saving '" + foldfileout + "_fold_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
     if (meshsplit != 1){
       meshN Thgs = trunc(Thg, 1, split = meshsplit);
@@ -134,7 +146,7 @@ if (mpirank==0){
     restu = 0:XMhg.ndof-1;
     real omega;
     int m;
-    ub[] = loadhopf(workdir, hopffilein, meshfile, um[], uma[], m, omega);
+    ub[] = loadhopf(hopffilein, meshfile, um[], uma[], m, omega);
     cout << "  Saving '" + hopffileout + "_hopf_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
     string pvdataname = ParaviewDataName + " " + ParaviewDataName;
     int[int] pvorder = [ParaviewOrder,ParaviewOrder];

@@ -59,10 +59,10 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(yb), defu(um), defu(uma);
 if (count == 0){
-  ub[] = loadfold(workdir, foldfilein, meshfile, um[], uma[]);
-  if(mpirank == 0) printstats(workdir + foldfileout + ".txt", meshfile, 0, 0.0);
+  ub[] = loadfold(foldfilein, meshfile, um[], uma[]);
+  if(mpirank == 0) printstats(foldfileout, foldfileout + ".fold", meshfile, 0, 0.0);
 } else {
-  ub[] = loadfold(workdir, foldfilein + "_" + count, meshfile, um[], uma[]);
+  ub[] = loadfold(foldfilein + "_" + count, meshfile, um[], uma[]);
 }
 real lambda1 = getlambda(param1);
 real lambda2 = getlambda(param2);
@@ -330,7 +330,7 @@ while (count < maxcount){
       ChangeNumbering(J, uma[], qma, inverse = true);
       um[] /= sqrt(J(um[], um[]));
       uma[] /= sqrt(J(uma[], uma[]));
-      savefold(workdir, foldfileout + "_" + count + "signswitch", "", meshfile, true, true, paraviewflag);
+      savefold(foldfileout + "_" + count + "signswitch", "", meshfile, true, true, paraviewflag);
     }
     if ((meshfileout != "") && (count % savecount == 0)){
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
@@ -442,7 +442,7 @@ while (count < maxcount){
     ChangeNumbering(J, uma[], qma, inverse = true);
     um[] /= sqrt(J(um[], um[]));
     uma[] /= sqrt(J(uma[], uma[]));
-    savefold(workdir, foldfileout + "_" + count, foldfileout, meshfile, (count % savecount == 0), true, paraviewflag);
+    savefold(foldfileout + "_" + count, foldfileout, meshfile, (count % savecount == 0), true, paraviewflag);
     yqP0 = yqP;
     qP = qm;
     pP = qma;

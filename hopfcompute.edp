@@ -134,11 +134,11 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma);
 if (hopffilein != "")
-  ub[].re = loadhopf(workdir, hopffilein, meshfilein, um[], uma[], m, omega);
+  ub[].re = loadhopf(hopffilein, meshfilein, um[], uma[], m, omega);
 else {
   complex eigenvalue;
-  ub[].re = loadbase(workdir, basefilein, meshfilein);
-  um[] = loadmode(workdir, modefilein, meshfilein, m, eigenvalue);
+  ub[].re = loadbase(basefilein, meshfilein);
+  um[] = loadmode(modefilein, meshfilein, m, eigenvalue);
   omega = imag(eigenvalue);
 }
 real lambda = getlambda(param);
@@ -342,5 +342,5 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     cout << "  Saving adapted mesh '" + meshfileout + meshext + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshfileout + meshext);
   }
-  savehopf(workdir, hopffileout, "", meshfileout, m, omega, true, true, paraviewflag);
+  savehopf(hopffileout, "", meshfileout, m, omega, true, true, paraviewflag);
 }

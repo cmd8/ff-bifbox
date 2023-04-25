@@ -61,10 +61,10 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(yb), defu(um), defu(uma);
 if (count == 0){
-  ub[].re = loadhopf(workdir, hopffilein, meshfile, um[], uma[], m, omega);
-  if(mpirank == 0) printstats(workdir + hopffileout + ".txt", meshfile, m, omega);
+  ub[].re = loadhopf(hopffilein, meshfile, um[], uma[], m, omega);
+  if(mpirank == 0) printstats(hopffileout, hopffileout + ".hopf", meshfile, m, omega);
 } else {
-  ub[].re = loadhopf(workdir, hopffilein + "_" + count, meshfile, um[], uma[], m, omega);
+  ub[].re = loadhopf(hopffilein + "_" + count, meshfile, um[], uma[], m, omega);
 }
 real lambda1 = getlambda(param1);
 real lambda2 = getlambda(param2);
@@ -388,7 +388,7 @@ while (count < maxcount){
       ChangeNumbering(J, uma[], qma, inverse = true);
       um[] /= sqrt(J(um[], um[]));
       uma[] /= sqrt(J(uma[], uma[]));
-      savehopf(workdir, hopffileout + "_" + count + "signswitch", "", meshfile, m, omega, true, true, paraviewflag);
+      savehopf(hopffileout + "_" + count + "signswitch", "", meshfile, m, omega, true, true, paraviewflag);
     }
     if ((meshfileout != "") && (count % savecount == 0)){
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = false);
@@ -512,7 +512,7 @@ while (count < maxcount){
     ChangeNumbering(J, uma[], qma, inverse = true);
     um[] /= sqrt(J(um[], um[]));
     uma[] /= sqrt(J(uma[], uma[]));
-    savehopf(workdir, hopffileout + "_" + count, hopffileout, meshfile, m, omega, (count % savecount == 0), true, paraviewflag);
+    savehopf(hopffileout + "_" + count, hopffileout, meshfile, m, omega, (count % savecount == 0), true, paraviewflag);
     yqP0 = yqP;
     qP = qm;
     pP = qma;
