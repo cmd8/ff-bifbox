@@ -5,67 +5,56 @@
 //
 // EXAMPLE USAGE:
 //  Compute eigenvalues, store specrum without storing eigenvectors:
-// mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -eps_target 0.1+1.0i -eps_nev 10 -bfi <FILEIN> -vfo <VALFILE>
+// mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -eps_target 0.1+1.0i -eps_nev 10 -fi <FILEIN> -fo <VALFILE>
 //
-//  Compute eigenvalues, store eigenvectors without storing spectrum:
-// mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -eps_target 0.1+1.0i -eps_nev 4 -bfi <FILEIN> -mfo <VALFILE>
+//  Compute eigenvalues, store spectrum with eigenvectors:
+// mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -eps_target 0.1+1.0i -eps_nev 4 -fi <FILEIN> -fo <VALFILE>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
 load "iovtk"
 load "PETSc-complex"
-include "solversettings.idp"
-include "solvermacros.idp"
+include "settings.idp"
+include "macros_bifbox.idp"
 // arguments
-string meshfilein = getARGV("-mshi", ""); // input meshfile
-string basefilein = getARGV("-bfi", "");
-string modefilein = getARGV("-mfi", "");
-string foldfilein = getARGV("-ffi", "");
-string hopffilein = getARGV("-hfi", "");
-string evalfileout = getARGV("-vfo", "");
-string modefileout = getARGV("-mfo", "");
-bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
-int meshsplit = getARGV("-split", 1); // toggle whether mesh is split for P1 representation in Paraview
+string meshin = getARGV("-mi", ""); // input meshfile
+string filein = getARGV("-fi", "");
+string fileout = getARGV("-fo", "");
+string evalout = getARGV("-so", fileout);
 bool adj = getARGV("-adj",0);
 int m = getARGV("-m", 0);
-real savethresh = getARGV("-savethresh",-0.0001);
 string epstarget = getARGV("-eps_target", "0+0i");
 int epsnev = getARGV("-eps_nev", 1);
 bool strictnev = getARGV("-strict", 0);
 string sttype = getARGV("-st_type", "sinvert");
 string stpctype = getARGV("-st_pc_type", "lu");
 
-if (hopffilein == "" && foldfilein == "" && basefilein == ""  && modefilein != "") {
-  string filein = readbasename(workdir + modefilein + ".mode");
-  if (filein(filein.length-5:filein.length-1) == ".fold") foldfilein = filein(0:filein.rfind(".")-2);
-  else if (filein(filein.length-5:filein.length-1) == ".hopf") hopffilein = filein(0:filein.rfind(".")-2);
-  else basefilein = filein(0:filein.rfind(".")-2);
+string fileroot;
+string fileext = parsefilename(filein, fileroot); //extract file name and extension
+parsefilename(evalout, evalout); // trim extension from output file, if given
+parsefilename(fileout, fileout); // trim extension from output file, if given
+if(fileext == "mode" || fileext == "rslv"){
+  filein = readbasename(workdir + filein);
+  fileext = parsefilename(filein, fileroot);
 }
+if(filein != "" && meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 
-if(meshfilein == ""){
-  if(foldfilein != "") meshfilein = readmeshname(workdir + foldfilein + ".fold");
-  else if(hopffilein != "") meshfilein = readmeshname(workdir + hopffilein + ".hopf");
-  else meshfilein = readmeshname(workdir + basefilein + ".base");
-}
 // Load mesh, make FE basis
-Th = readmeshN(workdir + meshfilein + meshext);
+Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub);
-if(foldfilein != "") {
+if(fileext == "base") {
+  ub[] = loadbase(fileroot, meshin);
+} else if(fileext == "fold") {
   real[int] qm, qma;
-  ub[] = loadfold(foldfilein, meshfilein, qm, qma);
-  basefilein = foldfilein + ".fold";
-} else if(hopffilein != "") {
+  ub[] = loadfold(fileroot, meshin, qm, qma);
+} else if(fileext == "hopf") {
   complex[int] qm, qma;
   int m;
   real omega;
-  ub[] = loadhopf(hopffilein, meshfilein, qm, qma, m, omega);
-  basefilein = hopffilein + ".hopf";
-} else {
-  ub[] = loadbase(basefilein, meshfilein);
-  basefilein = basefilein + ".base";
+  ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
 }
 complex[int] val(epsnev);
 XMh<complex>[int] defu(vec)(epsnev);
@@ -75,30 +64,8 @@ Mat<complex> J;
 createMatu(Th, J, Pk);
 Mat<complex> M(J);
 complex ik, iomega = 0.0; // Let PETSc/SLEPc do the shift
-IFMACRO(formulation,incomp)
-include "eqns_incomp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmach)
-include "eqns_lowmach.idp"
-ENDIFMACRO
-IFMACRO(formulation,comp)
-include "eqns_comp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmachreact)
-include "eqns_lowmachreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,compreact)
-include "eqns_compreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,custom)
-include "eqns_custom.idp"
-ENDIFMACRO
+include "eqns.idp"
 
-if (epstarget == "0+0i" && modefilein != "") {
-  complex target = readmodeeval(workdir + modefilein + ".mode", m);
-  if (adj) target = conj(target);
-  epstarget = string(target);
-}
 {
   ik = 1i*real(m);
   {
@@ -120,7 +87,7 @@ if (epstarget == "0+0i" && modefilein != "") {
     val.resize(min(k, epsnev));
     vec.resize(min(k, epsnev));
   }
-  if(modefileout != ""){
+  if(fileout != ""){
     for (int ii = 0; ii < val.n; ++ii){
       um[] = vec[ii][];
       complex[int] temp(XMh.ndof);
@@ -129,5 +96,5 @@ if (epstarget == "0+0i" && modefilein != "") {
       vec[ii][] = um[];
     }
   }
-  savemode(modefileout, evalfileout, basefilein, meshfilein, vec, val, m, (modefileout != ""), paraviewflag);
+  savemode(fileout, evalout, filein, meshin, vec, val, m, (fileout != ""));
 }

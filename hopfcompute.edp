@@ -97,20 +97,17 @@ JACOBIAN CONSTRUCTION IN MINIMALLY AUGMENTED FORMULATION
 
 load "iovtk"
 load "PETSc-complex"
-include "solversettings.idp"
-include "solvermacros.idp"
+include "settings.idp"
+include "macros_bifbox.idp"
 // arguments
-string meshfilein = getARGV("-mshi", "");
-string meshfileout = getARGV("-msho", "");
-string hopffilein = getARGV("-hfi", "");
+string meshin = getARGV("-mi", "");
+string meshout = getARGV("-mo", "");
+string filein = getARGV("-fi", "");
 string basefilein = getARGV("-bfi", "");
-string modefilein = getARGV("-mfi", "");
-string hopffileout = getARGV("-hfo", "");
+string fileout = getARGV("-fo", "");
 bool zerofreq = getARGV("-zero", 0);
-bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
-int meshsplit = getARGV("-split", 1); // toggle whether mesh is split for P1 representation in Paraview
 string param = getARGV("-param","");
-string adapt = getARGV("-adapt","b");
+string adaptto = getARGV("-adaptto","b");
 real eps = getARGV("-eps", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
@@ -120,55 +117,56 @@ string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -sn
 int m;
 real omega;
 
-if (hopffilein == "" && basefilein == "" && modefilein != "")
-  basefilein = readbasename(workdir + modefilein + ".mode");
-assert(basefilein != "" || hopffilein != "");
-if (meshfilein == ""){
-  if (basefilein != "") meshfilein = readmeshname(workdir + basefilein + ".base");
-  else if (hopffilein != "") meshfilein = readmeshname(workdir + hopffilein + ".hopf");
+string fileroot, meshroot, basefileroot, basefileext;
+string fileext = parsefilename(filein, fileroot); //extract file name and extension
+parsefilename(fileout, fileout); // trim extension from output file, if given
+if(fileext == "mode" || fileext == "rslv"){
+  if(basefilein == "") basefilein = readbasename(workdir + filein);
+  basefileext = parsefilename(basefilein, basefileroot);
 }
+if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
+string meshext = parsefilename(meshin, meshroot);
+parsefilename(meshout, meshout); // trim extension from output mesh, if given
 // Load mesh, make FE basis
-Th = readmeshN(workdir + meshfilein + meshext);
+Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma);
-if (hopffilein != "")
-  ub[].re = loadhopf(hopffilein, meshfilein, um[], uma[], m, omega);
-else {
-  complex eigenvalue;
-  ub[].re = loadbase(basefilein, meshfilein);
-  um[] = loadmode(modefilein, meshfilein, m, eigenvalue);
-  omega = imag(eigenvalue);
+if (fileext == "hopf") {
+  ub[].re = loadhopf(fileroot, meshin, um[], uma[], m, omega);
+} else if (fileext == "mode"){
+    complex eigenvalue;
+    um[] = loadmode(fileroot, meshin, m, eigenvalue);
+    omega = imag(eigenvalue);
+} else if (fileext == "rslv"){
+    real gain;
+    complex[int] fm;
+    um[] = loadresolvent(fileroot, meshin, fm, m, omega, gain);
+}
+if (basefileext == "base"){
+  ub[].re = loadbase(basefileroot, meshin);
+} else if(basefileext == "fold") {
+  real[int] qm, qma;
+  ub[].re = loadfold(basefileroot, meshin, qm, qma);
+} else if(basefileext == "hopf") {
+  int m;
+  real omega;
+  complex[int] qm, qma;
+  ub[].re = loadhopf(basefileroot, meshin, qm, qma, m, omega);
 }
 real lambda = getlambda(param);
 // Create distributed Mat
 Mat<complex> J;
 createMatu(Th, J, Pk);
 complex ik, iomega;
-IFMACRO(formulation,incomp)
-include "eqns_incomp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmach)
-include "eqns_lowmach.idp"
-ENDIFMACRO
-IFMACRO(formulation,comp)
-include "eqns_comp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmachreact)
-include "eqns_lowmachreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,compreact)
-include "eqns_compreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,custom)
-include "eqns_custom.idp"
-ENDIFMACRO
+include "eqns.idp"
 // MESH ADAPTATION
-bool noadapt = (meshfileout == "");
-if (meshfileout == "")
-  meshfileout = meshfilein;
-else {
+bool adapt = false;
+if(meshout == "") meshout = meshin; // if no adaptation
+else { // if output meshfile is given, adapt mesh
+  adapt = true;
+  meshout = meshout + "." + meshext;
   complex[int] q;
   ChangeNumbering(J, ub[], q);
   ChangeNumbering(J, ub[], q, inverse = true);
@@ -188,10 +186,10 @@ else {
   for[i, v : restu] tempu[][v] = imag(uma[][i]);
   mpiAllReduce(tempu[], umaiG[], mpiCommWorld, mpiSUM);
   if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
-    if(adapt == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
-    else if(adapt == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptmeshoptions);
-    else if(adapt == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
-    else if(adapt == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+    if(adaptto == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+    else if(adaptto == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptmeshoptions);
+    else if(adaptto == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+    else if(adaptto == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
   } // TODO: add adaptation to endogeneity and structural sensitivity
   broadcast(processor(0), Thg);
   defu(uG) = defu(uG);
@@ -310,7 +308,7 @@ if(mpirank == 0) {
   qa(qa.n-1) = omega;
 }
 ChangeNumbering(J, um[], qP);
-if (hopffilein == ""){
+if (fileext != "hopf"){
   iomega = 1i*omega;
   ik = 1i*real(m);
   J = vJ(XMh, XMh, tgv = -1);
@@ -338,9 +336,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, uma[], qma, inverse = true);
   um[] /= sqrt(J(um[], um[]));
   uma[] /= sqrt(J(uma[], uma[]));
-  if(mpirank==0 && !noadapt) { // Save adapted mesh
-    cout << "  Saving adapted mesh '" + meshfileout + meshext + "' in '" + workdir + "'." << endl;
-    savemesh(Thg, workdir + meshfileout + meshext);
+  if(mpirank==0 && adapt) { // Save adapted mesh
+    cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
+    savemesh(Thg, workdir + meshout);
   }
-  savehopf(hopffileout, "", meshfileout, m, omega, true, true, paraviewflag);
+  savehopf(fileout, "", meshout, m, omega, true, true);
 }

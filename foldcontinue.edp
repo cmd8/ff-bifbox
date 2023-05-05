@@ -14,21 +14,20 @@
 //
 load "iovtk"
 load "PETSc"
-include "solversettings.idp"
-include "solvermacros.idp"
+include "settings.idp"
+include "macros_bifbox.idp"
 // arguments
-string meshfileout = getARGV("-msho", "");
-string foldfilein = getARGV("-ffi", "");
-string foldfileout = getARGV("-ffo", foldfilein);
-bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
-int meshsplit = getARGV("-split",1); // toggle whether mesh is split for P1 representation in Paraview
+string meshin = getARGV("-mi", ""); // input meshfile with extension
+string meshout = getARGV("-mo", "");
+string filein = getARGV("-fi", "");
+string fileout = getARGV("-fo", filein);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
 real h0 = getARGV("-h0", 1.0);
 string param1 = getARGV("-param1","");
 string param2 = getARGV("-param2","");
-string adapt = getARGV("-adapt","b");
+string adaptto = getARGV("-adaptto","b");
 real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 1.0);
 real deltamax = getARGV("-dmax", 4.0);
@@ -43,26 +42,28 @@ int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 int m;
 
-assert(foldfilein != "");
 // Load mesh, make FE basis
-string meshfile, meshfilein;
-if (count == 0) {
-  meshfile = readmeshname(workdir + foldfilein + ".fold");
-  meshfilein = meshfile;
-} else {
-  meshfile = readmeshname(workdir + foldfilein + "_" + count + ".fold");
-  meshfilein = meshfile(0:meshfile.rfind(count)-2);
-}
-Th = readmeshN(workdir + meshfile + meshext);
+string fileroot, meshroot;
+string fileext = parsefilename(filein, fileroot); //extract file name and extension
+parsefilename(fileout, fileout); // trim extension from output file, if given
+if (count > 0) fileroot = fileroot(0:filein.rfind("_" + count)-1); // get file root
+if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
+string meshext = parsefilename(meshin, meshroot);
+parsefilename(meshout, meshroot); // trim extension from output mesh, if given
+assert(fileext == "fold");
+bool adapt = false;
+if(meshout == "") meshout = meshin; // if no adaptation
+else adapt = true;  // if output meshfile is given, adapt mesh
+Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(yb), defu(um), defu(uma);
 if (count == 0){
-  ub[] = loadfold(foldfilein, meshfile, um[], uma[]);
-  if(mpirank == 0) printstats(foldfileout, foldfileout + ".fold", meshfile, 0, 0.0);
+  ub[] = loadfold(fileroot, meshin, um[], uma[]);
+  if(mpirank == 0) printstats(fileout, filein, meshin, 0, 0.0);
 } else {
-  ub[] = loadfold(foldfilein + "_" + count, meshfile, um[], uma[]);
+  ub[] = loadfold(fileroot + "_" + count, meshin, um[], uma[]);
 }
 real lambda1 = getlambda(param1);
 real lambda2 = getlambda(param2);
@@ -70,24 +71,7 @@ real lambda2 = getlambda(param2);
 Mat J;
 createMatu(Th, J, Pk);
 real ik = 0.0, iomega = 0.0;
-IFMACRO(formulation,incomp)
-include "eqns_incomp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmach)
-include "eqns_lowmach.idp"
-ENDIFMACRO
-IFMACRO(formulation,comp)
-include "eqns_comp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmachreact)
-include "eqns_lowmachreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,compreact)
-include "eqns_compreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,custom)
-include "eqns_custom.idp"
-ENDIFMACRO
+include "eqns.idp"
 
 // Build bordered block matrix from only Mat components
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), gqPM(J.n, mpirank == 0 ? 1 : 0), glPM(mpirank == 0 ? 1 : 0, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
@@ -330,9 +314,10 @@ while (count < maxcount){
       ChangeNumbering(J, uma[], qma, inverse = true);
       um[] /= sqrt(J(um[], um[]));
       uma[] /= sqrt(J(uma[], uma[]));
-      savefold(foldfileout + "_" + count + "signswitch", "", meshfile, true, true, paraviewflag);
+      savefold(fileout + "_" + count + "signswitch", "", meshout, true, true);
     }
-    if ((meshfileout != "") && (count % savecount == 0)){
+    if (adapt && (count % savecount == 0)){
+      meshout = meshroot + "_" + count + "." + meshext;
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
       if(mpirank == 0) {
         lambda1 = qa(qa.n-2);
@@ -355,14 +340,14 @@ while (count < maxcount){
       for[i, v : restu] tempu[][v] = uma[][i]; // populate local portion of global soln
       mpiAllReduce(tempu[], umaG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
       if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
-        if(adapt == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
-        else if(adapt == "by") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptmeshoptions);
-        else if(adapt == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptmeshoptions);
-        else if(adapt == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umaG), adaptmeshoptions);
-        else if(adapt == "byd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umG), adaptmeshoptions);
-        else if(adapt == "bya") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umaG), adaptmeshoptions);
-        else if(adapt == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptu(umaG), adaptmeshoptions);
-        else if(adapt == "byda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umG), adaptu(umaG), adaptmeshoptions);
+        if(adaptto == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+        else if(adaptto == "by") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptmeshoptions);
+        else if(adaptto == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptmeshoptions);
+        else if(adaptto == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umaG), adaptmeshoptions);
+        else if(adaptto == "byd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umG), adaptmeshoptions);
+        else if(adaptto == "bya") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umaG), adaptmeshoptions);
+        else if(adaptto == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptu(umaG), adaptmeshoptions);
+        else if(adaptto == "byda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umG), adaptu(umaG), adaptmeshoptions);
       } // TODO: add adaptation to endogeneity and structural sensitivity
       broadcast(processor(0), Thg); // broadcast global mesh to all processors
       defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
@@ -416,8 +401,6 @@ while (count < maxcount){
       yqP0 = yqP;
       qa0.resize(qa.n);
       qap.resize(qa.n);
-      meshfile = meshfileout + "_" + count;
-      savemesh(Thg, workdir + meshfile + meshext);
       int ret;
       it = 0;
       internalit = 0;
@@ -428,6 +411,7 @@ while (count < maxcount){
               + " -snes_converged_reason "
               + " "); // solve nonlinear problem with SNES
       assert(ret > 0);
+      savemesh(Thg, workdir + meshout);
     }
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
     if(mpirank == 0) {
@@ -442,7 +426,7 @@ while (count < maxcount){
     ChangeNumbering(J, uma[], qma, inverse = true);
     um[] /= sqrt(J(um[], um[]));
     uma[] /= sqrt(J(uma[], uma[]));
-    savefold(foldfileout + "_" + count, foldfileout, meshfile, (count % savecount == 0), true, paraviewflag);
+    savefold(fileout + "_" + count, fileout, meshout, (count % savecount == 0), true);
     yqP0 = yqP;
     qP = qm;
     pP = qma;

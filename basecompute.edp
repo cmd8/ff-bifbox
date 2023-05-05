@@ -5,93 +5,77 @@
 //
 // EXAMPLE USAGE:
 //  Initialize without file:
-// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -Re 1 -Pe 1 -Le 1 -mshi <FILEIN> -bfo <FILEOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -Re 1 -Pe 1 -Le 1 -mi <FILEIN> -fo <FILEOUT>
 //
 //  Initialize with guess from file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -Re 1 -Pe 1 -Le 1 -bfi <FILEIN> -bfo <FILEOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -Re 1 -Pe 1 -Le 1 -fi <FILEIN> -fo <FILEOUT>
 //
 //  Initialize with guess from file, solve on different mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -mshi <MESHIN> -bfi <FILEIN> -bfo <FILEOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -mi <MESHIN> -fi <FILEIN> -fo <FILEOUT>
 //
 //  Initialize with guess from file, adapt mesh/solution
-// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -bfi <FILEIN> -bfo <FILEOUT> -msho <MESHOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
 load "iovtk"
 load "PETSc"
-include "solversettings.idp"
-include "solvermacros.idp"
+include "settings.idp"
+include "macros_bifbox.idp"
 // arguments
-string meshfilein = getARGV("-mshi", ""); // input meshfile
-string meshfileout = getARGV("-msho", ""); // output mesh (adapted to input)
-string basefilein = getARGV("-bfi", ""); // input basefile
-string foldfilein = getARGV("-ffi", ""); // input foldfile
-string hopffilein = getARGV("-hfi", ""); // input hopffile
-string basefileout = getARGV("-bfo", ""); // output basefile
-bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
-int meshsplit = getARGV("-split",1); // toggle whether mesh is split for P1 representation in Paraview
+string meshin = getARGV("-mi", ""); // input meshfile with extension
+string meshout = getARGV("-mo", ""); // output mesh without extension
+string filein = getARGV("-fi", ""); // input file with extension
+string fileout = getARGV("-fo", ""); // output file without extension
 real snesrtol = getARGV("-snes_rtol", 0); // set -snes_rtol
 string ksptype = getARGV("-ksp_type", "preonly"); // set -ksp_method
 string pctype = getARGV("-pc_type", "lu"); // set -pc_type
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 
-// if no meshfilein is given, use the mesh from basefilein
-if(meshfilein == ""){
-  if(basefilein != "") meshfilein = readmeshname(workdir + basefilein + ".base");
-  else if(foldfilein != "") meshfilein = readmeshname(workdir + foldfilein + ".fold");
-  else if(hopffilein != "") meshfilein = readmeshname(workdir + hopffilein + ".hopf");
+string fileroot, meshroot;
+string fileext = parsefilename(filein, fileroot); //extract file name and extension
+parsefilename(fileout, fileout); // trim extension from output file, if given
+if(fileext == "mode" || fileext == "rslv"){
+  filein = readbasename(workdir + filein);
+  fileext = parsefilename(filein, fileroot);
 }
-assert(meshfilein != ""); // if no basefilein given, must provide a mesh
+if(filein != "" && meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
+string meshext = parsefilename(meshin, meshroot);
+parsefilename(meshout, meshout); // trim extension from output mesh, if given
 // Load mesh
-Th = readmeshN(workdir + meshfilein + meshext);
+Th = readmeshN(workdir + meshin);
 Thg = Th;
 // Partition mesh across processors
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 // Make finite element basis
-XMh defu(ub), defu(um);
-// Initialize solution with guess or file
-ub[] = loadbase(basefilein, meshfilein);
-if(foldfilein != "") {
+XMh defu(ub) = InitialConditions, defu(um);
+if(fileext == "base") {
+  ub[] = loadbase(fileroot, meshin);
+} else if(fileext == "fold") {
   real[int] qm, qma;
-  ub[] = loadfold(foldfilein, meshfilein, qm, qma);
-} else if(hopffilein != "") {
-  complex[int] qm, qma;
+  ub[] = loadfold(fileroot, meshin, qm, qma);
+} else if(fileext == "hopf") {
   int m;
   real omega;
-  ub[] = loadhopf(hopffilein, meshfilein, qm, qma, m, omega);
+  complex[int] qm, qma;
+  ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
 }
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
 int m = 0;
 real ik = 0.0, iomega = 0.0;
-IFMACRO(formulation,incomp)
-include "eqns_incomp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmach)
-include "eqns_lowmach.idp"
-ENDIFMACRO
-IFMACRO(formulation,comp)
-include "eqns_comp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmachreact)
-include "eqns_lowmachreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,compreact)
-include "eqns_compreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,custom)
-include "eqns_custom.idp"
-ENDIFMACRO
+include "eqns.idp" // load equations
 set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
 real[int] q;
 ChangeNumbering(J, ub[], q);
 // MESH ADAPTATION
-bool noadapt = (meshfileout == "");
-if(noadapt) meshfileout = meshfilein; // If no output meshfile, don't adapt
-else { // else  output meshfile is given, adapt mesh
+bool adapt = false;
+if(meshout == "") meshout = meshin; // if no adaptation
+else { // if output meshfile is given, adapt mesh
+  adapt = true;
+  meshout = meshout + "." + meshext;
   ChangeNumbering(J, ub[], q, inverse = true, exchange = false); // PETSc to FF numbering
   XMhg defu(uG), defu(tempu); // create private global FE functions
   for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
@@ -132,10 +116,10 @@ SNESSolve(J, funcJ, funcR, q, reason = ret, sparams = " -snes_rtol " + snesrtol
                                                     + " -snes_monitor -snes_converged_reason "
                                                     );
 if(ret > 0) { // Save solution if solver converged and output file is given
-  if(mpirank==0 && !noadapt) { // Save adapted mesh
-    cout << "  Saving adapted mesh '" + meshfileout + meshext + "' in '" + workdir + "'." << endl;
-    savemesh(Thg, workdir + meshfileout + meshext);
+  if(mpirank==0 && adapt) { // Save adapted mesh
+    cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
+    savemesh(Thg, workdir + meshout);
   }
   ChangeNumbering(J, ub[], q, inverse = true);
-  savebase(basefileout, "", meshfileout, true, true, paraviewflag);
+  savebase(fileout, "", meshout, true, true);
 }

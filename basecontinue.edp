@@ -14,20 +14,19 @@
 //
 load "iovtk"
 load "PETSc"
-include "solversettings.idp"
-include "solvermacros.idp"
+include "settings.idp"
+include "macros_bifbox.idp"
 // arguments
-string meshfileout = getARGV("-msho", "");
-string basefilein = getARGV("-bfi", "");
-string basefileout = getARGV("-bfo", basefilein);
-bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
-int meshsplit = getARGV("-split",1); // toggle whether mesh is split for P1 representation in Paraview
+string meshin = getARGV("-mi", ""); // input meshfile with extension
+string meshout = getARGV("-mo", "");
+string filein = getARGV("-fi", "");
+string fileout = getARGV("-fo", filein);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
 real h0 = getARGV("-h0", 1.0);
 string param = getARGV("-param","Re");
-string adapt = getARGV("-adapt","b");
+string adaptto = getARGV("-adaptto","b");
 real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 0.5);
 real deltamax = getARGV("-dmax", 4.0);
@@ -42,24 +41,41 @@ string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -sn
 int refactor = getARGV("-refact", snesmaxit);
 
 // Load mesh, make FE basis
-string meshfile, meshfilein;
-if (count == 0) {
-  meshfile = readmeshname(workdir + basefilein + ".base");
-  meshfilein = meshfile;
-} else {
-  meshfile = readmeshname(workdir + basefilein + "_" + count + ".base");
-  meshfilein = meshfile(0:meshfile.rfind(count)-2);
+string fileroot, meshroot;
+string fileext = parsefilename(filein, fileroot); //extract file name and extension
+parsefilename(fileout, fileout); // trim extension from output file, if given
+if(fileext == "mode" || fileext == "rslv"){
+  filein = readbasename(workdir + filein);
+  fileext = parsefilename(filein, fileroot);
 }
-Th = readmeshN(workdir + meshfile + meshext);
+if (count > 0) fileroot = fileroot(0:filein.rfind("_" + count)-1); // get file root
+if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
+string meshext = parsefilename(meshin, meshroot);
+parsefilename(meshout, meshroot); // trim extension from output mesh, if given
+
+bool adapt = false;
+if(meshout == "") meshout = meshin; // if no adaptation
+else adapt = true;  // if output meshfile is given, adapt mesh
+Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(um), defu(yb);
 if (count == 0){
-  ub[] = loadbase(basefilein, meshfile);
-  if(mpirank == 0) printstats(basefileout, basefileout + ".base", meshfile, 0, 0.0);
+  if(fileext == "base") {
+    ub[] = loadbase(fileroot, meshin);
+  } else if(fileext == "fold") {
+    real[int] qm, qma;
+    ub[] = loadfold(fileroot, meshin, qm, qma);
+  } else if(fileext == "hopf") {
+    int m;
+    real omega;
+    complex[int] qm, qma;
+    ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
+  }
+  if(mpirank == 0 && savecount > 0) printstats(fileout, filein, meshin, 0, 0.0);
 } else {
-  ub[] = loadbase(basefilein + "_" + count, meshfile);
+  ub[] = loadbase(fileroot + "_" + count, meshin);
 }
 real lambda = getlambda(param);
 
@@ -67,25 +83,7 @@ Mat J, Ja;
 createMatu(Th, J, Pk);
 int m = 0;
 real ik = 0.0, iomega = 0.0;
-IFMACRO(formulation,incomp)
-include "eqns_incomp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmach)
-include "eqns_lowmach.idp"
-ENDIFMACRO
-IFMACRO(formulation,comp)
-include "eqns_comp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmachreact)
-include "eqns_lowmachreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,compreact)
-include "eqns_compreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,custom)
-include "eqns_custom.idp"
-ENDIFMACRO
-
+include "eqns.idp"
 // Build bordered block matrix from only Mat components
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Ja = [[J,JlPM],[yqPM',-1.0]]; // make dummy Jacobian
@@ -216,9 +214,10 @@ while (count < maxcount){
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
       if(mpirank == 0) cout << "\tFold detected. Orientation reversed." << endl;
-      savebase(basefileout + "_" + count + "foldguess", "", meshfile, true, true, paraviewflag);
+      savebase(fileout + "_" + count + "foldguess", "", meshout, true, true);
     }
-    if ((meshfileout != "") && (count % savecount == 0)){
+    if (adapt && (count % savecount == 0)){
+      meshout = meshroot + "_" + count + "." + meshext;
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = false);
       if(mpirank == 0) lambda = qa(qa.n-1);
       broadcast(processor(0), lambda);
@@ -230,8 +229,8 @@ while (count < maxcount){
       for[i, v : restu] tempu[][v] = yb[][i];
       mpiAllReduce(tempu[], yG[], mpiCommWorld, mpiSUM);
       if(mpirank == 0) {
-        if(adapt == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
-        if(adapt == "by") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptmeshoptions);
+        if(adaptto == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+        if(adaptto == "by") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptmeshoptions);
       }
       broadcast(processor(0), Thg);
       defu(uG) = defu(uG);
@@ -264,8 +263,6 @@ while (count < maxcount){
       yqP0 = yqP;
       qa0.resize(qa.n);
       qap.resize(qa.n);
-      meshfile = meshfileout + "_" + count;
-      savemesh(Thg, workdir + meshfile + meshext);
       int ret;
       it = 0;
       internalit = 0;
@@ -276,12 +273,13 @@ while (count < maxcount){
               + " -snes_converged_reason "
               + " "); // solve nonlinear problem with SNES
       assert(ret > 0);
+      savemesh(Thg, workdir + meshout);
     }
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
     if(mpirank == 0) lambda = qa(qa.n-1);
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
-    savebase(basefileout + "_" + count, basefileout, meshfile, (count % savecount == 0), true, paraviewflag);
+    savebase(fileout + "_" + count, (savecount > 0 ? fileout : ""), meshout, (count % savecount == 0), true);
     yqP0 = yqP;
   } else {
     if (mpirank == 0){

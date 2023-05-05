@@ -20,18 +20,15 @@
 //
 load "iovtk"
 load "PETSc"
-include "solversettings.idp"
-include "solvermacros.idp"
+include "settings.idp"
+include "macros_bifbox.idp"
 // arguments
-string meshfilein = getARGV("-mshi", "");
-string meshfileout = getARGV("-msho", "");
-string foldfilein = getARGV("-ffi", "");
-string basefilein = getARGV("-bfi", "");
-string foldfileout = getARGV("-ffo", "");
-bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
-int meshsplit = getARGV("-split",1); // toggle whether mesh is split for P1 representation in Paraview
+string meshin = getARGV("-mi", "");
+string meshout = getARGV("-mo", "");
+string filein = getARGV("-fi", "");
+string fileout = getARGV("-fo", "");
 string param = getARGV("-param","");
-string adapt = getARGV("-adapt","b");
+string adaptto = getARGV("-adaptto","b");
 real eps = getARGV("-eps", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
@@ -41,47 +38,46 @@ string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -sn
 int m = 0;
 complex eigenvalue;
 
-assert(basefilein != "" || foldfilein != "");
-if (meshfilein == ""){
-  if (basefilein != "") meshfilein = readmeshname(workdir + basefilein + ".base");
-  if (foldfilein != "") meshfilein = readmeshname(workdir + foldfilein + ".fold");
+string fileroot, meshroot;
+string fileext = parsefilename(filein, fileroot); //extract file name and extension
+parsefilename(fileout, fileout); // trim extension from output file, if given
+if(fileext == "mode" || fileext == "rslv"){
+  filein = readbasename(workdir + filein);
+  fileext = parsefilename(filein, fileroot);
 }
+if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
+string meshext = parsefilename(meshin, meshroot);
+parsefilename(meshout, meshout); // trim extension from output mesh, if given
 // Load mesh, make FE basis
-Th = readmeshN(workdir + meshfilein + meshext);
+Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(um), defu(uma);
-if (foldfilein != "") ub[] = loadfold(foldfilein, meshfilein, um[], uma[]);
-else  ub[] = loadbase(basefilein, meshfilein);
+// Initialize solution with guess or file
+if(fileext == "base") {
+  ub[] = loadbase(fileroot, meshin);
+} else if(fileext == "fold") {
+  ub[] = loadfold(fileroot, meshin, um[], uma[]);
+} else if(fileext == "hopf") {
+  int m;
+  real omega;
+  complex[int] qm, qma;
+  ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
+}
 real lambda = getlambda(param);
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
 real ik, iomega;
-IFMACRO(formulation,incomp)
-include "eqns_incomp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmach)
-include "eqns_lowmach.idp"
-ENDIFMACRO
-IFMACRO(formulation,comp)
-include "eqns_comp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmachreact)
-include "eqns_lowmachreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,compreact)
-include "eqns_compreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,custom)
-include "eqns_custom.idp"
-ENDIFMACRO
+include "eqns.idp"
 
 // MESH ADAPTATION
-bool noadapt = (meshfileout == "");
-if (noadapt) meshfileout = meshfilein; // If no output meshfile, don't adapt
-else { // else  output meshfile is given, adapt mesh
+bool adapt = false;
+if(meshout == "") meshout = meshin; // if no adaptation
+else { // if output meshfile is given, adapt mesh
+  adapt = true;
+  meshout = meshout + "." + meshext;
   real[int] q;
   ChangeNumbering(J, ub[], q);
   ChangeNumbering(J, ub[], q, inverse = true);
@@ -97,10 +93,10 @@ else { // else  output meshfile is given, adapt mesh
   for[i, v : restu] tempu[][v] = uma[][i]; // populate local portion of global soln
   mpiAllReduce(tempu[], umaG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
   if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
-    if(adapt == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
-    else if(adapt == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptmeshoptions);
-    else if(adapt == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umaG), adaptmeshoptions);
-    else if(adapt == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptu(umaG), adaptmeshoptions);
+    if(adaptto == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+    else if(adaptto == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptmeshoptions);
+    else if(adaptto == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umaG), adaptmeshoptions);
+    else if(adaptto == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptu(umaG), adaptmeshoptions);
   } // TODO: add adaptation to endogeneity and structural sensitivity
   broadcast(processor(0), Thg); // broadcast global mesh to all processors
   defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
@@ -186,7 +182,7 @@ if(mpirank == 0) {
   qa.resize(qa.n + 1);
   qa(qa.n - 1) = lambda;
 }
-if (foldfilein == ""){
+if (fileext == "fold"){
   updatelambda(param, lambda + eps);
   real[int] Jl = vR(0, XMh, tgv = -1);
   updatelambda(param, lambda);
@@ -218,9 +214,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, uma[], qma, inverse = true);
   um[] /= sqrt(J(um[], um[]));
   uma[] /= sqrt(J(uma[], uma[]));
-  if(mpirank==0 && !noadapt) { // Save adapted mesh
-    cout << "  Saving adapted mesh '" + meshfileout + meshext + "' in '" + workdir + "'." << endl;
-    savemesh(Thg, workdir + meshfileout + meshext);
+  if(mpirank==0 && adapt) { // Save adapted mesh
+    cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
+    savemesh(Thg, workdir + meshout);
   }
-  savefold(foldfileout, "", meshfileout, true, true, paraviewflag);
+  savefold(fileout, "", meshout, true, true);
 }

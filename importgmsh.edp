@@ -10,13 +10,13 @@
 load "gmsh"
 include "getARGV.idp"
 string gmshdir = getARGV("-gmshdir","./gmsh/"); // path to gmsh file
-string meshfilein = getARGV("-mshi", ""); // mesh filename
-string meshfileout = getARGV("-msho", meshfilein); // mesh filename
+string meshin = getARGV("-mi", ""); // mesh filename
+string meshout = getARGV("-mo", meshin); // mesh filename
 string workdir = getARGV("-workdir","./data/"); // path to FreeFEM work directory
 assert(mpisize == 1);//Must be run with 1 processor
-cout << "  Loading '" + meshfilein + ".msh' in '" + gmshdir + "'." << endl;
-mesh Thg  = gmshload(gmshdir + meshfilein + ".msh"); // stored in .msh format (gmsh)
+cout << "  Loading '" + meshin + "' in '" + gmshdir + "'." << endl;
+mesh Thg  = gmshload(gmshdir + meshin); // stored in gmsh format
 int[int] meshlabels = labels(Thg);
 cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
-cout << "  Saving '" << meshfileout + ".msh' in '" + workdir + "'." << endl;
-savemesh(Thg, workdir + meshfileout + ".msh"); // save mesh to FreeFEM directory
+cout << "  Saving '" << meshout + "' in '" + workdir + "'." << endl;
+savemesh(Thg, workdir + meshout); // save mesh to FreeFEM directory

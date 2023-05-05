@@ -186,7 +186,7 @@ macro ndotgrads(s) ( N.x*dx(s) + N.y*dy(s)) // EOM
 
 macro tdotgrads(s) (-N.y*dx(s) + N.x*dy(s)) //EOM NOTE: grid scaling factors cancel
 
-macro gdotf(g,f) ( g*f )//EOM
+macro gdotf(g, f) ( g*f )//EOM
 
 macro vdotu(v, u) ( v*u + v#y*u#y IFMACRO(component,3)+ v#z*u#z ENDIFMACRO) //EOM
 
@@ -215,9 +215,9 @@ macro ndotgrads(s) ( y*N.x*dx(s) + y*N.y*dy(s)) // EOM
 
 macro tdotgrads(s) (-y*N.y*dx(s) + y*N.x*dy(s)) //EOM NOTE: grid scaling factors cancel
 
-macro gdotf(f,g) ( y*g*f )//EOM
+macro gdotf(f, g) ( y*g*f )//EOM
 
-macro vdotu(v,u) ( y*v*u + y*v#y*u#y IFMACRO(component,3) + y*v#z*u#z ENDIFMACRO) //EOM
+macro vdotu(v, u) ( y*v*u + y*v#y*u#y IFMACRO(component,3) + y*v#z*u#z ENDIFMACRO) //EOM
 
 macro divu(ik, u) ( y*dx(u) + y*dy(u#y) + u#y IFMACRO(component,3) + (ik)*u#z ENDIFMACRO ) // velocity divergence
 
@@ -241,7 +241,7 @@ macro Daexp(u) ( y*params["Da"]*exp(-params["Ze"]/params["dT"]*(1.0 + params["dT
 IFMACRO(custom)
 // S-A macros from NASA: https://turbmodels.larc.nasa.gov/spalart.html#sa
 macro fv1(u) ( u#v^3.0/(u#v^3.0 + params["cv1"]^3.0)) // EOM
-macro fv1p(u,du) ( 3.0*params["cv1"]^3*u#v^2.0*du#v/(u#v^3.0 + params["cv1"]^3.0)^2.0) // EOM
+macro fv1p(u, du) ( 3.0*params["cv1"]^3*u#v^2.0*du#v/(u#v^3.0 + params["cv1"]^3.0)^2.0) // EOM
 
 macro dist() (  (y > 1.00001 && y >  x + 2.00001)*(x + 1.00001)
               + (y > 1.00001 && y <= x + 2.00001)*(  (x >  0)*sqrt(x^2 + (y - 1.00001)^2)
@@ -251,24 +251,24 @@ macro dist() (  (y > 1.00001 && y >  x + 2.00001)*(x + 1.00001)
                             + (x <= 0)*(1.0 - y) ) ) // EOM
 
 macro S(u) ( Ome(u) + y*u#v*fv2(u)/(params["Re"]*params["kap"]^2.0*dist^2.0) ) // EOM
-macro SSp(u,ik,du) ( Omep(u,ik,du) + y*(du#v*fv2(u) + u#v*fv2p(u,du))/(params["Re"]*params["kap"]^2.0*dist^2.0) ) // EOM
+macro SSp(u, ik, du) ( Omep(u,ik,du) + y*(du#v*fv2(u) + u#v*fv2p(u,du))/(params["Re"]*params["kap"]^2.0*dist^2.0) ) // EOM
 
 macro fv2(u) (1.0 - u#v/(1.0 + u#v*fv1(u))) // EOM
-macro fv2p(u,du) ( (u#v^2.0*fv1p(u,du) - du#v)/(1.0 + u#v*fv1(u))^2.0 ) // EOM
+macro fv2p(u, du) ( (u#v^2.0*fv1p(u,du) - du#v)/(1.0 + u#v*fv1(u))^2.0 ) // EOM
 
 macro fw(u) (g(u)*((1.0 + params["cw3"]^6.0)/(g(u)^6.0 + params["cw3"]^6))^(1.0/6.0)) // EOM
-macro fwp(u,ik,du) (params["cw3"]^6.0*gp(u,ik,du)/(1.0 + params["cw3"]^6.0)*((1.0 + params["cw3"]^6.0)/(g(u)^6.0 + params["cw3"]^6.0))^(7.0/6.0) ) // EOM
+macro fwp(u, ik, du) (params["cw3"]^6.0*gp(u,ik,du)/(1.0 + params["cw3"]^6.0)*((1.0 + params["cw3"]^6.0)/(g(u)^6.0 + params["cw3"]^6.0))^(7.0/6.0) ) // EOM
 
 macro g(u) (r(u) + params["cw2"]*(r(u)^6.0 - r(u))) // EOM
 macro gp(u,ik,du) ((1.0 + params["cw2"]*(6.0*r(u)^5.0 - 1.0))*rp(u,ik,du)) // EOM
 
 macro r(u) (min(y*u#v/(params["Re"]*S(u)*params["kap"]^2.0*dist^2.0),10.0)) // EOM
-macro rp(u,ik,du) ( ((y*u#v/(params["Re"]*S(u)*params["kap"]^2.0*dist^2.0))<10.0)*y*(du#v/(params["Re"]*S(u)*params["kap"]^2.0*dist^2.0) - u#v*SSp(u,m,du)/(params["Re"]*S(u)^2.0*params["kap"]^2.0*dist^2.0)) ) // EOM
+macro rp(u, ik, du) ( ((y*u#v/(params["Re"]*S(u)*params["kap"]^2.0*dist^2.0))<10.0)*y*(du#v/(params["Re"]*S(u)*params["kap"]^2.0*dist^2.0) - u#v*SSp(u,m,du)/(params["Re"]*S(u)^2.0*params["kap"]^2.0*dist^2.0)) ) // EOM
 
 macro ft2(u) (params["ct3"]*exp(-params["ct4"]*u#v^2.0)) // EOM
-macro ft2p(u,du) (-2.0*params["ct4"]*params["ct3"]*u#v*du#v*exp(-params["ct4"]*u#v^2.0)) // EOM
+macro ft2p(u, du) (-2.0*params["ct4"]*params["ct3"]*u#v*du#v*exp(-params["ct4"]*u#v^2.0)) // EOM
 
 macro Ome(u) ( max(sqrt((y*dy(u#z) + u#z)*(y*dy(u#z) + u#z) + (-y*dx(u#z))*(-y*dx(u#z)) + (y*(dx(u#y) - dy(u)))*(y*(dx(u#y) - dy(u)))),1e-10) ) // EOM
-macro Omep(u,ik,du) ( ((y*dy(u#z) + u#z)*(y*dy(du#z) + du#z - (ik)*du#y) + (-y*dx(u#z))*(-y*dx(du#z) + (ik)*du) + (y*(dx(u#y) - dy(u)))*(y*(dx(du#y) - dy(du))))/Ome(u) ) // EOM
+macro Omep(u, ik, du) ( ((y*dy(u#z) + u#z)*(y*dy(du#z) + du#z - (ik)*du#y) + (-y*dx(u#z))*(-y*dx(du#z) + (ik)*du) + (y*(dx(u#y) - dy(u)))*(y*(dx(du#y) - dy(du))))/Ome(u) ) // EOM
 ENDIFMACRO
 ENDIFMACRO

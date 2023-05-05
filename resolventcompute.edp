@@ -7,17 +7,13 @@
 //
 load "iovtk"
 load "PETSc-complex"
-include "solversettings.idp"
-include "solvermacros.idp"
+include "settings.idp"
+include "macros_bifbox.idp"
 // arguments
-string meshfilein = getARGV("-mshi", ""); // input meshfile
-string basefilein = getARGV("-bfi", "");
-string foldfilein = getARGV("-ffi", "");
-string hopffilein = getARGV("-hfi", "");
-string gainfileout = getARGV("-gfo", "");
-string resolventfileout = getARGV("-rfo", "");
-bool paraviewflag = getARGV("-pvo", 0); // toggle whether solution is also saved in Paraview format
-int meshsplit = getARGV("-split", 1); // toggle whether mesh is split for P1 representation in Paraview
+string meshin = getARGV("-mi", ""); // input meshfile
+string filein = getARGV("-fi", "");
+string fileout = getARGV("-fo", "");
+string gainout = getARGV("-so", fileout);
 int m = getARGV("-m", 0);
 real omega = getARGV("-omega", 1.0);
 int nomega = getARGV("-nomega", 1);
@@ -27,32 +23,34 @@ string pctype = getARGV("-pc_type", "lu"); // set -pc_type
 int epsnev = getARGV("-eps_nev", 1);
 bool strictnev = getARGV("-strict", 1);
 
-if(meshfilein == ""){
-  if(basefilein != "") meshfilein = readmeshname(workdir + basefilein + ".base");
-  else if(foldfilein != "") meshfilein = readmeshname(workdir + foldfilein + ".fold");
-  else if(hopffilein != "") meshfilein = readmeshname(workdir + hopffilein + ".hopf");
+string fileroot;
+string fileext = parsefilename(filein, fileroot); //extract file name and extension
+parsefilename(gainout, gainout); // trim extension from output file, if given
+parsefilename(fileout, fileout); // trim extension from output file, if given
+if(fileext == "mode" || fileext == "rslv"){
+  filein = readbasename(workdir + filein);
+  fileext = parsefilename(filein, fileroot);
 }
+if(filein != "" && meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
+
 // Load mesh, make FE basis
-Th = readmeshN(workdir + meshfilein + meshext);
+Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restf = restrict(Xh, Xhg, n2o);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub);
 
-if(foldfilein != "") {
+if(fileext == "base") {
+  ub[] = loadbase(fileroot, meshin);
+} else if(fileext == "fold") {
   real[int] qm, qma;
-  ub[] = loadfold(foldfilein, meshfilein, qm, qma);
-  basefilein = foldfilein + ".fold";
-} else if(hopffilein != "") {
-  complex[int] qm, qma;
+  ub[] = loadfold(fileroot, meshin, qm, qma);
+} else if(fileext == "hopf") {
   int mtemp;
   real omegatemp;
-  ub[] = loadhopf(hopffilein, meshfilein, qm, qma, mtemp, omegatemp);
-  basefilein = hopffilein + ".hopf";
-} else {
-  ub[] = loadbase(basefilein, meshfilein);
-  basefilein = basefilein + ".base";
+  complex[int] qm, qma;
+  ub[] = loadhopf(fileroot, meshin, qm, qma, mtemp, omegatemp);
 }
 complex[int] val(epsnev);
 Xh<complex>[int] deff(fvec)(epsnev);
@@ -63,28 +61,8 @@ Mat<complex> L, Mf;
 createMatu(Th, L, Pk);
 Mat<complex> M(L);
 createMatf(Th, Mf, Pkf);
-complex ik = 1i*real(m);
-complex iomega;
-
-IFMACRO(formulation,incomp)
-include "eqns_incomp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmach)
-include "eqns_lowmach.idp"
-ENDIFMACRO
-IFMACRO(formulation,comp)
-include "eqns_comp.idp"
-ENDIFMACRO
-IFMACRO(formulation,lowmachreact)
-include "eqns_lowmachreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,compreact)
-include "eqns_compreact.idp"
-ENDIFMACRO
-IFMACRO(formulation,custom)
-include "eqns_custom.idp"
-ENDIFMACRO
-
+complex ik = 1i*real(m), iomega;
+include "eqns.idp"
 // construct matrices
 M  = vMq(XMh, XMh); // Response Norm
 Mf = vMf(Xh, Xh); // Forcing Norm
@@ -122,7 +100,7 @@ for (int n = 0; n < nomega; ++n){
   }
   XMh<complex>[int] defu(uvec)(val.n);
   real[int] gains = sqrt(val.re);
-  if(resolventfileout != ""){ //If saving modes, compute response modes
+  if(fileout != ""){ //If saving modes, compute response modes
     for (int ii = 0; ii < val.n; ++ii){
       fm[] = fvec[ii][];
       complex[int] gm(Xh.ndof), qm(XMh.ndof), temp(XMh.ndof);
@@ -135,5 +113,5 @@ for (int n = 0; n < nomega; ++n){
       uvec[ii][] = um[];
     }
   }
-  saveresolvent(resolventfileout + "_" + n, gainfileout, basefilein, meshfilein, fvec, uvec, gains, m, omega, (resolventfileout != ""), paraviewflag);
+  saveresolvent(fileout + "_" + n, gainout, filein, meshin, fvec, uvec, gains, m, omega, (fileout != ""));
 }
