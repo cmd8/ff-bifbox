@@ -23,9 +23,6 @@ string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", filein);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
-int maxcount = getARGV("-maxcount", 100);
-real h0 = getARGV("-h0", 1.0);
-string adaptto = getARGV("-adaptto","b");
 string tstype = getARGV("-ts_type", "beuler");
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
@@ -56,7 +53,7 @@ Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
-XMh defu(ub), defu(um), defu(yb);
+XMh defu(ub), defu(um);
 real time = 0.0;
 if (count == 0){
   if(fileext == "base") {
@@ -74,7 +71,6 @@ if (count == 0){
 } else {
   ub[] = loadtdns(fileroot + "_" + count, meshin, time);
 }
-cout << time << endl;
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
@@ -85,30 +81,6 @@ include "eqns.idp" // load equations
 set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
 real[int] q;
 ChangeNumbering(J, ub[], q);
-// MESH ADAPTATION
-/*if(adapt) { // if output meshfile is given, adapt mesh
-  adapt = true;
-  meshout = meshout + "." + meshext;
-  ChangeNumbering(J, ub[], q, inverse = true, exchange = false); // PETSc to FF numbering
-  XMhg defu(uG), defu(tempu); // create private global FE functions
-  for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
-  mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
-  if(mpirank == 0)  // Perform mesh adaptation (serially) on processor 0
-    Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
-  broadcast(processor(0), Thg); // broadcast global mesh to all processors
-  defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
-  Th = Thg; //Reinitialize local mesh with global mesh
-  Mat Adapt;
-  createMatu(Th, Adapt, Pk); // Partition new mesh and update the PETSc numbering
-  J = Adapt;
-  set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
-  defu(ub) = initu(0.0); // set local values to zero
-  restu.resize(ub[].n); // Change size of restriction operator
-  restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
-  ub[] = uG[](restu); //restrict global solution to each local mesh
-  q.resize(J.n);  // Resize state vector
-  ChangeNumbering(J, ub[], q);
-}*/
 // Function to build residual "F(t,u,\dot{u})" operator in PETSc numbering
 func real[int] funcF(real t, real[int]& in, real[int]& inT) {
     ChangeNumbering(J, ub[], in,  inverse = true, exchange = true);
@@ -128,14 +100,13 @@ func int funcJ(real t, real[int]& in, real[int]& inT, real a) {
 }
 
 func int funcMon(int s, real t, real[int]& in) {
-    ChangeNumbering(J, ub[], in, inverse = true);
-    if(s > 0)
+    if(s > 0){
+      ChangeNumbering(J, ub[], in, inverse = true);
       savetdns(fileout + "_" + (s+count), (savecount > 0 ? fileout : ""), meshout, filein, t, ((s+count) % savecount == 0), true);
+    }
     return 0;
 }
-
-
-// solve nonlinear problem with SNES
+// solve nonlinear problem with TS
 TSSolve(J, funcJ, funcF, q, monitor = funcMon, sparams = " -ts_init_time " + time
                                                        + " -ts_type " + tstype
                                                        + " -ts_monitor "

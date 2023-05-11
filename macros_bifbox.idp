@@ -91,9 +91,11 @@ macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
   if (mpirank == 0 && statsfile != "") printstats(statsfile, basefileout + ".base", meshfile, 0, 0, 0);
   if (saveflag && mpirank == 0 && basefileout != ""){
     cout << "  Saving '" + basefileout + ".base' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    cout << "\t" + listparams(paramnames,params);
-    if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
-    cout << "." << endl;
+    if (statsfile == "") {
+      cout << "\t" + listparams(paramnames,params);
+      if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+      cout << "." << endl;
+    }
     {
       ofstream file(workdir + basefileout + ".base", binary);
       file.precision(17);
@@ -248,9 +250,11 @@ macro savefold(foldfileout, statsfile, meshfile, saveflag, monitorflag){
   if (mpirank == 0 && statsfile != "") printstats(statsfile, foldfileout + ".fold", meshfile, 0, 0, 0);
   if (saveflag && mpirank == 0 && foldfileout != ""){
     cout << "  Saving '" + foldfileout + ".fold' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    cout << "\t" + listparams(paramnames,params);
-    if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
-    cout << "." << endl;
+    if (statsfile == "") {
+      cout << "\t" + listparams(paramnames,params);
+      if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+      cout << "." << endl;
+    }
     {
       ofstream file(workdir + foldfileout + ".fold", binary);
       file.precision(17);
@@ -300,9 +304,11 @@ macro savehopf(hopffileout, statsfile, meshfile, m, omega, saveflag, monitorflag
   if (mpirank == 0 && statsfile != "") printstats(statsfile, hopffileout + ".hopf", meshfile, m, omega, 0);
   if (saveflag && mpirank == 0 && hopffileout != ""){
     cout << "  Saving '" + hopffileout + ".hopf' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    cout << "\t" + listparams(paramnames, params)  + ", m = " + m + ", omega = " + omega;
-    if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
-    cout << "." << endl;
+    if (statsfile == "") {
+      cout << "\t" + listparams(paramnames, params)  + ", m = " + m + ", omega = " + omega;
+      if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+      cout << "." << endl;
+    }
     {
       ofstream file(workdir + hopffileout + ".hopf", binary);
       file.precision(17);
@@ -360,9 +366,11 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
   if (mpirank == 0 && statsfile != "") printstats(statsfile, tdnsfileout + ".tdns", meshfile, 0, 0, time);
   if (saveflag && mpirank == 0 && tdnsfileout != ""){
     cout << "  Saving '" + tdnsfileout + ".tdns' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    cout << "\t" + listparams(paramnames,params);
-    if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
-    cout << ", time = " << time << "." << endl;
+    if (statsfile == "") {
+      cout << "\t" + listparams(paramnames,params);
+      if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+      cout << ", time = " << time << "." << endl;
+    }
     {
       ofstream file(workdir + tdnsfileout + ".tdns", binary);
       file.precision(17);
