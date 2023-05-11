@@ -88,7 +88,7 @@ macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
   for[i, v : restu] tempu[][v] = ub[][i];
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
   if (monitorflag) getmonitors(ubg);
-  if (mpirank == 0 && statsfile != "") printstats(statsfile, basefileout + ".base", meshfile, 0, 0);
+  if (mpirank == 0 && statsfile != "") printstats(statsfile, basefileout + ".base", meshfile, 0, 0, 0);
   if (saveflag && mpirank == 0 && basefileout != ""){
     cout << "  Saving '" + basefileout + ".base' on '" + meshfile + "' in '" + workdir + "'." << endl;
     cout << "\t" + listparams(paramnames,params);
@@ -245,7 +245,7 @@ macro savefold(foldfileout, statsfile, meshfile, saveflag, monitorflag){
   for[i, v : restu] tempu[][v] = uma[][i];
   mpiAllReduce(tempu[], umag[], mpiCommWorld, mpiSUM);
   if (monitorflag) getmonitors(ubg);
-  if (mpirank == 0 && statsfile != "") printstats(statsfile, foldfileout + ".fold", meshfile, 0, 0);
+  if (mpirank == 0 && statsfile != "") printstats(statsfile, foldfileout + ".fold", meshfile, 0, 0, 0);
   if (saveflag && mpirank == 0 && foldfileout != ""){
     cout << "  Saving '" + foldfileout + ".fold' on '" + meshfile + "' in '" + workdir + "'." << endl;
     cout << "\t" + listparams(paramnames,params);
@@ -297,7 +297,7 @@ macro savehopf(hopffileout, statsfile, meshfile, m, omega, saveflag, monitorflag
   for[i, v : restu] cplxu[][v] = uma[][i];
   mpiAllReduce(cplxu[], umag[], mpiCommWorld, mpiSUM);
   if (monitorflag) getmonitors(ubg);
-  if (mpirank == 0 && statsfile != "") printstats(statsfile, hopffileout + ".hopf", meshfile, m, omega);
+  if (mpirank == 0 && statsfile != "") printstats(statsfile, hopffileout + ".hopf", meshfile, m, omega, 0);
   if (saveflag && mpirank == 0 && hopffileout != ""){
     cout << "  Saving '" + hopffileout + ".hopf' on '" + meshfile + "' in '" + workdir + "'." << endl;
     cout << "\t" + listparams(paramnames, params)  + ", m = " + m + ", omega = " + omega;
@@ -352,11 +352,53 @@ macro savehopf(hopffileout, statsfile, meshfile, m, omega, saveflag, monitorflag
   }
 }//EOM
 
-func bool printstats(string outputfilename, string filename, string meshfilename, int m, real omega) {
+macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitorflag){
+  XMhg defu(tempu), defu(ubg);
+  for[i, v : restu] tempu[][v] = ub[][i];
+  mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+  if (monitorflag) getmonitors(ubg);
+  if (mpirank == 0 && statsfile != "") printstats(statsfile, tdnsfileout + ".tdns", meshfile, 0, 0, time);
+  if (saveflag && mpirank == 0 && tdnsfileout != ""){
+    cout << "  Saving '" + tdnsfileout + ".tdns' on '" + meshfile + "' in '" + workdir + "'." << endl;
+    cout << "\t" + listparams(paramnames,params);
+    if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+    cout << ", time = " << time << "." << endl;
+    {
+      ofstream file(workdir + tdnsfileout + ".tdns", binary);
+      file.precision(17);
+      file << "mesh\t" << meshfile << endl << endl;
+      file << "init\t" << ICfile << endl << endl;
+      file << "time\t" << time << endl << endl;
+      for (int k = 0; k < paramnames.n; ++k){
+        file << paramnames[k] << "\t" << params[paramnames[k]] << endl << endl;
+      }
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl << endl;
+        }
+      }
+      file << ubg[] << endl;
+    }
+    if (paraviewflag > 0){
+      cout << "  Saving '" + tdnsfileout + "_tdns.vtu' in '" + workdir + "'." << endl;
+      if (paraviewflag > 1){
+        meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+        fespace XMhs(Thgs, Pk);
+        XMhs defu(us) = defu(ubg);
+        savevtk(workdir + tdnsfileout + "_tdns.vtu", Thgs, adaptu(us), dataname = ParaviewDataName, order = ParaviewOrder);
+      } else {
+        savevtk(workdir + tdnsfileout + "_tdns.vtu", Thg, adaptu(ubg), dataname = ParaviewDataName, order = ParaviewOrder);
+      }
+    }
+  }
+}//EOM
+
+func bool printstats(string outputfilename, string filename, string meshfilename, int m, real omega, real time) {
       cout << "  Saving solution stats to '" + outputfilename + ".cont' in '" + workdir + "'." << endl;
       cout << "\t" + listparams(paramnames, params);
       if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
       if (omega != 0.0 | m != 0) cout << ", m = " + m + ", omega = " + omega;
+      if (time != 0.0) cout << ", time = " + time;
       cout << "." << endl;
       {
         ofstream file(workdir + outputfilename + ".cont", append);
@@ -371,6 +413,7 @@ func bool printstats(string outputfilename, string filename, string meshfilename
           }
         }
         if (omega != 0.0 | m != 0) file << "\t" << m << "\t" << omega;
+        if (time != 0.0) file << "\t" << time;
         file << endl;
       }
       return 0;
@@ -628,6 +671,41 @@ func complex[int] loadresolvent(string inputfilename, string meshfilename, compl
       complex[int] qlocal = umg[](restu);
       return qlocal;
     }
+
+func real[int] loadtdns(string inputfilename, string meshfilename, real& time) {
+      XMhg defu(ubg);
+      if (mpirank == 0) cout << "  Loading '" + inputfilename + ".tdns' on '" + meshfilename + "' from '" + workdir + "'." << endl;
+      string filemesh, ICfile, dummy;
+      ifstream file(workdir + inputfilename + ".tdns");
+      file >> filemesh >> filemesh >> ICfile >> ICfile >> dummy >> time;
+      for (int k = 0; k < paramnames.n; ++k){
+        file >> paramnames[k] >> params[paramnames[k]];
+      }
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file >> monitornames[k] >> monitors[monitornames[k]];
+        }
+      }
+      if (mpirank == 0) {
+        cout << "\t" + listparams(paramnames,params);
+        if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+        cout  << ", time = " << time << "." << endl;
+      }
+      if (filemesh == meshfilename){ // no interpolation needed
+        file >> ubg[];
+      } else { // must interpolate
+        if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh << "'." << endl;
+        meshN Thg1 = readmeshN(workdir + filemesh);
+        fespace XMhg1(Thg1, Pk);
+        XMhg1 defu(ubg1);
+        file >> ubg1[];
+        defu(ubg) = defu(ubg1);
+      }
+      setparams(paramnames,params);
+      real[int] qlocal = ubg[](restu);
+      return qlocal;
+    }
+
 
 // parameter functions
   func real getlambda(string& contparam){

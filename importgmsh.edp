@@ -5,7 +5,7 @@
 //
 // EXAMPLE USAGE:
 //  Load mesh and save in work directory
-// mpirun -n 1 FreeFem++-mpi -v 0 importgmsh.edp -gmshdir <GMSHDIR> -mshi <FILEIN> -workdir <FFDIR>
+// mpirun -n 1 FreeFem++-mpi -v 0 importgmsh.edp -gmshdir <GMSHDIR> -mi <FILEIN> -workdir <FFDIR>
 //
 load "gmsh"
 include "getARGV.idp"

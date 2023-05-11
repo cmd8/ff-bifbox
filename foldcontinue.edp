@@ -5,10 +5,10 @@
 //
 // EXAMPLE USAGE:
 //  Initialize with fold from file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 foldcontinue.edp -param1 <PARAM1> -param1 <PARAM2> -ffi <FILEIN> -ffo <FILEOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 foldcontinue.edp -param1 <PARAM1> -param1 <PARAM2> -fi <FILEIN> -fo <FILEOUT>
 //
 //  Initialize with fold from file, adapt mesh/solution
-// mpirun -n 4 FreeFem++-mpi -v 0 foldcontinue.edp -param1 <PARAM1> -param1 <PARAM2> -ffi <FILEIN> -ffo <FILEOUT> -msho <MESHOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 foldcontinue.edp -param1 <PARAM1> -param1 <PARAM2> -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
@@ -61,7 +61,7 @@ restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(yb), defu(um), defu(uma);
 if (count == 0){
   ub[] = loadfold(fileroot, meshin, um[], uma[]);
-  if(mpirank == 0) printstats(fileout, filein, meshin, 0, 0.0);
+  if(mpirank == 0) printstats(fileout, filein, meshin, 0, 0, 0);
 } else {
   ub[] = loadfold(fileroot + "_" + count, meshin, um[], uma[]);
 }

@@ -4,20 +4,8 @@
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // EXAMPLE USAGE:
-//  Print base solution to single .vtu file:
-// mpirun -n 1 FreeFem++-mpi -v 0 printparaview.edp -bfi <FILEIN>
-//
-//  Print mode solution to single .vtu file:
-// mpirun -n 1 FreeFem++-mpi -v 0 printparaview.edp -mfi <FILEIN>
-//
-//  Print resolvent solution to two .vtu files:
-// mpirun -n 1 FreeFem++-mpi -v 0 printparaview.edp -rfi <FILEIN>
-//
-//  Print fold solution to three .vtu files:
-// mpirun -n 1 FreeFem++-mpi -v 0 printparaview.edp -ffi <FILEIN>
-//
-//  Print hopf solution to three .vtu files:
-// mpirun -n 1 FreeFem++-mpi -v 0 printparaview.edp -ffi <FILEIN>
+//  Print previously computed solution to .vtu file:
+// mpirun -n 1 FreeFem++-mpi -v 0 printparaview.edp -fi <FILEIN>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
