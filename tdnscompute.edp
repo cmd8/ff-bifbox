@@ -7,7 +7,7 @@
 //  Compute time-domain nonlinear simulation with IC from input file without mesh adaptation:
 // mpirun -n 4 FreeFem++-mpi -v 0 tdnscompute.edp -fi <FILEIN> -fo <FILEOUT>
 //
-//  TODO: Compute time-domain nonlinear simulation with IC from input file with mesh adaptation:
+//  Compute time-domain nonlinear simulation with IC from input file with mesh adaptation:
 // mpirun -n 4 FreeFem++-mpi -v 0 tdnscompute.edp -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
@@ -23,15 +23,12 @@ string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", filein);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
-string tstype = getARGV("-ts_type", "beuler");
+int maxcount = getARGV("-maxcount", 100);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
-int tsmaxsnesfailures = getARGV("-ts_max_snes_failures", -1);
-real tsdt = getARGV("-ts_dt", 1.0e-3);
-real tsmaxtime = getARGV("-ts_max_time", 1.0);
-string tsadapttype = getARGV("-ts_adapt_type", "none");
-string tsexactfinaltime = getARGV("-ts_exact_final_time", "stepover");
-string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
+real dt = getARGV("-dt", 0.01);
+real snesrtol = getARGV("-snes_rtol", 0.0);
+string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 
 // Load mesh, make FE basis
 string fileroot, meshroot;
@@ -76,44 +73,85 @@ Mat J;
 createMatu(Th, J, Pk);
 Mat M(J);
 int m = 0;
-real ik = 0.0, iomega = 0.0;
+real ik = 0.0, iomega = 1.0/dt;
 include "eqns.idp" // load equations
 set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
 real[int] q;
 ChangeNumbering(J, ub[], q);
+real[int] qp(q.n);
 // Function to build residual "F(t,u,\dot{u})" operator in PETSc numbering
-func real[int] funcF(real t, real[int]& in, real[int]& inT) {
-    ChangeNumbering(J, ub[], in,  inverse = true, exchange = true);
-    ChangeNumbering(J, um[], inT, inverse = true, exchange = true);
+func real[int] funcF(real[int]& in) {
+    real[int] dqdt = in - qp;
+    dqdt /= dt;
+    ChangeNumbering(J, ub[], in,   inverse = true, exchange = true);
+    ChangeNumbering(J, um[], dqdt, inverse = true, exchange = true);
     real[int] out, F = vR(0, XMh, tgv = -1);
     F += vM(0, XMh, tgv = -10);
     ChangeNumbering(J, F, out);
     return out;
 }
 // Function to build Jacobian operator in PETSc numbering
-func int funcJ(real t, real[int]& in, real[int]& inT, real a) {
+func int funcJ(real[int]& in) {
     ChangeNumbering(J, ub[], in, inverse = true, exchange = true);
-    iomega = a;
-    matrix Jl = vJ(XMh, XMh, tgv = -1);
-    J = Jl;
+    J = vJ(XMh, XMh, tgv = -1);
     return 0;
 }
 
-func int funcMon(int s, real t, real[int]& in) {
-    if(s > 0){
-      ChangeNumbering(J, ub[], in, inverse = true);
-      savetdns(fileout + "_" + (s+count), (savecount > 0 ? fileout : ""), meshout, filein, t, ((s+count) % savecount == 0), true);
+while (count < maxcount){
+  qp = q;
+  int ret;
+  // solve nonlinear problem with TS
+  SNESSolve(J, funcJ, funcF, q, reason = ret,
+            sparams = " -snes_rtol " + snesrtol
+                    + " -snes_linesearch_type " + sneslinesearchtype
+                    + " -snes_converged_reason "
+                    ); // solve nonlinear problem with SNES
+  if(ret > 0) { // Save solution if solver converged and output file is given
+    count++;
+    time += dt;
+    if(adapt && (count % savecount == 0)) { // if output meshfile is given, adapt mesh
+      ChangeNumbering(J, ub[], q, inverse = true);
+      ChangeNumbering(J, um[], qp, inverse = true);
+      meshout = meshroot + "_" + count + "." + meshext;
+      XMhg defu(uG), defu(umG), defu(tempu); // create private global FE functions
+      for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
+      mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
+      for[i, v : restu] tempu[][v] = um[][i]; // populate local portion of global soln
+      mpiAllReduce(tempu[], umG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
+      if(mpirank == 0)  // Perform mesh adaptation (serially) on processor 0
+        Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+        broadcast(processor(0), Thg); // broadcast global mesh to all processors
+      defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
+      defu(umG) = defu(umG); //interpolate global solution from old mesh to new mesh
+      Th = Thg; //Reinitialize local mesh with global mesh
+      Mat Adapt;
+      createMatu(Th, Adapt, Pk); // Partition new mesh and update the PETSc numbering
+      J = Adapt;
+      set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
+      defu(ub) = initu(0.0); // set local values to zero
+      defu(um) = initu(0.0); // set local values to zero
+      restu.resize(ub[].n); // Change size of restriction operator
+      restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
+      ub[] = uG[](restu); //restrict global solution to each local mesh
+      um[] = umG[](restu); //restrict global solution to each local mesh
+      Mat Adapt0(J);
+      M = Adapt0;
+      q.resize(J.n);  // Resize state vector
+      qp.resize(J.n);  // Resize state vector
+      ChangeNumbering(J, ub[], q);
+      ChangeNumbering(J, um[], qp);
+      SNESSolve(J, funcJ, funcF, q, reason = ret,
+                sparams = " -snes_rtol " + snesrtol
+                        + " -snes_linesearch_type " + sneslinesearchtype
+                        + " -snes_converged_reason "
+                        ); // solve nonlinear problem with SNES
+      assert(ret > 0);
+      if(mpirank==0) { // Save adapted mesh
+        cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
+        savemesh(Thg, workdir + meshout);
+      }
     }
-    return 0;
+    ChangeNumbering(J, ub[], q, inverse = true);
+    savetdns(fileout + "_" + count, (savecount > 0 ? fileout : ""), meshout, filein, time, (count % savecount == 0), true);
+  }
 }
-// solve nonlinear problem with TS
-TSSolve(J, funcJ, funcF, q, monitor = funcMon, sparams = " -ts_init_time " + time
-                                                       + " -ts_type " + tstype
-                                                       + " -ts_monitor "
-                                                       + " -ts_max_snes_failures " + tsmaxsnesfailures
-                                                       + " -ts_dt " + tsdt
-                                                       + " -ts_max_time " + tsmaxtime
-                                                       + " -ts_adapt_type " + tsadapttype
-                                                       + " -ts_exact_final_time " + tsexactfinaltime
-                                                       + " -snes_linesearch_type " + sneslinesearchtype
-                                                       );

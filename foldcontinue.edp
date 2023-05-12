@@ -294,7 +294,7 @@ while (count < maxcount){
                     + " -snes_linesearch_type " + sneslinesearchtype
                     + " -snes_max_it " + snesmaxit
                     + " -snes_converged_reason "
-                    + " "); // solve nonlinear problem with SNES
+                    ); // solve nonlinear problem with SNES
   if (ret > 0) {
     ++count;
     h0 /= f;
@@ -401,18 +401,19 @@ while (count < maxcount){
       yqP0 = yqP;
       qa0.resize(qa.n);
       qap.resize(qa.n);
-      int ret;
       it = 0;
       internalit = 0;
       adaptflag = 1;
       SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
-      sparams = " -snes_rtol " + snesrtol
-              + " -snes_linesearch_type " + sneslinesearchtype
-              + " -snes_converged_reason "
-              + " "); // solve nonlinear problem with SNES
+                sparams = " -snes_rtol " + snesrtol
+                        + " -snes_linesearch_type " + sneslinesearchtype
+                        + " -snes_converged_reason "
+                        ); // solve nonlinear problem with SNES
       assert(ret > 0);
-      cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
-      savemesh(Thg, workdir + meshout);
+      if(mpirank==0) { // Save adapted mesh
+        cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
+        savemesh(Thg, workdir + meshout);
+      }
     }
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
     if(mpirank == 0) {
