@@ -48,10 +48,13 @@ real omega;
 string fileroot, meshroot;
 string fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if (count > 0) fileroot = fileroot(0:filein.rfind("_" + count)-1); // get file root
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshroot); // trim extension from output mesh, if given
+if(count > 0) {
+  fileroot = fileroot(0:fileroot.rfind("_" + count)-1); // get file root
+  meshroot = meshroot(0:meshroot.rfind("_" + count)-1); // get file root
+}
 assert(fileext == "hopf");
 bool adapt = false;
 if(meshout == "") meshout = meshin; // if no adaptation

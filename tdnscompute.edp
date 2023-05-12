@@ -27,7 +27,6 @@ int maxcount = getARGV("-maxcount", 100);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
 real dt = getARGV("-dt", 0.01);
-real snesrtol = getARGV("-snes_rtol", 0.0);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 
 // Load mesh, make FE basis
@@ -38,10 +37,10 @@ if(fileext == "mode" || fileext == "rslv"){
   filein = readbasename(workdir + filein);
   fileext = parsefilename(filein, fileroot);
 }
-if (count > 0) fileroot = fileroot(0:filein.rfind("_" + count)-1); // get file root
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshroot); // trim extension from output mesh, if given
+if (count > 0) fileroot = fileroot(0:filein.rfind("_" + count)-1); // get file root
 
 bool adapt = false;
 if(meshout == "") meshout = meshin; // if no adaptation
@@ -85,13 +84,13 @@ include "eqns.idp" // load equations
 set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
 real[int] q;
 ChangeNumbering(J, ub[], q);
-real[int] qp(q.n);
+real[int] qp = q;
 // Function to build residual "F(t,u,\dot{u})" operator in PETSc numbering
 func real[int] funcF(real[int]& in) {
-    real[int] dqdt = in - qp;
-    dqdt /= dt;
-    ChangeNumbering(J, ub[], in,   inverse = true, exchange = true);
-    ChangeNumbering(J, um[], dqdt, inverse = true, exchange = true);
+    ChangeNumbering(J, ub[], in, inverse = true, exchange = true);
+    ChangeNumbering(J, um[], qp, inverse = true, exchange = true);
+    um[] -= ub[]; // -dq
+    um[] /= -dt; // -dq/-dt = dq/dt
     real[int] out, F = vR(0, XMh, tgv = -1);
     F += vM(0, XMh, tgv = -10);
     ChangeNumbering(J, F, out);
@@ -100,17 +99,16 @@ func real[int] funcF(real[int]& in) {
 // Function to build Jacobian operator in PETSc numbering
 func int funcJ(real[int]& in) {
     ChangeNumbering(J, ub[], in, inverse = true, exchange = true);
+    iomega = 1.0/dt;
     J = vJ(XMh, XMh, tgv = -1);
     return 0;
 }
 
 while (count < maxcount){
-  qp = q;
   int ret;
   // solve nonlinear problem with TS
   SNESSolve(J, funcJ, funcF, q, reason = ret,
-            sparams = " -snes_rtol " + snesrtol
-                    + " -snes_linesearch_type " + sneslinesearchtype
+            sparams = " -snes_linesearch_type " + sneslinesearchtype
                     + " -snes_converged_reason "
                     ); // solve nonlinear problem with SNES
   if(ret > 0) { // Save solution if solver converged and output file is given
@@ -148,17 +146,22 @@ while (count < maxcount){
       ChangeNumbering(J, ub[], q);
       ChangeNumbering(J, um[], qp);
       SNESSolve(J, funcJ, funcF, q, reason = ret,
-                sparams = " -snes_rtol " + snesrtol
-                        + " -snes_linesearch_type " + sneslinesearchtype
+                sparams = " -snes_linesearch_type " + sneslinesearchtype
                         + " -snes_converged_reason "
                         ); // solve nonlinear problem with SNES
       assert(ret > 0);
-      if(mpirank==0) { // Save adapted mesh
+      if(mpirank == 0) { // Save adapted mesh
         cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
         savemesh(Thg, workdir + meshout);
       }
     }
     ChangeNumbering(J, ub[], q, inverse = true);
     savetdns(fileout + "_" + count, (savecount > 0 ? fileout : ""), meshout, filein, time, (count % savecount == 0), true);
+    qp = q;
+  }
+  else {
+    if(mpirank == 0) cout << "\tConvergence failed. Reattempting with halved time step." << endl;
+    q = qp;
+    dt /= 2.0;
   }
 }

@@ -120,7 +120,7 @@ real omega;
 string fileroot, meshroot, basefileroot, basefileext;
 string fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if(fileext == "mode" || fileext == "rslv"){
+if(fileext == "mode" || fileext == "rslv") {
   if(basefilein == "") basefilein = readbasename(workdir + filein);
   basefileext = parsefilename(basefilein, basefileroot);
 }
@@ -136,17 +136,17 @@ XMh<complex> defu(ub), defu(um), defu(uma);
 if (fileext == "hopf") {
   ub[].re = loadhopf(fileroot, meshin, um[], uma[], m, omega);
 }
-else if (fileext == "mode"){
+else if (fileext == "mode") {
     complex eigenvalue;
     um[] = loadmode(fileroot, meshin, m, eigenvalue);
     omega = imag(eigenvalue);
 }
-else if (fileext == "rslv"){
+else if (fileext == "rslv") {
     real gain;
     complex[int] fm;
     um[] = loadresolvent(fileroot, meshin, fm, m, omega, gain);
 }
-if (basefileext == "base"){
+if (basefileext == "base") {
   ub[].re = loadbase(basefileroot, meshin);
 }
 else if(basefileext == "fold") {
