@@ -55,17 +55,24 @@ real time = 0.0;
 if (count == 0){
   if(fileext == "base") {
     ub[] = loadbase(fileroot, meshin);
-  } else if(fileext == "fold") {
+  }
+  else if(fileext == "fold") {
     real[int] qm, qma;
     ub[] = loadfold(fileroot, meshin, qm, qma);
-  } else if(fileext == "hopf") {
+  }
+  else if(fileext == "hopf") {
     int m;
     real omega;
     complex[int] qm, qma;
     ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
   }
+  else if(fileext == "tdns") {
+    real time;
+    ub[] = loadtdns(fileroot, meshin, time);
+  }
   if(mpirank == 0 && savecount > 0) printstats(fileout, filein, meshin, 0, 0, 0);
-} else {
+}
+else {
   ub[] = loadtdns(fileroot + "_" + count, meshin, time);
 }
 // Create distributed Mat

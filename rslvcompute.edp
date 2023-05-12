@@ -50,14 +50,20 @@ XMh defu(ub);
 
 if(fileext == "base") {
   ub[] = loadbase(fileroot, meshin);
-} else if(fileext == "fold") {
+}
+else if(fileext == "fold") {
   real[int] qm, qma;
   ub[] = loadfold(fileroot, meshin, qm, qma);
-} else if(fileext == "hopf") {
+}
+else if(fileext == "hopf") {
   int mtemp;
   real omegatemp;
   complex[int] qm, qma;
   ub[] = loadhopf(fileroot, meshin, qm, qma, mtemp, omegatemp);
+}
+else if(fileext == "tdns") {
+  real time;
+  ub[] = loadtdns(fileroot, meshin, time);
 }
 complex[int] val(epsnev);
 Xh<complex>[int] deff(fvec)(epsnev);

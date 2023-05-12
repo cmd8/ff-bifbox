@@ -64,17 +64,20 @@ XMh defu(ub), defu(um), defu(yb);
 if (count == 0){
   if(fileext == "base") {
     ub[] = loadbase(fileroot, meshin);
-  } else if(fileext == "fold") {
+  }
+  else if(fileext == "fold") {
     real[int] qm, qma;
     ub[] = loadfold(fileroot, meshin, qm, qma);
-  } else if(fileext == "hopf") {
+  }
+  else if(fileext == "hopf") {
     int m;
     real omega;
     complex[int] qm, qma;
     ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
   }
   if(mpirank == 0 && savecount > 0) printstats(fileout, filein, meshin, 0, 0, 0);
-} else {
+}
+else {
   ub[] = loadbase(fileroot + "_" + count, meshin);
 }
 real lambda = getlambda(param);
@@ -114,7 +117,8 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta;
         alpha = 0.0;
         delta = abs(h0);
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param + " = " << lambda << "." << endl;
-      } else {
+      }
+      else {
         real dlambda;
         if(mpirank == 0) dlambda = lambda - qap(qap.n-1); // Extract parameter value from state vector on proc 0
         broadcast(processor(0), dlambda);
@@ -283,7 +287,8 @@ while (count < maxcount){
     updatelambda(param, lambda);
     savebase(fileout + "_" + count, (savecount > 0 ? fileout : ""), meshout, (count % savecount == 0), true);
     yqP0 = yqP;
-  } else {
+  }
+  else {
     if (mpirank == 0){
       if(res*(monotone!=0) >= resp) cout << "\tResidual norm failed to decrease. Reattempting with smaller step." << endl;
       if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;

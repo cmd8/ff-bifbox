@@ -57,13 +57,19 @@ XMh defu(ub), defu(um), defu(uma);
 // Initialize solution with guess or file
 if(fileext == "base") {
   ub[] = loadbase(fileroot, meshin);
-} else if(fileext == "fold") {
+}
+else if(fileext == "fold") {
   ub[] = loadfold(fileroot, meshin, um[], uma[]);
-} else if(fileext == "hopf") {
+}
+else if(fileext == "hopf") {
   int m;
   real omega;
   complex[int] qm, qma;
   ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
+}
+else if(fileext == "tdns") {
+  real time;
+  ub[] = loadtdns(fileroot, meshin, time);
 }
 real lambda = getlambda(param);
 // Create distributed Mat
@@ -193,7 +199,8 @@ if (fileext == "fold"){
   ChangeNumbering(J, Jl, pP);
   KSPSolve(J, pP, qP);
   KSPSolveTranspose(J, qP, pP);
-} else {
+}
+else {
   ChangeNumbering(J, uma[], pP);
   ChangeNumbering(J, um[], qP);
 }

@@ -135,25 +135,33 @@ restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma);
 if (fileext == "hopf") {
   ub[].re = loadhopf(fileroot, meshin, um[], uma[], m, omega);
-} else if (fileext == "mode"){
+}
+else if (fileext == "mode"){
     complex eigenvalue;
     um[] = loadmode(fileroot, meshin, m, eigenvalue);
     omega = imag(eigenvalue);
-} else if (fileext == "rslv"){
+}
+else if (fileext == "rslv"){
     real gain;
     complex[int] fm;
     um[] = loadresolvent(fileroot, meshin, fm, m, omega, gain);
 }
 if (basefileext == "base"){
   ub[].re = loadbase(basefileroot, meshin);
-} else if(basefileext == "fold") {
+}
+else if(basefileext == "fold") {
   real[int] qm, qma;
   ub[].re = loadfold(basefileroot, meshin, qm, qma);
-} else if(basefileext == "hopf") {
+}
+else if(basefileext == "hopf") {
   int m;
   real omega;
   complex[int] qm, qma;
   ub[].re = loadhopf(basefileroot, meshin, qm, qma, m, omega);
+}
+else if(fileext == "tdns") {
+  real time;
+  ub[] = loadtdns(fileroot, meshin, time);
 }
 real lambda = getlambda(param);
 // Create distributed Mat
@@ -313,7 +321,8 @@ if (fileext != "hopf"){
   ik = 1i*real(m);
   J = vJ(XMh, XMh, tgv = -1);
   KSPSolveHermitianTranspose(J, qP, pP);
-} else {
+}
+else {
   ChangeNumbering(J, uma[], pP);
 }
 // solve nonlinear problem with SNES

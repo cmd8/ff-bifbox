@@ -52,14 +52,20 @@ restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub) = InitialConditions, defu(um);
 if(fileext == "base") {
   ub[] = loadbase(fileroot, meshin);
-} else if(fileext == "fold") {
+}
+else if(fileext == "fold") {
   real[int] qm, qma;
   ub[] = loadfold(fileroot, meshin, qm, qma);
-} else if(fileext == "hopf") {
+}
+else if(fileext == "hopf") {
   int m;
   real omega;
   complex[int] qm, qma;
   ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
+}
+else if(fileext == "tdns") {
+  real time;
+  ub[] = loadtdns(fileroot, meshin, time);
 }
 // Create distributed Mat
 Mat J;

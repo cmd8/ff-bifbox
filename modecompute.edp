@@ -47,14 +47,20 @@ restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub);
 if(fileext == "base") {
   ub[] = loadbase(fileroot, meshin);
-} else if(fileext == "fold") {
+}
+else if(fileext == "fold") {
   real[int] qm, qma;
   ub[] = loadfold(fileroot, meshin, qm, qma);
-} else if(fileext == "hopf") {
+}
+else if(fileext == "hopf") {
   complex[int] qm, qma;
   int m;
   real omega;
   ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
+}
+else if(fileext == "tdns") {
+  real time;
+  ub[] = loadtdns(fileroot, meshin, time);
 }
 complex[int] val(epsnev);
 XMh<complex>[int] defu(vec)(epsnev);
@@ -74,7 +80,8 @@ include "eqns.idp"
     if (adj) {
       Jtemp = -Jtemp';
       Mtemp = Mtemp';
-    } else Jtemp = -Jtemp;
+    }
+    else Jtemp = -Jtemp;
     J = Jtemp;
     M = Mtemp;
   }

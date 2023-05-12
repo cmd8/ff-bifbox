@@ -18,7 +18,8 @@ func string parsefilename(string & filename, string & fileroot){
   if(filename.rfind(".") > 0){ // filename includes extension
     fileext = filename(filename.rfind(".")+1:filename.length-1); // get file extension
     fileroot = filename(0:filename.rfind(".")-1); // get file root
-  } else {
+  }
+  else {
     fileroot = filename;
     fileext = "";
   }
@@ -117,7 +118,8 @@ macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
         fespace XMhs(Thgs, Pk);
         XMhs defu(us) = defu(ubg);
         savevtk(workdir + basefileout + "_base.vtu", Thgs, adaptu(us), dataname = ParaviewDataName, order = ParaviewOrder);
-      } else {
+      }
+      else {
         savevtk(workdir + basefileout + "_base.vtu", Thg, adaptu(ubg), dataname = ParaviewDataName, order = ParaviewOrder);
       }
     }
@@ -160,7 +162,8 @@ macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, m, save
             usr[] = uso[].re;
             usi[] = uso[].im;
             savevtk(workdir + modefileout + "_mode.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
-          } else {
+          }
+          else {
             XMhg defu(usr), defu(usi);
             usr[] = umg[].re;
             usi[] = umg[].im;
@@ -222,7 +225,8 @@ macro saveresolvent(resolventfileout, gainsfile, basefile, meshfile, fvecs, uvec
             usr[] = uso[].re;
             usi[] = uso[].im;
             savevtk(workdir + fileout + "_rslv_response.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
-          } else {
+          }
+          else {
             Xhg deff(fsr), deff(fsi);
             fsr[] = fmg[].re;
             fsi[] = fmg[].im;
@@ -282,7 +286,8 @@ macro savefold(foldfileout, statsfile, meshfile, saveflag, monitorflag){
         savevtk(workdir + foldfileout + "_fold_base.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
         savevtk(workdir + foldfileout + "_fold_dirmode.vtu", Thgs, adaptu(ums), dataname = ParaviewDataName, order = ParaviewOrder);
         savevtk(workdir + foldfileout + "_fold_adjmode.vtu", Thgs, adaptu(umas), dataname = ParaviewDataName, order = ParaviewOrder);
-      } else {
+      }
+      else {
         savevtk(workdir + foldfileout + "_fold_base.vtu", Thg, adaptu(ubg), dataname = ParaviewDataName, order = ParaviewOrder);
         savevtk(workdir + foldfileout + "_fold_dirmode.vtu", Thg, adaptu(umg), dataname = ParaviewDataName, order = ParaviewOrder);
         savevtk(workdir + foldfileout + "_fold_adjmode.vtu", Thg, adaptu(umag), dataname = ParaviewDataName, order = ParaviewOrder);
@@ -344,7 +349,8 @@ macro savehopf(hopffileout, statsfile, meshfile, m, omega, saveflag, monitorflag
         ubs[] = umas[].re;
         ubsi[] = umas[].im;
         savevtk(workdir + hopffileout + "_hopf_adjmode.vtu", Thgs, adaptu(ubs), adaptu(ubsi), dataname = pvdataname, order = pvorder);
-      } else {
+      }
+      else {
         savevtk(workdir + hopffileout + "_hopf_base.vtu", Thg, adaptu(ubg), dataname = ParaviewDataName, order = ParaviewOrder);
         XMhg defu(ubgi);
         ubg[] = umg[].re;
@@ -394,7 +400,8 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
         fespace XMhs(Thgs, Pk);
         XMhs defu(us) = defu(ubg);
         savevtk(workdir + tdnsfileout + "_tdns.vtu", Thgs, adaptu(us), dataname = ParaviewDataName, order = ParaviewOrder);
-      } else {
+      }
+      else {
         savevtk(workdir + tdnsfileout + "_tdns.vtu", Thg, adaptu(ubg), dataname = ParaviewDataName, order = ParaviewOrder);
       }
     }
@@ -521,7 +528,8 @@ func real[int] loadbase(string inputfilename, string meshfilename) {
       }
       if (filemesh == meshfilename){ // no interpolation needed
         file >> ubg[];
-      } else { // must interpolate
+      }
+      else { // must interpolate
         if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh << "'." << endl;
         meshN Thg1 = readmeshN(workdir + filemesh);
         fespace XMhg1(Thg1, Pk);
@@ -557,7 +565,8 @@ func real[int] loadfold(string inputfilename, string meshfilename, real[int] & q
         file >> ubg[];
         file >> umg[];
         file >> umag[];
-      } else { // must interpolate
+      }
+      else { // must interpolate
         if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh << "'." << endl;
         meshN Thg1 = readmeshN(workdir + filemesh);
         fespace XMhg1(Thg1, Pk);
@@ -601,7 +610,8 @@ func real[int] loadhopf(string inputfilename, string meshfilename, complex[int] 
         file >> ubg[];
         file >> umg[];
         file >> umag[];
-      } else { // must interpolate
+      }
+      else { // must interpolate
         if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh << "'." << endl;
         meshN Thg1 = readmeshN(workdir + filemesh);
         fespace XMhg1(Thg1, Pk);
@@ -636,7 +646,8 @@ func complex[int] loadmode(string inputfilename, string meshfilename, int & m, c
       if (mpirank == 0) cout << "\t" + listparams(paramnames,tempparams) << ", m = " + m + ", eval = " + eigenvalue + "." << endl;
       if (filemesh == meshfilename){ // no interpolation needed
         file >> umg[];
-      } else { // must interpolate
+      }
+      else { // must interpolate
       if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh << "'." << endl;
         meshN Thg1 = readmeshN(workdir + filemesh);
         fespace XMhg1(Thg1, Pk);
@@ -664,7 +675,8 @@ func complex[int] loadresolvent(string inputfilename, string meshfilename, compl
       if (mpirank == 0) cout << "\t" + listparams(paramnames,tempparams) << ", m = " + m + ", omega = " + omega + ", gain = " + gain + "." << endl;
       if (filemesh == meshfilename){ // no interpolation needed
         file >> fmg[] >> umg[];
-      } else { // must interpolate
+      }
+      else { // must interpolate
       if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh << "'." << endl;
         meshN Thg1 = readmeshN(workdir + filemesh);
         fespace Xhg1(Thg1, Pkf);
@@ -701,7 +713,8 @@ func real[int] loadtdns(string inputfilename, string meshfilename, real& time) {
       }
       if (filemesh == meshfilename){ // no interpolation needed
         file >> ubg[];
-      } else { // must interpolate
+      }
+      else { // must interpolate
         if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh << "'." << endl;
         meshN Thg1 = readmeshN(workdir + filemesh);
         fespace XMhg1(Thg1, Pk);

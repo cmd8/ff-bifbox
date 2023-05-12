@@ -62,7 +62,8 @@ XMh defu(ub), defu(yb), defu(um), defu(uma);
 if (count == 0){
   ub[] = loadfold(fileroot, meshin, um[], uma[]);
   if(mpirank == 0) printstats(fileout, filein, meshin, 0, 0, 0);
-} else {
+}
+else {
   ub[] = loadfold(fileroot + "_" + count, meshin, um[], uma[]);
 }
 real lambda1 = getlambda(param1);
@@ -118,7 +119,8 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
         alpha = 0.0;
         delta = abs(h0);
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << "." << endl;
-      } else {
+      }
+      else {
         real dlambda1, dlambda2;
         real[int] qdiff  = qa - qap;
         if(mpirank == 0) {
@@ -433,7 +435,8 @@ while (count < maxcount){
     qP = qm;
     pP = qma;
     yl10 = yl1;
-  } else {
+  }
+  else {
     if (mpirank == 0){
       if(res*(monotone!=0) >= resp) cout << "\tResidual norm failed to decrease. Reattempting with smaller step." << endl;
       if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;
