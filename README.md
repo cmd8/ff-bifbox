@@ -18,11 +18,12 @@
 *** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
 *** https://www.markdownguide.org/basic-syntax/#reference-style-links
 -->
-[![Contributors][contributors-shield]][contributors-url]
+<div align="center">
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
+[![License][license-shield]][license-url]
+</div>
 
 
 
@@ -222,9 +223,9 @@ Pierre Jolivet
 [stars-shield]: https://img.shields.io/github/stars/cmd8/ff-bifbox.svg?style=for-the-badge
 [stars-url]: https://github.com/cmd8/ff-bifbox/stargazers
 [issues-shield]: https://img.shields.io/github/issues/cmd8/ff-bifbox.svg?style=for-the-badge
-[issues-url]: https://github.com/cmd8/Best-README-Template/issues
+[issues-url]: https://github.com/cmd8/ff-bifbox/issues
 [license-shield]: https://img.shields.io/github/license/cmd8/ff-bifbox.svg?style=for-the-badge
-[license-url]: https://github.com/cmd8/ff-bifbox/master/LICENSE
+[license-url]: https://github.com/cmd8/ff-bifbox/LICENSE
 [product-screenshot]: images/screenshot.png
 [FreeFEM]: https://img.shields.io/badge/FreeFEM-000000?style=for-the-badge&logo=FreeFEM&logoColor=white
 [FreeFEM-url]: https://freefem.org/
