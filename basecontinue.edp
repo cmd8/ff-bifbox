@@ -273,6 +273,7 @@ while (count < maxcount){
               + " -snes_converged_reason "
               + " "); // solve nonlinear problem with SNES
       assert(ret > 0);
+      cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
       savemesh(Thg, workdir + meshout);
     }
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
