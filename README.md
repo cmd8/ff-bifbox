@@ -215,18 +215,18 @@ Pierre Jolivet
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/othneildrew/Best-README-Template.svg?style=for-the-badge
+[contributors-shield]: https://img.shields.io/github/contributors/cmd8/ff-bifbox.svg?style=for-the-badge
 [contributors-url]: https://github.com/cmd8/ff-bifbox/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/othneildrew/Best-README-Template.svg?style=for-the-badge
+[forks-shield]: https://img.shields.io/github/forks/cmd8/ff-bifbox.svg?style=for-the-badge
 [forks-url]: https://github.com/cmd8/ff-bifbox/network/members
-[stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
+[stars-shield]: https://img.shields.io/github/stars/cmd8/ff-bifbox.svg?style=for-the-badge
 [stars-url]: https://github.com/cmd8/ff-bifbox/stargazers
-[issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=for-the-badge
+[issues-shield]: https://img.shields.io/github/issues/cmd8/ff-bifbox.svg?style=for-the-badge
 [issues-url]: https://github.com/cmd8/Best-README-Template/issues
-[license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/cmd8/ff-bifbox.svg?style=for-the-badge
 [license-url]: https://github.com/cmd8/ff-bifbox/master/LICENSE
 [product-screenshot]: images/screenshot.png
-[FreeFEM]: https://img.shields.io/badge/FreeFEM-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
+[FreeFEM]: https://img.shields.io/badge/FreeFEM-000000?style=for-the-badge&logo=FreeFEM&logoColor=white
 [FreeFEM-url]: https://freefem.org/
-[PETSc]: https://img.shields.io/badge/PETSc-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
+[PETSc]: https://img.shields.io/badge/PETSc-000000?style=for-the-badge&logo=PETSc&logoColor=white
 [PETSc-url]: https://petsc.org/
