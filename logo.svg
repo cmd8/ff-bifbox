@@ -7,16 +7,16 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="104.05774mm"
-   height="24.279018mm"
-   viewBox="0 0 104.05774 24.279018"
+   width="105.83334mm"
+   height="26.458336mm"
+   viewBox="0 0 105.83335 26.458336"
    version="1.1"
    id="svg8"
    inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07)"
    sodipodi:docname="logo.svg"
    inkscape:export-filename="/home/douglas/Dropbox (GaTech)/CMDcodes/ff-bifbox/logo.png"
-   inkscape:export-xdpi="300"
-   inkscape:export-ydpi="300">
+   inkscape:export-xdpi="287.99997"
+   inkscape:export-ydpi="287.99997">
   <defs
      id="defs2" />
   <sodipodi:namedview
@@ -27,8 +27,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1.2583177"
-     inkscape:cx="320.93196"
-     inkscape:cy="108.90511"
+     inkscape:cx="320.93198"
+     inkscape:cy="113.02401"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      inkscape:document-rotation="0"
@@ -57,7 +57,7 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-40.811954,-65.891792)">
+     transform="translate(-40.811951,-64.802002)">
     <rect
        style="opacity:0.993;fill:#ffffff;fill-opacity:1;stroke:#010101;stroke-width:1.05336;stroke-miterlimit:4;stroke-dasharray:none"
        id="rect837"
@@ -109,13 +109,5 @@
        sodipodi:open="true"
        sodipodi:arc-type="arc"
        d="m 132.57062,77.525905 a 0.58390802,0.58395851 0 0 1 0.7979,0.212394 0.58390802,0.58395851 0 0 1 -0.2122,0.798016 0.58390802,0.58395851 0 0 1 -0.798,-0.212046 0.58390802,0.58395851 0 0 1 0.21186,-0.798108" />
-    <path
-       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="M 41.338631,65.328682 V 90.733658"
-       id="path983" />
-    <path
-       style="fill:none;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="M 146.11862,65.328682 V 90.733658"
-       id="path985" />
   </g>
 </svg>
