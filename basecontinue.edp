@@ -62,7 +62,7 @@ Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
-XMh defu(ub), defu(um), defu(yb);
+XMh defu(ub), defu(um), defu(yb), defu(um2);
 if(count == 0) {
   if(fileext == "base") {
     ub[] = loadbase(fileroot, meshin);
@@ -87,7 +87,7 @@ real lambda = getlambda(param);
 Mat J, Ja;
 createMatu(Th, J, Pk);
 int m = 0;
-real ik = 0.0, iomega = 0.0;
+real ik = 0.0, ik2 = 0.0, iomega = 0.0;
 include "eqns.idp"
 // Build bordered block matrix from only Mat components
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
@@ -152,10 +152,10 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta;
       updatelambda(param, lambda + eps);
       real[int] Jl = vR(0, XMh, tgv = -1);
       updatelambda(param, lambda);
-      real[int] R = vR(0, XMh, tgv = -1);
-      if (it == 1 | refactor >= it) J = vJ(XMh, XMh, tgv = -1);
-      Jl -= R;
+      real[int] Jltemp = vR(0, XMh, tgv = -1);
+      Jl -= Jltemp;//vR(0, XMh, tgv = -1);
       Jl /= eps;
+      if (it == 1 | refactor >= it) J = vJ(XMh, XMh, tgv = -1);
       ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
       matrix tempPms = [[yqP]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
@@ -180,10 +180,10 @@ broadcast(processor(0), lambda);
   updatelambda(param, lambda + eps);
   real[int] Jl = vR(0, XMh, tgv = -1);
   updatelambda(param, lambda);
-  real[int] R = vR(0, XMh, tgv = -1);
-  J = vJ(XMh, XMh, tgv = -1);
-  Jl -= R;
+  real[int] Jltemp = vR(0, XMh, tgv = -1);
+  Jl -= Jltemp;//vR(0, XMh, tgv = -1);
   Jl /= eps;
+  J = vJ(XMh, XMh, tgv = -1);
   ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
   KSPSolve(J, yqP, yqP);
   yqP0 = yqP;

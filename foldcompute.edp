@@ -53,7 +53,7 @@ Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
-XMh defu(ub), defu(um), defu(uma);
+XMh defu(ub), defu(um), defu(uma), defu(um2);
 // Initialize solution with guess or file
 if(fileext == "base") {
   ub[] = loadbase(fileroot, meshin);
@@ -75,7 +75,7 @@ real lambda = getlambda(param);
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
-real ik, iomega;
+real ik = 0.0, ik2 = 0.0, iomega = 0.0;
 include "eqns.idp"
 
 // MESH ADAPTATION
@@ -193,9 +193,9 @@ if (fileext == "fold"){
   real[int] Jl = vR(0, XMh, tgv = -1);
   updatelambda(param, lambda);
   real[int] a0 = vR(0, XMh, tgv = -1);
-  J = vJ(XMh, XMh, tgv = -1);
   Jl -= a0;
   Jl /= eps;
+  J = vJ(XMh, XMh, tgv = -1);
   ChangeNumbering(J, Jl, pP);
   KSPSolve(J, pP, qP);
   KSPSolveTranspose(J, qP, pP);

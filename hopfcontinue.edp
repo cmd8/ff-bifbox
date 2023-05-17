@@ -63,7 +63,7 @@ Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
-XMh<complex> defu(ub), defu(yb), defu(um), defu(uma);
+XMh<complex> defu(ub), defu(um), defu(uma), defu(yb), defu(um2);
 if (count == 0){
   ub[].re = loadhopf(fileroot, meshin, um[], uma[], m, omega);
   if(mpirank == 0) printstats(fileout, filein, meshin, m, omega, 0);
@@ -76,7 +76,7 @@ real lambda2 = getlambda(param2);
 // Create distributed Mat
 Mat<complex> J;
 createMatu(Th, J, Pk);
-complex ik, iomega;
+complex ik, ik2 = 0.0, iomega;
 include "eqns.idp"
 
 // Build bordered block matrix from only Mat components
@@ -173,6 +173,7 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       broadcast(processor(0), lambda2);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true, exchange = true);
+      int mm = m;
       ik = 1i*real(m);
       iomega = 1i*omega;
       updatelambda(param1, lambda1 + eps1);
@@ -205,7 +206,9 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
         tempPms = [[real(gl1), -imag(gw)], [imag(gl1), real(gw)]];
       }
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
+      m = 0;
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+      m = mm;
       MatMultHermitianTranspose(H, qma, yqP); // gqr,i
       if(!zerofreq) dummy.re = -yqP.im;
       yqP.im = 0.0;
@@ -222,7 +225,6 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
       ik = 0.0;
       iomega = 0.0;
-      int mm = m;
       m = 0;
       J = vJ(XMh, XMh, tgv = -1);
       m = mm;
@@ -258,6 +260,7 @@ if(mpirank == 0) {
   qa(qa.n-1) = lambda2;
 }
 {
+  int mm = m;
   ik = 1i*real(m);
   iomega = 1i*omega;
   updatelambda(param1, lambda1 + eps1);
@@ -290,7 +293,9 @@ if(mpirank == 0) {
     tempPms = [[real(gl1), -imag(gw)], [imag(gl1), real(gw)]];
   }
   ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
+  m = 0;
   H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+  m = mm;
   MatMultHermitianTranspose(H, qma, yqP); // gqr,i
   if(!zerofreq) dummy.re = -yqP.im;
   yqP.im = 0.0;
@@ -307,7 +312,6 @@ if(mpirank == 0) {
   ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
   ik = 0.0;
   iomega = 0.0;
-  int mm = m;
   m = 0;
   J = vJ(XMh, XMh, tgv = -1);
   m = mm;

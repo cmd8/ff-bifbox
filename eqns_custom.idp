@@ -1,69 +1,58 @@
 // Define KSP parameters
 string KSPparams = "";
-string EPSparams = " -eps_pos_gen_non_hermitian ";
+string EPSparams = "";
 // RESIDUAL VECTOR
   varf vR(defu(um), defu(v))
       = int2d(Th)(
-          vv*(ugradf(ub, 0, ubv) - params["cb1"]*(1.0 - ft2(ub))*S(ub)*ubv + y*(params["cw1"]*fw(ub) - params["cb1"]/params["kap"]^2.0*ft2(ub))*ubv^2.0/(params["Re"]*dist^2))
-          + ((1.0 + ubv)*diff(0, vv, 0, ubv) - vv*params["cb2"]*diff(0, ubv, 0, ubv))/(params["Re"]*params["sig"])
-        + ugradu(v, ub, 0, ub) - divu(0, v)*ubp + (1.0 + ubv*fv1(ub))*visc(0, v , 0, ub )/params["Re"]
-        - vp*divu(0, ub)
-      )
-      + int1d(Th, BCopen)(
-        IFMACRO(cylindrical) y* ENDIFMACRO ndotu(v)*ubpc - 0.5*vdotu(v, ub)*min(0.0, ndotu(ub))
-        IFMACRO(component,3) + vpc*(tdotgrads(ubpc) - ubz^2.0) ENDIFMACRO
-        - (1.0 + ubv*fv1(ub))*ndotvisc(v, 0, ub)/params["Re"]
+        //Define linear form to evaluate nonlinear residual operator
       )
       + BoundaryConditions(0, um, ub);
 
 // JACOBIAN MATRIX
 varf vJ(defu(dum), defu(v))
       = int2d(Th)(
-        vv*(ugradf(ub, ik, dumv) + ugradf(dum, 0, ubv)
-        - params["cb1"]*(1.0 - ft2(ub))*S(ub)*dumv - params["cb1"]*(1.0 - ft2(ub))*SSp(ub,ik,dum)*ubv + params["cb1"]*ft2p(ub,dum)*S(ub)*ubv
-        + 2.0*y*(params["cw1"]*fw(ub) - params["cb1"]/params["kap"]^2.0*ft2(ub))*ubv*dumv/(params["Re"]*dist^2.0)
-        + y*(params["cw1"]*fwp(ub,ik,dum) - params["cb1"]/params["kap"]^2.0*ft2p(ub,dum))*ubv^2.0/(params["Re"]*dist^2))
-        + ((1.0 + ubv)*diff(-ik, vv, ik, dumv) + dumv*diff(-ik, vv, 0, ubv) - 2.0*vv*params["cb2"]*diff(-ik, ubv, ik, dumv))/(params["Re"]*params["sig"])
-        + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum) - divu(-ik, v)*dump + ((1.0 + ubv*fv1(ub))*visc(-ik, v, ik, dum) + (dumv*fv1(ub) + ubv*fv1p(ub,dum))*visc(-ik, v, 0, ub))/params["Re"]
-        - vp*divu(ik, dum) + 1.0e-10*dumpc*vpc
-        )
-      + int1d(Th, BCopen)(
-        IFMACRO(cylindrical) y* ENDIFMACRO ndotu(v)*dumpc - 0.5*(ndotu(ub) < 0.0)*(vdotu(dum,v)*ndotu(ub) + vdotu(ub,v)*ndotu(dum))
-        IFMACRO(component,3) + vpc*( tdotgrads(dumpc) - 2.0*ubz*dumz) ENDIFMACRO
-        - ((1.0 + ubv*fv1(ub))*ndotvisc(v, ik, dum) + (dumv*fv1(ub) + ubv*fv1p(ub,dum))*ndotvisc(v, 0, ub))/params["Re"]
-        )
+        //Define linear form for jacobian operator
+      )
       = int2d(Th)(
-        vv*(ugradf(ub, ik, umv) + ugradf(um, 0, ubv)
-        - params["cb1"]*(1.0 - ft2(ub))*S(ub)*umv - params["cb1"]*(1.0 - ft2(ub))*SSp(ub,ik,um)*ubv + params["cb1"]*ft2p(ub,um)*S(ub)*ubv
-        + 2.0*y*(params["cw1"]*fw(ub) - params["cb1"]/params["kap"]^2.0*ft2(ub))*ubv*umv/(params["Re"]*dist^2.0)
-        + y*(params["cw1"]*fwp(ub,ik,um) - params["cb1"]/params["kap"]^2.0*ft2p(ub,um))*ubv^2.0/(params["Re"]*dist^2))
-        + ((1.0 + ubv)*diff(-ik, vv, ik, umv) + umv*diff(-ik, vv, 0, ubv) - 2.0*vv*params["cb2"]*diff(-ik, ubv, ik, umv))/(params["Re"]*params["sig"])
-        + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - divu(-ik, v)*ump + ((1.0 + ubv*fv1(ub))*visc(-ik, v, ik, um) + (umv*fv1(ub) + ubv*fv1p(ub,um))*visc(-ik, v, 0, ub))/params["Re"]
-        - vp*divu(ik, um) + 1.0e-10*umpc*vpc
-        )
-      + int1d(Th, BCopen)(
-        IFMACRO(cylindrical) y* ENDIFMACRO ndotu(v)*umpc - 0.5*(ndotu(ub) < 0.0)*(vdotu(um,v)*ndotu(ub) + vdotu(ub,v)*ndotu(um))
-        IFMACRO(component,3) + vpc*( tdotgrads(umpc) - 2.0*ubz*umz) ENDIFMACRO
-        - ((1.0 + ubv*fv1(ub))*ndotvisc(v, ik, um) + (umv*fv1(ub) + ubv*fv1p(ub,um))*ndotvisc(v, 0, ub))/params["Re"]
-        )
-      + HomBoundaryConditions(m, dum);
+        //Define bilinear form for jacobian operator
+      )
+      + //Define boundary conditions
+      ;
 
 // MASS MATRIX
 varf vM(defu(dum), defu(v))
       = int2d(Th)(
-          gdotf(vv, dumv) + vdotu(dum, v)
+          //define linear form for mass operator
       )
       + int2d(Th)(
-          gdotf(vv, umv) + vdotu(um, v)
+          //define bilinear form for mass operator
       )
-      + HomBoundaryConditions(m, dum);
+      + //Define boundary conditions
+      ;
 
 // FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
 varf vMq(defu(dum), defu(v))
-      = int2d(Th)( gdotf(vv, umv) + vdotu(v, dum) );
+      = int2d(Th)(
+        //
+      );
 
 varf vMf(deff(dum), deff(v))
-      = int2d(Th)( vdotu(v, dum) );
+      = int2d(Th)(
+         //
+      );
 
 varf vP(deff(fm), defu(v))
-      = int2d(Th)( vdotu(v, fm) );
+      = int2d(Th)(
+          //
+      );
+
+// HESSIAN OPERATOR
+varf vH(defu(dum), defu(v))
+      = int2d(Th)(
+          //define linear form for Hessian operator
+      )
+      + int2d(Th)(
+          //define bilinear form for Hessian operator
+      )
+      + //Define boundary conditions
+      ;

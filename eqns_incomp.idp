@@ -53,8 +53,11 @@ varf vP(deff(fm), defu(v))
       = int2d(Th)( vdotu(v, fm) );
 
 // HESSIAN OPERATOR
-varf vH(defu(dub), defu(v))
+varf vH(defu(dum), defu(v))
       = int2d(Th)(
-        ugradu(v, um, 0, dub) + ugradu(v, dub, ik, um)
+        ugradu(v, um, ik2, um2) + ugradu(v, um2, ik, um)
       )
-      + HomBoundaryConditions(0, dub);
+      + int2d(Th)(
+        ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um)
+      )
+      + HomBoundaryConditions(m, dum);

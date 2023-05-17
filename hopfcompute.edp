@@ -132,7 +132,7 @@ Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
-XMh<complex> defu(ub), defu(um), defu(uma);
+XMh<complex> defu(ub), defu(um), defu(uma), defu(um2);
 if (fileext == "hopf") {
   ub[].re = loadhopf(fileroot, meshin, um[], uma[], m, omega);
 }
@@ -167,7 +167,7 @@ real lambda = getlambda(param);
 // Create distributed Mat
 Mat<complex> J;
 createMatu(Th, J, Pk);
-complex ik, iomega;
+complex ik, ik2 = 0.0, iomega;
 include "eqns.idp"
 // MESH ADAPTATION
 bool adapt = false;
@@ -264,6 +264,7 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       broadcast(processor(0), omega);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
+      int mm = m;
       ik = 1i*real(m);
       iomega = 1i*omega;
       updatelambda(param, lambda + eps);
@@ -280,7 +281,9 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       temp1.im = 0.0;
       matrix<complex> tempPms = [[temp1, 0]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+      m = 0;
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+      m = mm;
       MatMultHermitianTranspose(H, qma, temp1); // compute (dL/dq*w)'*v
       if(!zerofreq) temp2.re = -temp1.im;
       temp1.im = 0.0;
@@ -297,7 +300,6 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       ik = 0.0;
       iomega = 0.0;
-      int mm = m;
       m = 0;
       J = vJ(XMh, XMh, tgv = -1);
       m = mm;
