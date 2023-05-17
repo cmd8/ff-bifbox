@@ -64,9 +64,14 @@ IFMACRO(formulation,custom)
   macro u2u(u)[u,u#y, IFMACRO(component,3) 0, ENDIFMACRO u#v, u#p, 0]//EOM
   macro adaptu(u)[u, u#y IFMACRO(component,3) ,u#z ENDIFMACRO] , u#v, u#p //EOM
   macro adaptf(f)[f, f#y IFMACRO(component,3) ,f#z ENDIFMACRO] //EOM
-  int[int] ParaviewOrder = [1, 1, 1];
   string ParaviewDataName = "velocity viscosity pressure";
   string ParaviewDataNamef = "momentum";
+  int[int] ParaviewOrder = [1, 1, 1];
+  int[int] ParaviewOrderf = [1];
+  string ParaviewDataNamec = "velocity_r viscosity_r pressure_r velocity_i viscosity_i pressure_i";
+  string ParaviewDataNamefc = "momentum_r momentum_i";
+  int[int] ParaviewOrderc = [ParaviewOrder,ParaviewOrder];
+  int[int] ParaviewOrderfc = [ParaviewOrderf,ParaviewOrderf];
 ENDIFMACRO
 IFMACRO(!custom)
   macro defu(u)[u,u#y    IFMACRO(component,3) ,u#z ENDIFMACRO  IFMACRO(species) ,u#Y ENDIFMACRO IFMACRO(temperature) ,u#T ENDIFMACRO IFMACRO(density) ,u#R ENDIFMACRO IFMACRO(pressure) ,u#p ENDIFMACRO]//EOM
@@ -78,10 +83,15 @@ IFMACRO(!custom)
   macro u2u(u)[u,u#y     IFMACRO(component,3) ,0   ENDIFMACRO  IFMACRO(species) ,u#Y ENDIFMACRO IFMACRO(temperature) ,u#T ENDIFMACRO IFMACRO(density) ,u#R ENDIFMACRO IFMACRO(pressure) ,u#p ENDIFMACRO]//EOM
   macro adaptu(u)[u, u#y IFMACRO(component,3) ,u#z ENDIFMACRO] IFMACRO(species) ,u#Y ENDIFMACRO IFMACRO(temperature) ,u#T ENDIFMACRO IFMACRO(density) ,u#R ENDIFMACRO IFMACRO(pressure) ,u#p ENDIFMACRO//EOM
   macro adaptf(f)[f, f#y IFMACRO(component,3) ,f#z ENDIFMACRO] //EOM
-  int[int] ParaviewOrder = [1                                  IFMACRO(species) ,1 ENDIFMACRO IFMACRO(temperature) ,1 ENDIFMACRO ,1];
   string ParaviewDataName = "velocity"  IFMACRO(species) + " species" ENDIFMACRO IFMACRO(temperature) + " temperature" ENDIFMACRO IFMACRO(density) + " density" ENDIFMACRO IFMACRO(pressure) + " pressure" ENDIFMACRO;
-  int[int] ParaviewOrderf = [1];
   string ParaviewDataNamef = "momentum";
+  int[int] ParaviewOrder = [1                                  IFMACRO(species) ,1 ENDIFMACRO IFMACRO(temperature) ,1 ENDIFMACRO ,1];
+  int[int] ParaviewOrderf = [1];
+  string ParaviewDataNamec = "velocity_r"  IFMACRO(species) + " species_r" ENDIFMACRO IFMACRO(temperature) + " temperature_r" ENDIFMACRO IFMACRO(density) + " density_r" ENDIFMACRO IFMACRO(pressure) + " pressure_r" ENDIFMACRO;
+  ParaviewDataNamec = ParaviewDataNamec + " velocity_i"  IFMACRO(species) + " species_i" ENDIFMACRO IFMACRO(temperature) + " temperature_i" ENDIFMACRO IFMACRO(density) + " density_i" ENDIFMACRO IFMACRO(pressure) + " pressure_i" ENDIFMACRO;
+  string ParaviewDataNamefc = "momentum_r momentum_i";
+  int[int] ParaviewOrderc = [ParaviewOrder,ParaviewOrder];
+  int[int] ParaviewOrderfc = [ParaviewOrderf,ParaviewOrderf];
 ENDIFMACRO
 IFMACRO(!InitialConditions)
   macro InitialConditions()initu(1)//EOM

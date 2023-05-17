@@ -48,8 +48,6 @@ if (mpirank==0){
     complex eigenvalue;
     um[] = loadmode(fileroot, meshin, m, eigenvalue);
     cout << "  Saving '" + fileout + "_mode.vtu' in '" + workdir + "'." << endl;
-    string pvdataname = ParaviewDataName + " " + ParaviewDataName;
-    int[int] pvorder = [ParaviewOrder,ParaviewOrder];
     if (paraviewflag > 1){
       meshN Thgs = trunc(Thg, 1, split = paraviewflag);
       fespace XMhs(Thgs, Pk);
@@ -57,13 +55,13 @@ if (mpirank==0){
       XMhs defu(usr), defu(usi);
       usr[] = uso[].re;
       usi[] = uso[].im;
-      savevtk(workdir + fileout + "_mode.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+      savevtk(workdir + fileout + "_mode.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
     }
     else {
       XMhg defu(usr), defu(usi);
       usr[] = um[].re;
       usi[] = um[].im;
-      savevtk(workdir + fileout + "_mode.vtu", Thg, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+      savevtk(workdir + fileout + "_mode.vtu", Thg, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
     }
   }
   else if (fileext == "rslv"){
@@ -76,10 +74,6 @@ if (mpirank==0){
     real gain;
     um[] = loadresolvent(fileroot, meshin, fm[], m, omega, gain);
     cout << "  Saving '" + fileout + "_rslv_[forcing,response].vtu' in '" + workdir + "'." << endl;
-    string pvdataname = ParaviewDataName + " " + ParaviewDataName;
-    int[int] pvorder = [ParaviewOrder,ParaviewOrder];
-    string pvdatanamef = ParaviewDataNamef + " " + ParaviewDataNamef;
-    int[int] pvorderf = [ParaviewOrderf,ParaviewOrderf];
     if (paraviewflag > 1){
       meshN Thgs = trunc(Thg, 1, split = paraviewflag);
       fespace XMhs(Thgs, Pk);
@@ -89,21 +83,21 @@ if (mpirank==0){
       Xhg deff(fsr), deff(fsi);
       fsr[] = fso[].re;
       fsi[] = fso[].im;
-      savevtk(workdir + fileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = pvdatanamef, order = pvorderf);
+      savevtk(workdir + fileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = ParaviewDataNamefc, order = ParaviewOrderfc);
       XMhs defu(usr), defu(usi);
       usr[] = uso[].re;
       usi[] = uso[].im;
-      savevtk(workdir + fileout + "_rslv_response.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+      savevtk(workdir + fileout + "_rslv_response.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
     }
     else {
       Xhg deff(fsr), deff(fsi);
       fsr[] = fm[].re;
       fsi[] = fm[].im;
-      savevtk(workdir + fileout + "_rslv_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = pvdatanamef, order = pvorderf);
+      savevtk(workdir + fileout + "_rslv_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = ParaviewDataNamefc, order = ParaviewOrderfc);
       XMhg defu(usr), defu(usi);
       usr[] = um[].re;
       usi[] = um[].im;
-      savevtk(workdir + fileout + "_rslv_response.vtu", Thg, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+      savevtk(workdir + fileout + "_rslv_response.vtu", Thg, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
     }
   }
   else if (fileext == "fold"){
@@ -135,8 +129,6 @@ if (mpirank==0){
     int m;
     ub[] = loadhopf(fileroot, meshin, um[], uma[], m, omega);
     cout << "  Saving '" + fileout + "_hopf_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
-    string pvdataname = ParaviewDataName + " " + ParaviewDataName;
-    int[int] pvorder = [ParaviewOrder,ParaviewOrder];
     if (paraviewflag > 1){
       meshN Thgs = trunc(Thg, 1, split = paraviewflag);
       fespace XMhs(Thgs, Pk);
@@ -146,20 +138,20 @@ if (mpirank==0){
       savevtk(workdir + fileout + "_hopf_base.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
       ubs[] = ums[].re;
       ubsi[] = ums[].im;
-      savevtk(workdir + fileout + "_hopf_dirmode.vtu", Thgs, adaptu(ubs), adaptu(ubsi), dataname = pvdataname, order = pvorder);
+      savevtk(workdir + fileout + "_hopf_dirmode.vtu", Thgs, adaptu(ubs), adaptu(ubsi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
       ubs[] = umas[].re;
       ubsi[] = umas[].im;
-      savevtk(workdir + fileout + "_hopf_adjmode.vtu", Thgs, adaptu(ubs), adaptu(ubsi), dataname = pvdataname, order = pvorder);
+      savevtk(workdir + fileout + "_hopf_adjmode.vtu", Thgs, adaptu(ubs), adaptu(ubsi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
     }
     else {
       savevtk(workdir + fileout + "_hopf_base.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
       XMhg defu(ubi);
       ub[] = um[].re;
       ubi[] = um[].im;
-      savevtk(workdir + fileout + "_hopf_dirmode.vtu", Thg, adaptu(ub), adaptu(ubi), dataname = pvdataname, order = pvorder);
+      savevtk(workdir + fileout + "_hopf_dirmode.vtu", Thg, adaptu(ub), adaptu(ubi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
       ub[] = uma[].re;
       ubi[] = uma[].im;
-      savevtk(workdir + fileout + "_hopf_adjmode.vtu", Thg, adaptu(ub), adaptu(ubi), dataname = pvdataname, order = pvorder);
+      savevtk(workdir + fileout + "_hopf_adjmode.vtu", Thg, adaptu(ub), adaptu(ubi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
     }
   }
   else if (fileext == "tnds"){

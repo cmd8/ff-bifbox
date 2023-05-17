@@ -152,8 +152,6 @@ macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, m, save
         }
         if (paraviewflag > 0){
           cout << "  Saving '" + modefileout + "_mode.vtu' in '" + workdir + "'." << endl;
-          string pvdataname = ParaviewDataName + " " + ParaviewDataName;
-          int[int] pvorder = [ParaviewOrder,ParaviewOrder];
           if (paraviewflag > 1){
             meshN Thgs = trunc(Thg, 1, split = paraviewflag);
             fespace XMhs(Thgs, Pk);
@@ -161,13 +159,13 @@ macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, m, save
             XMhs defu(usr), defu(usi);
             usr[] = uso[].re;
             usi[] = uso[].im;
-            savevtk(workdir + modefileout + "_mode.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+            savevtk(workdir + modefileout + "_mode.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
           }
           else {
             XMhg defu(usr), defu(usi);
             usr[] = umg[].re;
             usi[] = umg[].im;
-            savevtk(workdir + modefileout + "_mode.vtu", Thg, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+            savevtk(workdir + modefileout + "_mode.vtu", Thg, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
           }
         }
       }
@@ -207,10 +205,6 @@ macro saveresolvent(resolventfileout, gainsfile, basefile, meshfile, fvecs, uvec
         }
         if (paraviewflag > 0){
           cout << "  Saving '" + fileout + "_rslv_[forcing,response].vtu' in '" + workdir + "'." << endl;
-          string pvdataname = ParaviewDataName + " " + ParaviewDataName;
-          int[int] pvorder = [ParaviewOrder,ParaviewOrder];
-          string pvdatanamef = ParaviewDataNamef + " " + ParaviewDataNamef;
-          int[int] pvorderf = [ParaviewOrderf,ParaviewOrderf];
           if (paraviewflag > 1){
             meshN Thgs = trunc(Thg, 1, split = paraviewflag);
             fespace XMhs(Thgs, Pk);
@@ -220,21 +214,21 @@ macro saveresolvent(resolventfileout, gainsfile, basefile, meshfile, fvecs, uvec
             Xhg deff(fsr), deff(fsi);
             fsr[] = fso[].re;
             fsi[] = fso[].im;
-            savevtk(workdir + fileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = pvdatanamef, order = pvorderf);
+            savevtk(workdir + fileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = ParaviewDataNamefc, order = ParaviewOrderfc);
             XMhs defu(usr), defu(usi);
             usr[] = uso[].re;
             usi[] = uso[].im;
-            savevtk(workdir + fileout + "_rslv_response.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+            savevtk(workdir + fileout + "_rslv_response.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
           }
           else {
             Xhg deff(fsr), deff(fsi);
             fsr[] = fmg[].re;
             fsi[] = fmg[].im;
-            savevtk(workdir + fileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = pvdatanamef, order = pvorderf);
+            savevtk(workdir + fileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = ParaviewDataNamefc, order = ParaviewOrderfc);
             XMhg defu(usr), defu(usi);
             usr[] = umg[].re;
             usi[] = umg[].im;
-            savevtk(workdir + fileout + "_mode_response.vtu", Thg, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+            savevtk(workdir + fileout + "_mode_response.vtu", Thg, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
           }
         }
       }
@@ -334,8 +328,6 @@ macro savehopf(hopffileout, statsfile, meshfile, m, omega, saveflag, monitorflag
     }
     if (paraviewflag > 0){
       cout << "  Saving '" + hopffileout + "_hopf_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
-      string pvdataname = ParaviewDataName + " " + ParaviewDataName;
-      int[int] pvorder = [ParaviewOrder,ParaviewOrder];
       if (paraviewflag > 1){
         meshN Thgs = trunc(Thg, 1, split = paraviewflag);
         fespace XMhs(Thgs, Pk);
@@ -345,20 +337,20 @@ macro savehopf(hopffileout, statsfile, meshfile, m, omega, saveflag, monitorflag
         savevtk(workdir + hopffileout + "_hopf_base.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
         ubs[] = ums[].re;
         ubsi[] = ums[].im;
-        savevtk(workdir + hopffileout + "_hopf_dirmode.vtu", Thgs, adaptu(ubs), adaptu(ubsi), dataname = pvdataname, order = pvorder);
+        savevtk(workdir + hopffileout + "_hopf_dirmode.vtu", Thgs, adaptu(ubs), adaptu(ubsi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
         ubs[] = umas[].re;
         ubsi[] = umas[].im;
-        savevtk(workdir + hopffileout + "_hopf_adjmode.vtu", Thgs, adaptu(ubs), adaptu(ubsi), dataname = pvdataname, order = pvorder);
+        savevtk(workdir + hopffileout + "_hopf_adjmode.vtu", Thgs, adaptu(ubs), adaptu(ubsi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
       }
       else {
         savevtk(workdir + hopffileout + "_hopf_base.vtu", Thg, adaptu(ubg), dataname = ParaviewDataName, order = ParaviewOrder);
         XMhg defu(ubgi);
         ubg[] = umg[].re;
         ubgi[] = umg[].im;
-        savevtk(workdir + hopffileout + "_hopf_dirmode.vtu", Thg, adaptu(ubg), adaptu(ubgi), dataname = pvdataname, order = pvorder);
+        savevtk(workdir + hopffileout + "_hopf_dirmode.vtu", Thg, adaptu(ubg), adaptu(ubgi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
         ubg[] = umag[].re;
         ubgi[] = umag[].im;
-        savevtk(workdir + hopffileout + "_hopf_adjmode.vtu", Thg, adaptu(ubg), adaptu(ubgi), dataname = pvdataname, order = pvorder);
+        savevtk(workdir + hopffileout + "_hopf_adjmode.vtu", Thg, adaptu(ubg), adaptu(ubgi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
       }
     }
   }
@@ -431,8 +423,6 @@ macro savewnl(modefileout, basefile, meshfile, m, omega, saveflag){
       }
       if (paraviewflag > 0){
         cout << "  Saving '" + modefileout + "_wnl.vtu' in '" + workdir + "'." << endl;
-        string pvdataname = ParaviewDataName + " " + ParaviewDataName;
-        int[int] pvorder = [ParaviewOrder,ParaviewOrder];
         if (paraviewflag > 1){
           meshN Thgs = trunc(Thg, 1, split = paraviewflag);
           fespace XMhs(Thgs, Pk);
@@ -440,13 +430,13 @@ macro savewnl(modefileout, basefile, meshfile, m, omega, saveflag){
           XMhs defu(usr), defu(usi);
           usr[] = uso[].re;
           usi[] = uso[].im;
-          savevtk(workdir + modefileout + "_wnl.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+          savevtk(workdir + modefileout + "_wnl.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
         }
         else {
           XMhg defu(usr), defu(usi);
           usr[] = umg[].re;
           usi[] = umg[].im;
-          savevtk(workdir + modefileout + "_wnl.vtu", Thg, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+          savevtk(workdir + modefileout + "_wnl.vtu", Thg, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
         }
       }
     }
