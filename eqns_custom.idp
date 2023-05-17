@@ -56,3 +56,15 @@ varf vH(defu(dum), defu(v))
       )
       + //Define boundary conditions
       ;
+/*
+// TRESSIAN OPERATOR
+varf vT(defu(dum), defu(v))
+      = int2d(Th)(
+          //define linear form for Hessian operator
+      )
+      + int2d(Th)(
+          //define bilinear form for Hessian operator
+      )
+      + //Define boundary conditions
+      ;
+*/

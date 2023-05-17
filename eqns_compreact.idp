@@ -67,7 +67,7 @@ varf vP(deff(fm), defu(v))
 // HESSIAN OPERATOR
 varf vH(defu(dum), defu(v))
       = int2d(Th)(
-        iomega*um2R*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
+        iomega*um2R*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um)) + iomega2*umR*(gdotf(vY, um2Y) + gdotf(vT, um2T) + vdotu(v, um2))
         + vY*(um2R*(ugradf(um, 0, ubY) + ugradf(ub, ik, umY)) + ubR*(ugradf(um, ik2, um2Y) + ugradf(um2, ik, umY)) + umR*(ugradf(um2, 0, ubY) + ugradf(ub, ik2, um2Y))
         + (um2R*umY + umR*um2Y + (um2R*ubY + ubR*um2Y)*umT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^2.) - 2.*um2T*ubR*ubY*umT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^3.) + (ubR*umY + umR*ubY + ubR*ubY*umT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^2.))*um2T*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^2.))*Daexp(ub))
         + params["a"]*ubT^(params["a"]-1.)*(um2T*diff(-ik-ik2, vY, ik, umY) + (params["a"]-1.)*um2T/ubT*umT*diff(-ik-ik2, vY, 0, ubY) + umT*diff(-ik-ik2, vY, ik2, um2Y))/(params["Le"]*params["Pe"])
@@ -84,7 +84,7 @@ varf vH(defu(dum), defu(v))
         params["a"]*ubT^(params["a"]-1.)*(um2T*ndotvisc(v, ik, um) + umT*ndotvisc(v, ik2, um2) + (params["a"]-1.)*um2T/ubT*umT*ndotvisc(v, 0, ub))/params["Re"]
       )
       + int2d(Th)(
-        iomega*dumR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
+        iomega*dumR*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um)) + iomega2*umR*(gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum))
         + vY*(dumR*(ugradf(um, 0, ubY) + ugradf(ub, ik, umY)) + ubR*(ugradf(um, ik2, dumY) + ugradf(dum, ik, umY)) + umR*(ugradf(dum, 0, ubY) + ugradf(ub, ik2, dumY))
         + (dumR*umY + umR*dumY + (dumR*ubY + ubR*dumY)*umT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^2.) - 2.*dumT*ubR*ubY*umT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^3.) + (ubR*umY + umR*ubY + ubR*ubY*umT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^2.))*dumT*params["Ze"]*(1.0 + params["dT"])^2./(params["dT"]*ubT^2.))*Daexp(ub))
         + params["a"]*ubT^(params["a"]-1.)*(dumT*diff(-ik-ik2, vY, ik, umY) + (params["a"]-1.)*dumT/ubT*umT*diff(-ik-ik2, vY, 0, ubY) + umT*diff(-ik-ik2, vY, ik2, dumY))/(params["Le"]*params["Pe"])
