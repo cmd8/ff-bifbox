@@ -106,24 +106,22 @@ string filein = getARGV("-fi", "");
 string basefilein = getARGV("-bfi", "");
 string fileout = getARGV("-fo", "");
 bool zerofreq = getARGV("-zero", 0);
-string param = getARGV("-param","");
-string adaptto = getARGV("-adaptto","b");
+string param = getARGV("-param", "");
+string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
 real snesrtol = getARGV("-snes_rtol", 0.0);
 real snesdivergencetolerance = getARGV("-snes_divergence_tolerance", 1.0e30);
-string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
+string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int m;
 real omega;
 
-string fileroot, meshroot, basefileroot, basefileext;
+string fileroot, meshroot, basefileroot;
 string fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if(fileext == "mode" || fileext == "rslv") {
-  if(basefilein == "") basefilein = readbasename(workdir + filein);
-  basefileext = parsefilename(basefilein, basefileroot);
-}
+if((fileext == "mode" || fileext == "rslv") && basefilein == "") basefilein = readbasename(workdir + filein);
+string basefileext = parsefilename(basefilein, basefileroot);
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshout); // trim extension from output mesh, if given
@@ -137,15 +135,16 @@ if (fileext == "hopf") {
   ub[].re = loadhopf(fileroot, meshin, um[], uma[], m, omega);
 }
 else if (fileext == "mode") {
-    complex eigenvalue;
-    um[] = loadmode(fileroot, meshin, m, eigenvalue);
-    omega = imag(eigenvalue);
+  complex eigenvalue;
+  um[] = loadmode(fileroot, meshin, m, eigenvalue);
+  omega = imag(eigenvalue);
 }
 else if (fileext == "rslv") {
-    real gain;
-    complex[int] fm;
-    um[] = loadresolvent(fileroot, meshin, fm, m, omega, gain);
+  real gain;
+  complex[int] fm;
+  um[] = loadresolvent(fileroot, meshin, fm, m, omega, gain);
 }
+else assert(false); // invalid input filetype
 if (basefileext == "base") {
   ub[].re = loadbase(basefileroot, meshin);
 }
@@ -159,9 +158,9 @@ else if(basefileext == "hopf") {
   complex[int] qm, qma;
   ub[].re = loadhopf(basefileroot, meshin, qm, qma, m, omega);
 }
-else if(fileext == "tdns") {
+else if(basefileext == "tdns") {
   real time;
-  ub[] = loadtdns(fileroot, meshin, time);
+  ub[].re = loadtdns(basefileroot, meshin, time);
 }
 real lambda = getlambda(param);
 // Create distributed Mat
