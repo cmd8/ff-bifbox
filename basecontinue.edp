@@ -25,8 +25,8 @@ int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
 real h0 = getARGV("-h0", 1.0);
-string param = getARGV("-param","Re");
-string adaptto = getARGV("-adaptto","b");
+string param = getARGV("-param", "");
+string adaptto = getARGV("-adaptto", "b");
 real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 0.5);
 real deltamax = getARGV("-dmax", 4.0);
@@ -37,7 +37,7 @@ string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
 real snesrtol = getARGV("-snes_rtol", 0.0);
 int snesmaxit = getARGV("-snes_max_it", 10);
-string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
+string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int refactor = getARGV("-refact", snesmaxit);
 
 // Load mesh, make FE basis

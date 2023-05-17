@@ -408,6 +408,51 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
   }
 }//EOM
 
+macro savewnl(modefileout, basefile, meshfile, m, omega, saveflag){
+  if (saveflag){
+    XMhg<complex> defu(tempu), defu(umg);
+    for[i, v : restu] tempu[][v] = um2[][i];
+    mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
+    string fileout = modefileout;
+    if (mpirank == 0 && modefileout != ""){
+      cout << "  Saving '" + fileout + ".wnl' over '" + basefile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
+      cout << "\t" + listparams(paramnames,params) + ", m = " + m + ", omega = " + (omega) + "."  << endl;
+      {
+        ofstream file(workdir + fileout + ".wnl", binary);
+        file.precision(17);
+        file << "mesh\t" << meshfile << endl << endl;
+        file << "file\t" << basefile << endl << endl;
+        for (int k = 0; k < paramnames.n; ++k){
+          file << paramnames[k] << "\t" << params[paramnames[k]] << endl << endl;
+        }
+        file << "m\t" << m << endl << endl;
+        file << "omega\t" << omega << endl << endl;
+        file << umg[] << endl;
+      }
+      if (paraviewflag > 0){
+        cout << "  Saving '" + modefileout + "_wnl.vtu' in '" + workdir + "'." << endl;
+        string pvdataname = ParaviewDataName + " " + ParaviewDataName;
+        int[int] pvorder = [ParaviewOrder,ParaviewOrder];
+        if (paraviewflag > 1){
+          meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+          fespace XMhs(Thgs, Pk);
+          XMhs<complex> defu(uso) = defu(umg);
+          XMhs defu(usr), defu(usi);
+          usr[] = uso[].re;
+          usi[] = uso[].im;
+          savevtk(workdir + modefileout + "_wnl.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+        }
+        else {
+          XMhg defu(usr), defu(usi);
+          usr[] = umg[].re;
+          usi[] = umg[].im;
+          savevtk(workdir + modefileout + "_wnl.vtu", Thg, adaptu(usr), adaptu(usi), dataname = pvdataname, order = pvorder);
+        }
+      }
+    }
+  }
+}//EOM
+
 func bool printstats(string outputfilename, string filename, string meshfilename, int m, real omega, real time) {
       cout << "  Saving solution stats to '" + outputfilename + ".cont' in '" + workdir + "'." << endl;
       cout << "\t" + listparams(paramnames, params);
