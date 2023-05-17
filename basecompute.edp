@@ -30,6 +30,7 @@ string fileout = getARGV("-fo", ""); // output file without extension
 real snesrtol = getARGV("-snes_rtol", 0); // set -snes_rtol
 string ksptype = getARGV("-ksp_type", "preonly"); // set -ksp_method
 string pctype = getARGV("-pc_type", "lu"); // set -pc_type
+real snesrtol = getARGV("-snes_rtol", 0.0);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 
 string fileroot, meshroot;
