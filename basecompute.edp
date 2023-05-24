@@ -67,6 +67,8 @@ else if(fileext == "tdns") {
   real time;
   ub[] = loadtdns(fileroot, meshin, time);
 }
+// If no input file is given, set manually the parameters to the params dict
+setparams(paramnames,params);
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
