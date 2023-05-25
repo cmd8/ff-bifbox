@@ -6,7 +6,8 @@ string EPSparams = "";
       = int2d(Th)(
         //Define linear form to evaluate nonlinear residual operator
       )
-      + BoundaryConditions(0, um, ub);
+      + //Define inhomogeneous boundary conditions
+      ;
 
 // JACOBIAN MATRIX
 varf vJ(defu(dum), defu(v))
@@ -16,18 +17,18 @@ varf vJ(defu(dum), defu(v))
       = int2d(Th)(
         //Define bilinear form for jacobian operator
       )
-      + //Define boundary conditions
+      + //Define homogeneous boundary conditions
       ;
 
 // MASS MATRIX
 varf vM(defu(dum), defu(v))
       = int2d(Th)(
-          //define linear form for mass operator
+          //Define linear form for mass operator
       )
       + int2d(Th)(
-          //define bilinear form for mass operator
+          //Define bilinear form for mass operator
       )
-      + //Define boundary conditions
+      + //Define homogeneous boundary conditions
       ;
 
 // FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
@@ -49,22 +50,18 @@ varf vP(deff(fm), defu(v))
 // HESSIAN OPERATOR
 varf vH(defu(dum), defu(v))
       = int2d(Th)(
-          //define linear form for Hessian operator
+          //Define linear form for Hessian operator
       )
       + int2d(Th)(
-          //define bilinear form for Hessian operator
+          //Define bilinear form for Hessian operator
       )
-      + //Define boundary conditions
+      + //Define homogeneous boundary conditions
       ;
-/*
+
 // TRESSIAN OPERATOR
 varf vT(defu(dum), defu(v))
       = int2d(Th)(
-          //define linear form for Hessian operator
+          //Define bilinear form for Tressian operator
       )
-      + int2d(Th)(
-          //define bilinear form for Hessian operator
-      )
-      + //Define boundary conditions
+      + //Define homogeneous boundary conditions
       ;
-*/

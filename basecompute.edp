@@ -27,10 +27,9 @@ string meshin = getARGV("-mi", ""); // input meshfile with extension
 string meshout = getARGV("-mo", ""); // output mesh without extension
 string filein = getARGV("-fi", ""); // input file with extension
 string fileout = getARGV("-fo", ""); // output file without extension
-real snesrtol = getARGV("-snes_rtol", 0); // set -snes_rtol
 string ksptype = getARGV("-ksp_type", "preonly"); // set -ksp_method
 string pctype = getARGV("-pc_type", "lu"); // set -pc_type
-real snesrtol = getARGV("-snes_rtol", 0.0);
+real snesrtol = getARGV("-snes_rtol", 0); // set -snes_rtol
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 
 string fileroot, meshroot;
@@ -50,7 +49,7 @@ Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 // Make finite element basis
-XMh defu(ub) = InitialConditions, defu(um), defu(um2);
+XMh defu(ub), defu(um), defu(um2);
 if(fileext == "base") {
   ub[] = loadbase(fileroot, meshin);
 }
@@ -68,22 +67,24 @@ else if(fileext == "tdns") {
   real time;
   ub[] = loadtdns(fileroot, meshin, time);
 }
+else {
+  defu(ub) = InitialConditions;
+  setparams(paramnames,params);
+}
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
 int m = 0;
-real ik = 0.0, ik2 = 0.0, iomega = 0.0, iomega2 = 0.0;
+real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0;
 include "eqns.idp" // load equations
 set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
 real[int] q;
-ChangeNumbering(J, ub[], q);
 // MESH ADAPTATION
 bool adapt = false;
 if(meshout == "") meshout = meshin; // if no adaptation
 else { // if output meshfile is given, adapt mesh
   adapt = true;
   meshout = meshout + "." + meshext;
-  ChangeNumbering(J, ub[], q, inverse = true, exchange = false); // PETSc to FF numbering
   XMhg defu(uG), defu(tempu); // create private global FE functions
   for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
@@ -101,8 +102,8 @@ else { // if output meshfile is given, adapt mesh
   restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
   ub[] = uG[](restu); //restrict global solution to each local mesh
   q.resize(J.n);  // Resize state vector
-  ChangeNumbering(J, ub[], q);
 }
+ChangeNumbering(J, ub[], q);
 // Function to build residual operator in PETSc numbering
 func real[int] funcR(real[int]& qPETSc) {
     ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
