@@ -8,6 +8,7 @@
 
 cout.precision(12);
 string workdir = getARGV("-dir","./data/"); // set working directory
+if (workdir(workdir.length-1:workdir.length-1) != "/") workdir = workdir + "/";
 int paraviewflag = getARGV("-pv", 0); // indicate whether solution is saved for Paraview
 // paraviewflag <= 0: don't save data in Paraview format (only in FF format)
 // paraviewflag == 1: save in Paraview format on current mesh
