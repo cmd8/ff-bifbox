@@ -172,7 +172,7 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       broadcast(processor(0), omega);
       broadcast(processor(0), lambda2);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-      ChangeNumbering(J, uma[], qma, inverse = true, exchange = true);
+      ChangeNumbering(J, uma[], qma, inverse = true);
       int mm = m;
       ik = 1i*real(m);
       iomega = 1i*omega;
@@ -377,10 +377,12 @@ while (count < maxcount){
       updatelambda(param1, lambda1);
       updatelambda(param2, lambda2);
       if(mpirank == 0) cout << "\tSign change detected. Orientation reversed." << endl;
+      ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+      complex[int] Mq = vM(0, XMh, tgv = -10);
       ChangeNumbering(J, um[], qm, inverse = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      um[] /= sqrt(J(um[], um[]));
-      uma[] /= sqrt(J(uma[], uma[]));
+      um[] /= sqrt(J(um[], Mq));
+      uma[] /= conj(J(uma[], Mq));
       savehopf(fileroot + "_" + count + "signswitch", "", meshout, m, omega, true, true);
     }
     if (adapt && (count % savecount == 0)){
@@ -503,10 +505,12 @@ while (count < maxcount){
     broadcast(processor(0), lambda2);
     updatelambda(param1, lambda1);
     updatelambda(param2, lambda2);
+    ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+    complex[int] Mq = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, um[], qm, inverse = true);
     ChangeNumbering(J, uma[], qma, inverse = true);
-    um[] /= sqrt(J(um[], um[]));
-    uma[] /= sqrt(J(uma[], uma[]));
+    um[] /= sqrt(J(um[], Mq));
+    uma[] /= conj(J(uma[], Mq));
     savehopf(fileout + "_" + count, fileout, meshout, m, omega, (count % savecount == 0), true);
     yqP0 = yqP;
     qP = qm;
