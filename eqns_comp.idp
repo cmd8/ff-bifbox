@@ -6,7 +6,7 @@ varf vR(defu(um), defu(v))
       = int2d(Th)(
         vR*(ugradf(ub, 0, ubR) + ubR*divu(0, ub))
         + ubR*ugradu(v, ub, 0, ub) - 1.0/(params["ga"]*params["Ma"]^2)*divu(0, v)*(ubR*ubT - 1.0) + ubT^(params["a"])*visc(0, v, 0, ub)/params["Re"]
-        + vT*((params["ga"] - 1.0)*ubR*ubT*divu(0, ub) - params["ga"]*(params["ga"] - 1.0)*params["Ma"]^2./params["Re"]*ubT^(params["a"])*visc(0, ub, 0, ub))
+        + vT*(ubR*(ugradf(ub, 0, ubT) + (params["ga"] - 1.0)*ubR*ubT*divu(0, ub) - params["ga"]*(params["ga"] - 1.0)*params["Ma"]^2./params["Re"]*ubT^(params["a"])*visc(0, ub, 0, ub))
         + params["ga"]/params["Pe"]*ubT^(params["a"])*diff(0, vT, 0, ubT)
       )
       - int1d(Th, BCopen) (
