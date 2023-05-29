@@ -166,7 +166,7 @@ real lambda = getlambda(param);
 // Create distributed Mat
 Mat<complex> J;
 createMatu(Th, J, Pk);
-complex ik, ik2 = 0.0, ik3 = 0.0, iomega;
+complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0;
 include "eqns.idp"
 // MESH ADAPTATION
 bool adapt = false;

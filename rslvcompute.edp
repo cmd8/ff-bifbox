@@ -74,7 +74,7 @@ Mat<complex> L, Mf;
 createMatu(Th, L, Pk);
 Mat<complex> M(L);
 createMatf(Th, Mf, Pkf);
-complex ik = 1i*real(m), ik2 = 0.0, ik3 = 0.0, iomega;
+complex ik = 1i*real(m), ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0;
 include "eqns.idp"
 // construct matrices
 M  = vMq(XMh, XMh); // Response Norm

@@ -69,7 +69,7 @@ XMh<complex> defu(um);
 Mat<complex> J;
 createMatu(Th, J, Pk);
 Mat<complex> M(J);
-complex ik, ik2 = 0.0, ik3 = 0.0, iomega = 0.0; // Let PETSc/SLEPc do the shift
+complex ik, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0; // Let PETSc/SLEPc do the shift
 include "eqns.idp"
 
 {

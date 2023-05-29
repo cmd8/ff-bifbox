@@ -63,7 +63,7 @@ varf vP(deff(fm), defu(v))
 // HESSIAN OPERATOR (FOR BIFURCATION ANALYSIS AND WEAKLY NONLINEAR ANALYSIS)
 varf vH(defu(dum), defu(v))
       = int2d(Th)(
-        iomega*um2R*(gdotf(vT, umT) + vdotu(v, um))
+        iomega*um2R*(gdotf(vT, umT) + vdotu(v, um)) + iomega2*umR*(gdotf(vT, um2T) + vdotu(v, um2))
         + vR*(ugradf(um2, ik, umR) + ugradf(um, ik2, um2R) + umR*divu(ik2, um2) + um2R*divu(ik, um))
         + um2R*(ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um)) + ubR*(ugradu(v, um, ik2, um2) + ugradu(v, um2, ik, um)) + umR*(ugradu(v, um2, 0, ub) + ugradu(v, ub, ik2, um2)) - 1.0/(params["ga"]*params["Ma"]^2)*divu(-ik-ik2, v)*(umR*um2T + um2R*umT)
         + params["a"]*ubT^(params["a"]-1.)*(um2T*visc(-ik-ik2, v, ik, um ) + (params["a"]-1.)*um2T/ubT*umT*visc(-ik-ik2, v, 0, ub ) + umT*visc(-ik-ik2, v, ik2, um2 ))/params["Re"]
@@ -76,7 +76,7 @@ varf vH(defu(dum), defu(v))
         params["a"]*ubT^(params["a"]-1.)*(um2T*ndotvisc(v, ik, um) + umT*ndotvisc(v, ik2, um2) + (params["a"]-1.)*um2T/ubT*umT*ndotvisc(v, 0, ub))/params["Re"]
       )
       + int2d(Th)(
-        iomega*dumR*(gdotf(vT, umT) + vdotu(v, um))
+        iomega*dumR*(gdotf(vT, umT) + vdotu(v, um)) + iomega2*umR*(gdotf(vT, dumT) + vdotu(v, dum))
         + vR*(ugradf(dum, ik, umR) + ugradf(um, ik2, dumR) + umR*divu(ik2, dum) + dumR*divu(ik, um))
         + dumR*(ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um)) + ubR*(ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um)) + umR*(ugradu(v, dum, 0, ub) + ugradu(v, ub, ik2, dum)) - 1.0/(params["ga"]*params["Ma"]^2)*divu(-ik-ik2, v)*(umR*dumT + dumR*umT)
         + params["a"]*ubT^(params["a"]-1.)*(dumT*visc(-ik-ik2, v, ik, um ) + (params["a"]-1.)*dumT/ubT*umT*visc(-ik-ik2, v, 0, ub ) + umT*visc(-ik-ik2, v, ik2, dum ))/params["Re"]

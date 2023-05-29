@@ -87,7 +87,7 @@ real lambda = getlambda(param);
 Mat J, Ja;
 createMatu(Th, J, Pk);
 int m = 0;
-real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0;
+real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0;
 include "eqns.idp"
 // Build bordered block matrix from only Mat components
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
