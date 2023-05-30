@@ -32,7 +32,6 @@ IFMACRO(formulation,comp)
   string[int] monitornames = [""]; // set monitor names
   macro temperature()1//EOM
   macro density()1//EOM
-  macro compressible()1//EOM
 ENDIFMACRO
 IFMACRO(formulation,lowmachreact)
   string[int] paramnames = ["Re","Pe","Le","dT","Ze","Da","a"]; // set parameter names
@@ -47,7 +46,6 @@ IFMACRO(formulation,compreact)
   macro species()1//EOM
   macro temperature()1//EOM
   macro density()1//EOM
-  macro compressible()1//EOM
 ENDIFMACRO
 IFMACRO(formulation,custom)
 // NOTE: Edit this one
@@ -231,16 +229,16 @@ macro vdotu(v, u) ( y*v*u + y*v#y*u#y IFMACRO(component,3) + y*v#z*u#z ENDIFMACR
 
 macro divu(ik, u) ( y*dx(u) + y*dy(u#y) + u#y IFMACRO(component,3) + (ik)*u#z ENDIFMACRO ) // velocity divergence
 
-macro ndotvisc(v, ik, u) (N.x*(v*(y*dx(u  ) IFMACRO(compressible,1) - 2./3.*divu(ik, u) ENDIFMACRO) + y*v#y*dy(u  )                       IFMACRO(component,3) + v#z*(ik)*u ENDIFMACRO )
-                        + N.y*(v* y*dx(u#y)                      + v#y*(y*dy(u#y) IFMACRO(compressible,1) - 2./3.*divu(ik, u) ENDIFMACRO) IFMACRO(component,3) + v#z*((ik)*u#y - u#z) ENDIFMACRO )) //EOM
+macro ndotvisc(v, ik, u) (N.x*(v*(y*dx(u  ) - 2./3.*divu(ik, u)) + y*v#y*dy(u  )                       IFMACRO(component,3) + v#z*(ik)*u ENDIFMACRO )
+                        + N.y*(v* y*dx(u#y)                      + v#y*(y*dy(u#y) - 2./3.*divu(ik, u)) IFMACRO(component,3) + v#z*((ik)*u#y - u#z) ENDIFMACRO )) //EOM
 
 macro ugradu(v, U, ik, u) (  v  *(y*U*dx(u  ) + y*U#y*dy(u  ) IFMACRO(component,3) + (ik)*U#z*u ENDIFMACRO )
                            + v#y*(y*U*dx(u#y) + y*U#y*dy(u#y) IFMACRO(component,3) + (ik)*U#z*u#y - U#z*u#z ENDIFMACRO )
       IFMACRO(component,3) + v#z*(y*U*dx(u#z) + y*U#y*dy(u#z)                      + (ik)*U#z*u#z + U#z*u#y) ENDIFMACRO ) // scaled convection term
 
-macro visc(ij, v, ik, u) (   dx(v  )*(2.*y*dx(u  ) IFMACRO(compressible,1) - 2./3.*divu(ik, u) ENDIFMACRO) + y*dy(v  )*(dx(u#y) + dy(u  ))                     + r1*(ij)*v   *( IFMACRO(component,3) y*dx(u#z) + ENDIFMACRO (ik)*u)
-                         + y*dx(v#y)*(dx(u#y) + dy(u  ))                +   dy(v#y)*(2.*y*dy(u#y) IFMACRO(compressible,1) - 2./3.*divu(ik, u) ENDIFMACRO)      + r1*((ij)*v#y IFMACRO(component,3) - v#z ENDIFMACRO )*((ik)*u#y IFMACRO(component,3) - u#z + y*dy(u#z) ENDIFMACRO )
-      IFMACRO(component,3) + dx(v#z)*((ik)*u + y*dx(u#z))               +   dy(v#z)*((ik)*u#y - u#z + y*dy(u#z)) ENDIFMACRO + r1*( IFMACRO(component,3) (ij)*v#z + ENDIFMACRO v#y)*( 2.*( IFMACRO(component,3) (ik)*u#z + ENDIFMACRO u#y) IFMACRO(compressible,1) - 2./3.*divu(ik, u) ENDIFMACRO) ) // EOM
+macro visc(ij, v, ik, u) (   dx(v  )*(2.*y*dx(u  ) - 2./3.*divu(ik, u)) + y*dy(v  )*(dx(u#y) + dy(u  ))                     + r1*(ij)*v   *( IFMACRO(component,3) y*dx(u#z) + ENDIFMACRO (ik)*u)
+                         + y*dx(v#y)*(dx(u#y) + dy(u  ))                +   dy(v#y)*(2.*y*dy(u#y) - 2./3.*divu(ik, u))      + r1*((ij)*v#y IFMACRO(component,3) - v#z ENDIFMACRO )*((ik)*u#y IFMACRO(component,3) - u#z + y*dy(u#z) ENDIFMACRO )
+      IFMACRO(component,3) + dx(v#z)*((ik)*u + y*dx(u#z))               +   dy(v#z)*((ik)*u#y - u#z + y*dy(u#z)) ENDIFMACRO + r1*( IFMACRO(component,3) (ij)*v#z + ENDIFMACRO v#y)*( 2.*( IFMACRO(component,3) (ik)*u#z + ENDIFMACRO u#y) - 2./3.*divu(ik, u)) ) // EOM
 
 macro diff(ij, g, ik, f) ( y*dx(g)*dx(f) + y*dy(g)*dy(f) IFMACRO(component,3) + (ij)*(ik)*r1*g*f ENDIFMACRO ) // EOM
 
