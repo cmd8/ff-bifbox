@@ -53,7 +53,7 @@ Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
-XMh defu(ub), defu(um), defu(uma), defu(um2);
+XMh defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
 // Initialize solution with guess or file
 if(fileext == "base") {
   ub[] = loadbase(fileroot, meshin);
@@ -75,7 +75,7 @@ real lambda = getlambda(param);
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
-real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0;
+real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 
 // MESH ADAPTATION

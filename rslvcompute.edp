@@ -46,7 +46,7 @@ Thg = Th;
 buildDmesh(Th);
 restf = restrict(Xh, Xhg, n2o);
 restu = restrict(XMh, XMhg, n2o);
-XMh defu(ub), defu(um2);
+XMh defu(ub), defu(um2), defu(um3);
 
 if(fileext == "base") {
   ub[] = loadbase(fileroot, meshin);
@@ -74,7 +74,7 @@ Mat<complex> L, Mf;
 createMatu(Th, L, Pk);
 Mat<complex> M(L);
 createMatf(Th, Mf, Pkf);
-complex ik = 1i*real(m), ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0;
+complex ik = 1i*real(m), ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // construct matrices
 M  = vMq(XMh, XMh); // Response Norm

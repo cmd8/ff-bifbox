@@ -130,7 +130,7 @@ Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
-XMh<complex> defu(ub), defu(um), defu(uma), defu(um2);
+XMh<complex> defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
 if (fileext == "hopf") {
   ub[].re = loadhopf(fileroot, meshin, um[], uma[], m, omega);
 }
@@ -166,7 +166,7 @@ real lambda = getlambda(param);
 // Create distributed Mat
 Mat<complex> J;
 createMatu(Th, J, Pk);
-complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0;
+complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // MESH ADAPTATION
 bool adapt = false;

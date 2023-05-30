@@ -62,7 +62,7 @@ Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
-XMh defu(ub), defu(um), defu(yb), defu(um2);
+XMh defu(ub), defu(um), defu(yb), defu(um2), defu(um3);
 if(count == 0) {
   if(fileext == "base") {
     ub[] = loadbase(fileroot, meshin);
@@ -87,7 +87,7 @@ real lambda = getlambda(param);
 Mat J, Ja;
 createMatu(Th, J, Pk);
 int m = 0;
-real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0;
+real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // Build bordered block matrix from only Mat components
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix

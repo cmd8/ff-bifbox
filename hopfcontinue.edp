@@ -63,7 +63,7 @@ Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
-XMh<complex> defu(ub), defu(um), defu(uma), defu(yb), defu(um2);
+XMh<complex> defu(ub), defu(um), defu(uma), defu(yb), defu(um2), defu(um3);
 if (count == 0){
   ub[].re = loadhopf(fileroot, meshin, um[], uma[], m, omega);
   if(mpirank == 0) printstats(fileout, filein, meshin, m, omega, 0);
@@ -76,7 +76,7 @@ real lambda2 = getlambda(param2);
 // Create distributed Mat
 Mat<complex> J;
 createMatu(Th, J, Pk);
-complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0;
+complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 
 // Build bordered block matrix from only Mat components

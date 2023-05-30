@@ -49,7 +49,7 @@ Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 // Make finite element basis
-XMh defu(ub), defu(um), defu(um2);
+XMh defu(ub), defu(um), defu(um2), defu(um3);
 if(fileext == "base") {
   ub[] = loadbase(fileroot, meshin);
 }
@@ -75,7 +75,7 @@ else {
 Mat J;
 createMatu(Th, J, Pk);
 int m = 0;
-real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0;
+real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp" // load equations
 set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
 real[int] q;
