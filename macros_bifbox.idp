@@ -72,10 +72,10 @@ macro createMatf(th,A,P){
 
 macro adaptmeshoptions()
 hmin = getARGV("-hmin",1.0e-6),
-hmax = getARGV("-hmax",1.0),
+hmax = getARGV("-hmax",1.0e+1),
 err = getARGV("-err", 1.0e-2),
 errg = getARGV("-errg", 1.0e-2),
-nbvx = int(getARGV("-nbvx",1e6)),
+nbvx = int(getARGV("-nbvx",1e+6)),
 nbsmooth = int(getARGV("-nbsmooth",5)),
 ratio = getARGV("-ratio",1.8),
 anisomax = getARGV("-anisomax",1.0),
@@ -423,19 +423,18 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
   }
 }//EOM
 
-macro savewnl(modefileout, basefile, meshfile, m, omega, saveflag){
+macro savewnl(wnlfileout, basefile, meshfile, m, omega, saveflag){
   if (saveflag){
     XMhg<complex> defu(tempu), defu(umg);
     for[i, v : restu] tempu[][v] = um2[][i];
     mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
-    string fileout = modefileout;
-    if (mpirank == 0 && modefileout != ""){
-      cout << "  Saving '" + fileout + ".wnl' over '" + basefile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
+    if (mpirank == 0 && wnlfileout != ""){
+      cout << "  Saving '" + wnlfileout + ".wnl' over '" + basefile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
       cout << "\tm = " + m + ", omega = " + (omega);
       if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
       cout << "." << endl;
       {
-        ofstream file(workdir + fileout + ".wnl", binary);
+        ofstream file(workdir + wnlfileout + ".wnl", binary);
         file.precision(17);
         file << "mesh\t" << meshfile << endl;
         file << "file\t" << basefile << endl;
@@ -449,7 +448,7 @@ macro savewnl(modefileout, basefile, meshfile, m, omega, saveflag){
         file << umg[] << endl;
       }
       if (paraviewflag > 0){
-        cout << "  Saving '" + modefileout + "_wnl.vtu' in '" + workdir + "'." << endl;
+        cout << "  Saving '" + wnlfileout + "_wnl.vtu' in '" + workdir + "'." << endl;
         if (paraviewflag > 1){
           meshN Thgs = trunc(Thg, 1, split = paraviewflag);
           fespace XMhs(Thgs, Pk);
@@ -457,13 +456,13 @@ macro savewnl(modefileout, basefile, meshfile, m, omega, saveflag){
           XMhs defu(usr), defu(usi);
           usr[] = uso[].re;
           usi[] = uso[].im;
-          savevtk(workdir + modefileout + "_wnl.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+          savevtk(workdir + wnlfileout + "_wnl.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
         }
         else {
           XMhg defu(usr), defu(usi);
           usr[] = umg[].re;
           usi[] = umg[].im;
-          savevtk(workdir + modefileout + "_wnl.vtu", Thg, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+          savevtk(workdir + wnlfileout + "_wnl.vtu", Thg, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
         }
       }
     }
