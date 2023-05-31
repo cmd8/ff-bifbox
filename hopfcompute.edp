@@ -344,10 +344,11 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   updatelambda(param, lambda);
   ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
   complex[int] Mq = vM(0, XMh, tgv = -10);
+  complex Mnorm = sqrt(J(um[], Mq));
   ChangeNumbering(J, um[], qm, inverse = true);
   ChangeNumbering(J, uma[], qma, inverse = true);
-  um[] /= sqrt(J(um[], Mq));
-  uma[] /= conj(J(uma[], Mq));
+  um[] /= Mnorm; // so that <um[],M*um[]> = 1
+  uma[] *= conj(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
   if(mpirank==0 && adapt) { // Save adapted mesh
     cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshout);
