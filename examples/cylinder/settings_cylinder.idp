@@ -16,7 +16,7 @@
   verbosity = getARGV("-v",0);
 // Define parameter and monitor names
   string[int] paramnames = ["1/Re"]; // set parameter names
-  string[int] monitornames = ["Cd"]; // set monitor names
+  string[int] monitornames = ["Cd"]; // set monitor names: Cd = 2*F_drag/(u^2*A)
 // Define state vector and FE space
   macro defu(u)[u,u#y    IFMACRO(component,3) ,u#z ENDIFMACRO ,u#p]//EOM
   macro initu(i)[i, i    IFMACRO(component,3) ,i   ENDIFMACRO ,i]//EOM
@@ -62,9 +62,9 @@
     + on((abs(int(sym)) % 2 == 0)*BCaxis, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO )
     + on((abs(int(sym)) % 2 != 0)*BCaxis, u = 0)
   // EOM
-// Define solution monitors to extract
+// Define solution monitors to extract: here drag (D) and lift (L)
   macro getmonitors(u){
-    monitors["Cd"] = int1d(Thg, BCwall)(u#p*N.x - params["1/Re"]*(2.0*dx(u)*N.x + (dx(u#y) + dy(u))*N.y));
+    monitors["Cd"] = 4.0*int1d(Thg, BCwall)(u#p*N.x - params["1/Re"]*(2.0*dx(u)*N.x + (dx(u#y) + dy(u))*N.y));
   }// EOM
 
 // term macros ------------------------------------------------------
