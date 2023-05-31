@@ -1,0 +1,61 @@
+//
+// cylinder.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// This file can be used with FreeFEM to create a mesh for the cylinder.
+//
+
+assert(mpisize == 1); // Must be run with 1 processor
+include "settings_cylinder.idp"
+real n0 = 25;
+real n1 = 2.5;
+real n2 = 0.25;
+real xmin = -60.0;
+real xmax = 120.0;
+real rmax = 30.0;
+real rcyl = 0.5;
+
+int full = getARGV("-full", 0); // 0 for half mesh, 1 for full mesh
+string meshout = getARGV("-mo", "cylinder.msh"); // mesh filename
+if(meshout.rfind(".msh") < 0) meshout = meshout + ".msh"; // add extension if not provided
+mesh Thg;
+if (!full){
+  // Define borders
+  //  o------------------6-------------------o
+  //  |                                      |
+  //  1                                      5
+  //  |           ╭--3--╮                    |
+  //  o-----2-----o  0  o---------4----------o
+  border C01(t=0, 1){x=xmin; y=rmax*(1-t); label=BCinflow;}
+  border C02(t=0, 1){x=xmin+(abs(xmin)-rcyl)*t; y=0; label=BCaxis;}
+  border C03(t=0, 1){x=-rcyl*cos(pi*t); y=rcyl*sin(pi*t); label=BCwall;}
+  border C04(t=0, 1){x=rcyl+(xmax-rcyl)*t; y=0; label=BCaxis;}
+  border C05(t=0, 1){x=xmax; y=rmax*t; label=BCopen;}
+  border C06(t=0, 1){x=xmax+(xmin-xmax)*t; y=rmax; label=BCslip;}
+  // Assemble mesh
+  Thg = buildmesh(C01(n2*rmax) + C02(n1*(-xmin - 0.5)) + C03(n0*pi*rcyl) + C04(n1*(xmax - 0.5)) + C05(n2*rmax) + C06(n2*(xmax - xmin)));
+}
+else {
+  // Define borders
+  //  o------------------4-------------------o
+  //  |                                      |
+  //  |                                      |
+  //  |           ╭--5--╮                    |
+  //  1           |  0  |                    3
+  //  |           ╰-----╯                    |
+  //  |                                      |
+  //  |                                      |
+  //  o------------------2-------------------o
+  border C01(t=0, 1){x=xmin; y=rmax*(1-2*t); label=BCinflow;}
+  border C02(t=0, 1){x=xmin+(xmax-xmin)*t; y=-rmax; label=BCslip;}
+  border C03(t=0, 1){x=xmax; y=-rmax*(1-2*t); label=BCinflow;}
+  border C04(t=0, 1){x=xmax-(xmax-xmin)*t; y=rmax; label=BCslip;}
+  border C05(t=0, 1){x=-rcyl*cos(2*pi*t); y=rcyl*sin(2*pi*t); label=BCwall;}
+  // Assemble mesh
+  Thg = buildmesh(C01(n2*2*rmax) + C02(n2*(xmax-xmin)) + C03(n2*2*rmax) + C04(n2*(xmax-xmin)) + C05(n0*2*pi*rcyl));
+}
+int[int] meshlabels = labels(Thg);
+cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
+cout << "  Saving mesh '" + meshout + "'." << endl;
+savemesh(Thg, meshout);
