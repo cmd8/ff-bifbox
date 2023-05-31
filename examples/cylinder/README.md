@@ -11,7 +11,7 @@ mpirun -n 1 FreeFem++-mpi -v 0 importgmsh.edp -dir examples/cylinder/ -mi cylind
 ```
 #### CASE 2: Gmsh is not installed
 ```
-mpirun -n 1 FreeFem++-mpi -v 0 examples/cylinder/cylinder.edp -mo cylinder
+mpirun -n 1 FreeFem++-mpi -v 0 examples/cylinder/cylinder.edp -mo examples/cylinder/cylinder
 ```
 
 ### Create symbolic links
@@ -54,4 +54,9 @@ mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir examples/cylinder/ -fi cylin
 ### Adapt the mesh to the critical solution, save .vtu files for Paraview
 ```
 mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir examples/cylinder/ -fi BVK.hopf -fo BVKadapted -mo BVKadapted -adaptto bda -param 1/Re -pv 2
+```
+
+### Compute 2nd-order weakly-nonlinear analysis, save .vtu files for Paraview
+```
+mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir examples/cylinder/ -fi BVKadapted.hopf -fo BVKadapted -param 1/Re -pv 2
 ```

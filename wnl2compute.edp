@@ -1,0 +1,142 @@
+//
+// wnlcompute.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+
+load "iovtk"
+load "PETSc-complex"
+include "settings.idp"
+include "macros_bifbox.idp"
+// arguments
+string meshin = getARGV("-mi", "");
+string filein = getARGV("-fi", "");
+string fileout = getARGV("-fo", "");
+string param = getARGV("-param", "");
+real eps = getARGV("-eps", 1e-7);
+string ksptype = getARGV("-ksp_type", "preonly");
+string pctype = getARGV("-pc_type", "lu");
+int sym;
+real omega;
+
+string fileroot, meshroot;
+string fileext = parsefilename(filein, fileroot); //extract file name and extension
+parsefilename(fileout, fileout); // trim extension from output file, if given
+if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
+string meshext = parsefilename(meshin, meshroot);
+assert(fileext == "hopf");
+// Load mesh, make FE basis
+Th = readmeshN(workdir + meshin);
+Thg = Th;
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+XMh<complex> defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
+ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym, omega);
+real lambda = getlambda(param);
+// Create distributed Mat
+Mat<complex> J;
+createMatu(Th, J, Pk);
+complex ik, ik2, ik3, iomega, iomega2, iomega3;
+include "eqns.idp"
+// MESH ADAPTATION
+bool adapt = false;
+set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
+
+// Initialize
+{
+  complex[int] Mq = vM(0, XMh, tgv = -10);
+  complex Mnorm = sqrt(J(um[], Mq));
+  um[] /= Mnorm; // so that <um[],M*um[]> = 1
+  uma[] *= conj(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
+}
+// 2nd-order
+//  A: base modification due to parameter change
+ik = 0.0;
+ik2 = 0.0;
+iomega = 0.0;
+iomega2 = 0.0;
+int mm = sym;
+sym = 0;
+J = vJ(XMh, XMh, tgv = -1);
+updatelambda(param, lambda + eps);
+complex[int] tempP, temp = vR(0, XMh, tgv = -1);
+updatelambda(param, lambda);
+{ complex[int] temp1 = vR(0, XMh, tgv = -1); temp -= temp1; }
+temp /= -eps;
+ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
+complex[int] q21(J.n);
+KSPSolve(J, tempP, q21);
+//  B: base modification due to quadratic nonlinear interaction
+ik = 1i*real(mm);
+ik2 = -ik;
+iomega = 1i*omega;
+iomega2 = -iomega;
+um2[] = conj(um[]);
+temp = vH(0, XMh, tgv = -10);
+temp.re *= -1.0; // -2.0/2.0
+temp.im = 0.0;
+ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
+complex[int] q2AAs(J.n);
+KSPSolve(J, tempP, q2AAs);
+//  C: harmonic generation due to quadratic nonlinear interaction
+ik = 1i*real(mm);
+ik2 = ik;
+iomega = 1i*omega;
+iomega2 = iomega;
+um2[] = um[];
+sym = 2*mm;
+temp = vH(0, XMh, tgv = -10);
+temp *= -0.5; // -1.0/2.0
+ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
+ik = 2i*real(mm);
+iomega = 2i*omega;
+J = vJ(XMh, XMh, tgv = -1);
+complex[int] q2AA(J.n);
+KSPSolve(J, tempP, q2AA);
+// 3rd-order
+//  A: fundamental modification due to parameter change and quadratic interaction of fundamental with 2nd order modification A.
+sym = mm;
+ik = 1i*real(sym);
+ik2 = 0.0;
+iomega = 1i*omega;
+iomega2 = 0.0;
+updatelambda(param, lambda + eps);
+temp = vJ(0, XMh, tgv = -10);
+updatelambda(param, lambda);
+{ complex[int] temp1 = vJ(0, XMh, tgv = -10); temp -= temp1; }
+temp /= eps;
+ChangeNumbering(J, um2[], q21, inverse = true, exchange = true); // FreeFEM to PETSc
+temp += vH(0, XMh, tgv = -10); // 2.0/2.0
+complex Clambda = -J(uma[], temp);
+//  B: fundamental modification due to cubic self-interaction of fundamental
+ik = 1i*real(sym);
+ik2 = 1i*real(sym);
+ik3 = -1i*real(sym);
+iomega = 1i*omega;
+iomega2 = 1i*omega;
+iomega3 = -1i*omega;
+um2[] = um[];
+um3[] = conj(um[]);
+temp = vT(0, XMh, tgv = -10);
+temp *= 0.5; //3.0/6.0
+//  C: fundamental modification due to quadratic interaction of fundamental with 2nd order modification B
+ik = 1i*real(sym);
+ik2 = 0.0;
+iomega = 1i*omega;
+iomega2 = 0.0;
+ChangeNumbering(J, um2[], q2AAs, inverse = true, exchange = true); // FreeFEM to PETSc
+temp += vH(0, XMh, tgv = -10);
+//  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
+ik = -1i*real(sym);
+ik2 = 2i*real(sym);
+iomega = -1i*omega;
+iomega2 = 2i*omega;
+um[] = conj(um[]);
+ChangeNumbering(J, um2[], q2AA, inverse = true, exchange = true); // FreeFEM to PETSc
+temp += vH(0, XMh, tgv = -10);
+complex Clandau = -J(uma[], temp);
+// Save output
+ChangeNumbering(J, um[], q21, inverse = true); // FreeFEM to PETSc
+ChangeNumbering(J, um2[], q2AAs, inverse = true); // FreeFEM to PETSc
+ChangeNumbering(J, um3[], q2AA, inverse = true); // FreeFEM to PETSc
+savewnl2(fileout, filein, meshin, mm, omega, Clambda, Clandau, true);
