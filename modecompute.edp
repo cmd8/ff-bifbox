@@ -22,7 +22,7 @@ string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", "");
 string evalout = getARGV("-so", fileout);
 bool adj = getARGV("-adj",0);
-int m = getARGV("-m", 0);
+int sym = getARGV("-sym", 0);
 string epstarget = getARGV("-eps_target", "0+0i");
 int epsnev = getARGV("-eps_nev", 1);
 bool strictnev = getARGV("-strict", 0);
@@ -54,9 +54,9 @@ else if(fileext == "fold") {
 }
 else if(fileext == "hopf") {
   complex[int] qm, qma;
-  int m;
+  int sym;
   real omega;
-  ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
+  ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega);
 }
 else if(fileext == "tdns") {
   real time;
@@ -73,7 +73,7 @@ complex ik, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0; //
 include "eqns.idp"
 
 {
-  ik = 1i*real(m);
+  ik = 1i*real(sym);
   {
     matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -1);
     matrix<complex> Mtemp = vM(XMh, XMh, tgv = -10);
@@ -103,5 +103,5 @@ include "eqns.idp"
       vec[ii][] = um[];
     }
   }
-  savemode(fileout, evalout, filein, meshin, vec, val, m, (fileout != ""));
+  savemode(fileout, evalout, filein, meshin, vec, val, sym, (fileout != ""));
 }

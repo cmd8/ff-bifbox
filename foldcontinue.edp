@@ -40,7 +40,7 @@ string pctype = getARGV("-pc_type", "lu");
 real snesrtol = getARGV("-snes_rtol", 0.0);
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
-int m;
+int sym;
 
 // Load mesh, make FE basis
 string fileroot, meshroot;

@@ -114,7 +114,7 @@ string pctype = getARGV("-pc_type", "lu");
 real snesrtol = getARGV("-snes_rtol", 0.0);
 real snesdivergencetolerance = getARGV("-snes_divergence_tolerance", 1.0e30);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
-int m;
+int sym;
 real omega;
 
 string fileroot, meshroot, basefileroot;
@@ -132,17 +132,17 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
 if (fileext == "hopf") {
-  ub[].re = loadhopf(fileroot, meshin, um[], uma[], m, omega);
+  ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym, omega);
 }
 else if (fileext == "mode") {
   complex eigenvalue;
-  um[] = loadmode(fileroot, meshin, m, eigenvalue);
+  um[] = loadmode(fileroot, meshin, sym, eigenvalue);
   omega = imag(eigenvalue);
 }
 else if (fileext == "rslv") {
   real gain;
   complex[int] fm;
-  um[] = loadresolvent(fileroot, meshin, fm, m, omega, gain);
+  um[] = loadresolvent(fileroot, meshin, fm, sym, omega, gain);
 }
 else assert(false); // invalid input filetype
 if (basefileext == "base") {
@@ -153,10 +153,10 @@ else if(basefileext == "fold") {
   ub[].re = loadfold(basefileroot, meshin, qm, qma);
 }
 else if(basefileext == "hopf") {
-  int m;
+  int sym;
   real omega;
   complex[int] qm, qma;
-  ub[].re = loadhopf(basefileroot, meshin, qm, qma, m, omega);
+  ub[].re = loadhopf(basefileroot, meshin, qm, qma, sym, omega);
 }
 else if(basefileext == "tdns") {
   real time;
@@ -236,7 +236,7 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       complex[int] Ra, R = vR(0, XMh, tgv = -1);
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       iomega = 1i*omega;
-      ik = 1i*real(m);
+      ik = 1i*real(sym);
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
       KSPSolveHermitianTranspose(J, qP, qma);
@@ -263,8 +263,8 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       broadcast(processor(0), omega);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      int mm = m;
-      ik = 1i*real(m);
+      int mm = sym;
+      ik = 1i*real(sym);
       iomega = 1i*omega;
       updatelambda(param, lambda + eps);
       complex[int] Jl = vR(0, XMh, tgv = -1);
@@ -280,9 +280,9 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       temp1.im = 0.0;
       matrix<complex> tempPms = [[temp1, 0]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      m = 0;
+      sym = 0;
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
-      m = mm;
+      sym = mm;
       MatMultHermitianTranspose(H, qma, temp1); // compute (dL/dq*w)'*v
       if(!zerofreq) temp2.re = -temp1.im;
       temp1.im = 0.0;
@@ -299,9 +299,9 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       ik = 0.0;
       iomega = 0.0;
-      m = 0;
+      sym = 0;
       J = vJ(XMh, XMh, tgv = -1);
-      m = mm;
+      sym = mm;
       return 0;
   }
 
@@ -319,7 +319,7 @@ if(mpirank == 0) {
 ChangeNumbering(J, um[], qP);
 if (fileext != "hopf"){
   iomega = 1i*omega;
-  ik = 1i*real(m);
+  ik = 1i*real(sym);
   J = vJ(XMh, XMh, tgv = -1);
   KSPSolveHermitianTranspose(J, qP, pP);
 }
@@ -352,5 +352,5 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshout);
   }
-  savehopf(fileout, "", meshout, m, omega, true, true);
+  savehopf(fileout, "", meshout, sym, omega, true, true);
 }

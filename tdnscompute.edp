@@ -60,10 +60,10 @@ if (count == 0){
     ub[] = loadfold(fileroot, meshin, qm, qma);
   }
   else if(fileext == "hopf") {
-    int m;
+    int sym;
     real omega;
     complex[int] qm, qma;
-    ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
+    ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega);
   }
   else if(fileext == "tdns") {
     real time;
@@ -78,7 +78,7 @@ else {
 Mat J;
 createMatu(Th, J, Pk);
 Mat M(J);
-int m = 0;
+int sym = 0;
 real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 1.0/dt, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp" // load equations
 set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);

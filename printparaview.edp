@@ -44,9 +44,9 @@ if (mpirank==0){
   else if (fileext == "mode"){
     XMhg<complex> defu(um);
     restu = 0:XMhg.ndof-1;
-    int m;
+    int sym;
     complex eigenvalue;
-    um[] = loadmode(fileroot, meshin, m, eigenvalue);
+    um[] = loadmode(fileroot, meshin, sym, eigenvalue);
     cout << "  Saving '" + fileout + "_mode.vtu' in '" + workdir + "'." << endl;
     if (paraviewflag > 1){
       meshN Thgs = trunc(Thg, 1, split = paraviewflag);
@@ -69,10 +69,10 @@ if (mpirank==0){
     XMhg<complex> defu(um);
     restf = 0:Xhg.ndof-1;
     restu = 0:XMhg.ndof-1;
-    int m;
+    int sym;
     real omega;
     real gain;
-    um[] = loadresolvent(fileroot, meshin, fm[], m, omega, gain);
+    um[] = loadresolvent(fileroot, meshin, fm[], sym, omega, gain);
     cout << "  Saving '" + fileout + "_rslv_[forcing,response].vtu' in '" + workdir + "'." << endl;
     if (paraviewflag > 1){
       meshN Thgs = trunc(Thg, 1, split = paraviewflag);
@@ -126,8 +126,8 @@ if (mpirank==0){
     XMhg<complex> defu(um), defu(uma);
     restu = 0:XMhg.ndof-1;
     real omega;
-    int m;
-    ub[] = loadhopf(fileroot, meshin, um[], uma[], m, omega);
+    int sym;
+    ub[] = loadhopf(fileroot, meshin, um[], uma[], sym, omega);
     cout << "  Saving '" + fileout + "_hopf_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
     if (paraviewflag > 1){
       meshN Thgs = trunc(Thg, 1, split = paraviewflag);

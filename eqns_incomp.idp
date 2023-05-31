@@ -30,7 +30,7 @@ varf vJ(defu(dum), defu(v))
       - int1d(Th, BCopen) (
         ndotvisc(v, ik, um)/params["Re"]
       )
-      + HomBoundaryConditions(m, dum);
+      + HomBoundaryConditions(sym, dum);
 
 // MASS OPERATOR
 varf vM(defu(dum), defu(v))
@@ -40,7 +40,7 @@ varf vM(defu(dum), defu(v))
       + int2d(Th)(
           vdotu(v, um)
       )
-      + HomBoundaryConditions(m, dum);
+      + HomBoundaryConditions(sym, dum);
 
 // FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
 varf vMq(defu(dum), defu(v))
@@ -60,8 +60,8 @@ varf vH(defu(dum), defu(v))
       + int2d(Th)(
         ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um)
       )
-      + HomBoundaryConditions(m, dum);
+      + HomBoundaryConditions(sym, dum);
 
 // TRESSIAN OPERATOR
 varf vT(defu(dum), defu(v))
-      = HomBoundaryConditions(m, dum);
+      = HomBoundaryConditions(sym, dum);

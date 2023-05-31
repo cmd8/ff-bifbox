@@ -5,16 +5,30 @@
 //
 // EXAMPLE USAGE:
 //  Load mesh and save in work directory
-// mpirun -n 1 FreeFem++-mpi -v 0 importgmsh.edp -gmshdir <GMSHDIR> -mi <FILEIN> -workdir <FFDIR>
+// mpirun -n 1 FreeFem++-mpi -v 0 importgmsh.edp -dir <GMSHDIR> -mi <FILEIN>
+//
+// NOTE: Requires Gmsh (https://gmsh.info/) to handle .geo files directly.
 //
 load "gmsh"
 include "getARGV.idp"
+assert(mpisize == 1); // Must be run with 1 processor
 string meshin = getARGV("-mi", ""); // mesh filename
 string meshout = getARGV("-mo", meshin); // mesh filename
 string workdir = getARGV("-dir","./data/"); // path to FreeFEM work directory
-assert(mpisize == 1);//Must be run with 1 processor
+if (workdir(workdir.length-1:workdir.length-1) != "/") workdir = workdir + "/";
 cout << "  Loading '" + meshin + "' in '" + workdir + "'." << endl;
-mesh Thg  = gmshload(workdir + meshin); // stored in gmsh format
+string meshext = meshin(meshin.rfind(".")+1:meshin.length-1); // get file extension
+mesh Thg;
+if (meshext == "geo") {
+  cout << "  Calling GMSH to build .msh file from .geo file." << endl;
+  if (meshout.rfind(".geo") > 0)
+     meshout = meshout(0:meshout.rfind(".geo")-1);
+  if (meshout.rfind(".msh") < 0)
+    meshout = meshout + ".msh";
+  exec("gmsh " + workdir + meshin + " -2 -v " + verbosity + " -o " + workdir + meshout);
+  Thg = gmshload(workdir + meshout); // load mesh stored in Gmsh format
+}
+else Thg = gmshload(workdir + meshin); // load mesh stored in Gmsh format
 int[int] meshlabels = labels(Thg);
 cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
 cout << "  Saving '" << meshout + "' in '" + workdir + "'." << endl;

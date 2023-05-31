@@ -38,7 +38,7 @@ varf vJ(defu(dum), defu(v))
       - int1d(Th, BCopen) (
         (ubT^(params["a"])*ndotvisc(v, ik, um) + params["a"]*ubT^(params["a"]-1.)*umT*ndotvisc(v, 0, ub))/params["Re"]
       )
-      + HomBoundaryConditions(m, dum);
+      + HomBoundaryConditions(sym, dum);
 
 // MASS OPERATOR
 varf vM(defu(dum), defu(v))
@@ -48,7 +48,7 @@ varf vM(defu(dum), defu(v))
       + int2d(Th)(
           gdotf(vR, umR) + ubR*(gdotf(vT, umT) + vdotu(v, um))
       )
-      + HomBoundaryConditions(m, dum);
+      + HomBoundaryConditions(sym, dum);
 
 // FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
 varf vMq(defu(dum), defu(v))
@@ -88,7 +88,7 @@ varf vH(defu(dum), defu(v))
       - int1d(Th, BCopen) (
         params["a"]*ubT^(params["a"]-1.)*(dumT*ndotvisc(v, ik, um) + umT*ndotvisc(v, ik2, dum) + (params["a"]-1.)*dumT/ubT*umT*ndotvisc(v, 0, ub))/params["Re"]
       )
-      + HomBoundaryConditions(m, dum);
+      + HomBoundaryConditions(sym, dum);
 
 // TRESSIAN OPERATOR (FOR WEAKLY NONLINEAR ANALYSIS)
 varf vT(defu(dum), defu(v))
@@ -106,4 +106,4 @@ varf vT(defu(dum), defu(v))
       - int1d(Th, BCopen) (
         params["a"]*(params["a"]-1.)*ubT^(params["a"]-2.)*(dumT*um2T*ndotvisc(v, ik, um) + dumT*umT*ndotvisc(v, ik2, um2) + um2T*umT*ndotvisc(v, ik3, dum) + (params["a"]-2.)*dumT/ubT*um2T*umT*ndotvisc(v, 0, ub))/params["Re"]
       )
-      + HomBoundaryConditions(m, dum);
+      + HomBoundaryConditions(sym, dum);

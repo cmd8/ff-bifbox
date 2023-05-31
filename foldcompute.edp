@@ -35,7 +35,7 @@ string pctype = getARGV("-pc_type", "lu");
 real snesrtol = getARGV("-snes_rtol", 0.0);
 real snesdivergencetolerance = getARGV("-snes_divergence_tolerance", 1.0e30);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
-int m = 0;
+int sym = 0;
 complex eigenvalue;
 
 string fileroot, meshroot;
@@ -62,10 +62,10 @@ else if(fileext == "fold") {
   ub[] = loadfold(fileroot, meshin, um[], uma[]);
 }
 else if(fileext == "hopf") {
-  int m;
+  int sym;
   real omega;
   complex[int] qm, qma;
-  ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
+  ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega);
 }
 else if(fileext == "tdns") {
   real time;

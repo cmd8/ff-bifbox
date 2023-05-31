@@ -41,7 +41,7 @@ string pctype = getARGV("-pc_type", "lu");
 real snesrtol = getARGV("-snes_rtol", 0.0);
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
-int m;
+int sym;
 real omega;
 
 // Load mesh, make FE basis
@@ -65,11 +65,11 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma), defu(yb), defu(um2), defu(um3);
 if (count == 0){
-  ub[].re = loadhopf(fileroot, meshin, um[], uma[], m, omega);
-  if(mpirank == 0) printstats(fileout, filein, meshin, m, omega, 0);
+  ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym, omega);
+  if(mpirank == 0) printstats(fileout, filein, meshin, sym, omega, 0);
 }
 else {
-  ub[].re = loadhopf(fileroot + "_" + count, meshin, um[], uma[], m, omega);
+  ub[].re = loadhopf(fileroot + "_" + count, meshin, um[], uma[], sym, omega);
 }
 real lambda1 = getlambda(param1);
 real lambda2 = getlambda(param2);
@@ -173,8 +173,8 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       broadcast(processor(0), lambda2);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      int mm = m;
-      ik = 1i*real(m);
+      int mm = sym;
+      ik = 1i*real(sym);
       iomega = 1i*omega;
       updatelambda(param1, lambda1 + eps1);
       updatelambda(param2, lambda2);
@@ -206,9 +206,9 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
         tempPms = [[real(gl1), -imag(gw)], [imag(gl1), real(gw)]];
       }
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-      m = 0;
+      sym = 0;
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
-      m = mm;
+      sym = mm;
       MatMultHermitianTranspose(H, qma, yqP); // gqr,i
       if(!zerofreq) dummy.re = -yqP.im;
       yqP.im = 0.0;
@@ -225,9 +225,9 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
       ik = 0.0;
       iomega = 0.0;
-      m = 0;
+      sym = 0;
       J = vJ(XMh, XMh, tgv = -1);
-      m = mm;
+      sym = mm;
       KSPSolve(Ja, yqP, yqP);
       tempPms = [[yqP]]; // dense array to sparse matrix
       ChangeOperator(yqPMa, tempPms, parent = Jaa); // send to Mat
@@ -260,8 +260,8 @@ if(mpirank == 0) {
   qa(qa.n-1) = lambda2;
 }
 {
-  int mm = m;
-  ik = 1i*real(m);
+  int mm = sym;
+  ik = 1i*real(sym);
   iomega = 1i*omega;
   updatelambda(param1, lambda1 + eps1);
   updatelambda(param2, lambda2);
@@ -293,9 +293,9 @@ if(mpirank == 0) {
     tempPms = [[real(gl1), -imag(gw)], [imag(gl1), real(gw)]];
   }
   ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-  m = 0;
+  sym = 0;
   H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
-  m = mm;
+  sym = mm;
   MatMultHermitianTranspose(H, qma, yqP); // gqr,i
   if(!zerofreq) dummy.re = -yqP.im;
   yqP.im = 0.0;
@@ -312,9 +312,9 @@ if(mpirank == 0) {
   ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
   ik = 0.0;
   iomega = 0.0;
-  m = 0;
+  sym = 0;
   J = vJ(XMh, XMh, tgv = -1);
-  m = mm;
+  sym = mm;
   KSPSolve(Ja, yqP, yqP);
   tempPms = [[yqP]]; // dense array to sparse matrix
   ChangeOperator(yqPMa, tempPms, parent = Jaa); // send to Mat
@@ -383,7 +383,7 @@ while (count < maxcount){
       ChangeNumbering(J, uma[], qma, inverse = true);
       um[] /= sqrt(J(um[], Mq));
       uma[] /= conj(J(uma[], Mq));
-      savehopf(fileroot + "_" + count + "signswitch", "", meshout, m, omega, true, true);
+      savehopf(fileroot + "_" + count + "signswitch", "", meshout, sym, omega, true, true);
     }
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
@@ -511,7 +511,7 @@ while (count < maxcount){
     ChangeNumbering(J, uma[], qma, inverse = true);
     um[] /= sqrt(J(um[], Mq));
     uma[] /= conj(J(uma[], Mq));
-    savehopf(fileout + "_" + count, fileout, meshout, m, omega, (count % savecount == 0), true);
+    savehopf(fileout + "_" + count, fileout, meshout, sym, omega, (count % savecount == 0), true);
     yqP0 = yqP;
     qP = qm;
     pP = qma;

@@ -21,7 +21,7 @@ string meshin = getARGV("-mi", ""); // input meshfile
 string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", "");
 string gainout = getARGV("-so", fileout);
-int m = getARGV("-m", 0);
+int sym = getARGV("-sym", 0);
 real omega = getARGV("-omega", 1.0);
 int nomega = getARGV("-nomega", 1);
 real omegaf = getARGV("-omegaf", 1.0);
@@ -56,10 +56,10 @@ else if(fileext == "fold") {
   ub[] = loadfold(fileroot, meshin, qm, qma);
 }
 else if(fileext == "hopf") {
-  int mtemp;
+  int symtemp;
   real omegatemp;
   complex[int] qm, qma;
-  ub[] = loadhopf(fileroot, meshin, qm, qma, mtemp, omegatemp);
+  ub[] = loadhopf(fileroot, meshin, qm, qma, symtemp, omegatemp);
 }
 else if(fileext == "tdns") {
   real time;
@@ -74,7 +74,7 @@ Mat<complex> L, Mf;
 createMatu(Th, L, Pk);
 Mat<complex> M(L);
 createMatf(Th, Mf, Pkf);
-complex ik = 1i*real(m), ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
+complex ik = 1i*real(sym), ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // construct matrices
 M  = vMq(XMh, XMh); // Response Norm
@@ -126,5 +126,5 @@ for (int n = 0; n < nomega; ++n){
       uvec[ii][] = um[];
     }
   }
-  saveresolvent(fileout + "_" + n, gainout, filein, meshin, fvec, uvec, gains, m, omega, (fileout != ""));
+  saveresolvent(fileout + "_" + n, gainout, filein, meshin, fvec, uvec, gains, sym, omega, (fileout != ""));
 }

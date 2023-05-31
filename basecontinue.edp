@@ -72,10 +72,10 @@ if(count == 0) {
     ub[] = loadfold(fileroot, meshin, qm, qma);
   }
   else if(fileext == "hopf") {
-    int m;
+    int sym;
     real omega;
     complex[int] qm, qma;
-    ub[] = loadhopf(fileroot, meshin, qm, qma, m, omega);
+    ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega);
   }
   if(mpirank == 0 && savecount > 0) printstats(fileout, filein, meshin, 0, 0, 0);
 }
@@ -86,7 +86,7 @@ real lambda = getlambda(param);
 
 Mat J, Ja;
 createMatu(Th, J, Pk);
-int m = 0;
+int sym = 0;
 real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // Build bordered block matrix from only Mat components

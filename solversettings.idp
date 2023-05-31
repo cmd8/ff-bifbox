@@ -121,17 +121,17 @@ int BCwall = 3;
 int BCinflow = 4;
 int BCpipe = 5;
 int BCslip = 6;
-macro BoundaryConditions(m, u, U)
+macro BoundaryConditions(sym, u, U)
   on(BCinflow, u = U - 2.0*(1.0 - (2.0*y)^2), u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO IFMACRO(species) ,u#Y = U#Y - 1.0 ENDIFMACRO IFMACRO(temperature) ,u#T = U#T - 1.0 ENDIFMACRO )
 + on(BCwall, BCpipe, u = U, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO IFMACRO(temperature) ,u#T = U#T - 1.0 ENDIFMACRO )
-+ on((abs(int(m)) != 1)*BCaxis, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO )
-+ on((abs(int(m))  > 0)*BCaxis, u = U IFMACRO(species) ,u#Y = U#Y ENDIFMACRO IFMACRO(temperature) ,u#T = U#T ENDIFMACRO )
++ on((abs(int(sym)) != 1)*BCaxis, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO )
++ on((abs(int(sym))  > 0)*BCaxis, u = U IFMACRO(species) ,u#Y = U#Y ENDIFMACRO IFMACRO(temperature) ,u#T = U#T ENDIFMACRO )
 // EOM
-macro HomBoundaryConditions(m, u)
+macro HomBoundaryConditions(sym, u)
   on(BCinflow, u = 0., u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO IFMACRO(species) ,u#Y = 0.0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0.0 ENDIFMACRO )
 + on(BCwall, BCpipe, u = 0, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0 ENDIFMACRO )
-+ on((abs(int(m)) != 1)*BCaxis, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO )
-+ on((abs(int(m))  > 0)*BCaxis, u = 0 IFMACRO(species) ,u#Y = 0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0 ENDIFMACRO )
++ on((abs(int(sym)) != 1)*BCaxis, u#y = 0 IFMACRO(component,3) ,u#z = 0 ENDIFMACRO )
++ on((abs(int(sym))  > 0)*BCaxis, u = 0 IFMACRO(species) ,u#Y = 0 ENDIFMACRO IFMACRO(temperature) ,u#T = 0 ENDIFMACRO )
 // EOM
 ENDIFMACRO
 IFMACRO(custom)
@@ -141,11 +141,11 @@ int BCopen = 2;
 int BCin2  = 3;
 int BCwall = 4;
 int BCin1  = 5;
-macro BoundaryConditions(m, u, U)
+macro BoundaryConditions(sym, u, U)
   on(BCin2,BCwall, u = U, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO, u#v = U#v, u#pc = U#pc )
 + on(BCin1, u = U - tanh(params["d0"]*(1.0 - y^2.0)), u#y = U#y IFMACRO(component,3) ,u#z = U#z - params["S"]*y*tanh(params["d0"]*(1.0 - y^2.0)) ENDIFMACRO , u#v = U#v - params["v0"], u#pc = U#pc )
-+ on((abs(int(m)) != 1)*BCaxis, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO )
-+ on((abs(int(m))  > 0)*BCaxis, u = U, u#v = U#v )
++ on((abs(int(sym)) != 1)*BCaxis, u#y = U#y IFMACRO(component,3) ,u#z = U#z ENDIFMACRO )
++ on((abs(int(sym))  > 0)*BCaxis, u = U, u#v = U#v )
 // EOM
 ENDIFMACRO
 
