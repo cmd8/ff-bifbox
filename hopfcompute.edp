@@ -111,7 +111,6 @@ string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
-real snesrtol = getARGV("-snes_rtol", 0.0);
 real snesdivergencetolerance = getARGV("-snes_divergence_tolerance", 1.0e30);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym;
@@ -328,8 +327,7 @@ else {
 }
 // solve nonlinear problem with SNES
 int ret;
-SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_rtol " + snesrtol
-                                                        + " -snes_linesearch_type " + sneslinesearchtype
+SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_linesearch_type " + sneslinesearchtype
                                                         + " -snes_divergence_tolerance " + snesdivergencetolerance
                                                         + " -snes_monitor -snes_converged_reason "
                                                         );

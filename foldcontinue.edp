@@ -37,7 +37,6 @@ real eps1 = getARGV("-eps1", 1e-7);
 real eps2 = getARGV("-eps2", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
-real snesrtol = getARGV("-snes_rtol", 0.0);
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym;
@@ -295,8 +294,7 @@ while (count < maxcount){
   internalit = 0;
   adaptflag = 0;
   SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
-            sparams = " -snes_rtol " + snesrtol
-                    + " -snes_linesearch_type " + sneslinesearchtype
+            sparams = " -snes_linesearch_type " + sneslinesearchtype
                     + " -snes_max_it " + snesmaxit
                     + " -snes_converged_reason "
                     ); // solve nonlinear problem with SNES
@@ -413,8 +411,7 @@ while (count < maxcount){
       internalit = 0;
       adaptflag = 1;
       SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
-                sparams = " -snes_rtol " + snesrtol
-                        + " -snes_linesearch_type " + sneslinesearchtype
+                sparams = " -snes_linesearch_type " + sneslinesearchtype
                         + " -snes_converged_reason "
                         ); // solve nonlinear problem with SNES
       assert(ret > 0);
