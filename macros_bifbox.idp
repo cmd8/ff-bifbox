@@ -224,7 +224,7 @@ macro saveresolvent(resolventfileout, gainsfile, basefile, meshfile, fvecs, uvec
             XMhs<complex> defu(uso) = defu(umg);
             fespace Xhs(Thgs, Pkf);
             Xhs<complex> deff(fso) = deff(fmg);
-            Xhg deff(fsr), deff(fsi);
+            Xhs deff(fsr), deff(fsi);
             fsr[] = fso[].re;
             fsi[] = fso[].im;
             savevtk(workdir + fileout + "_mode_forcing.vtu", Thg, adaptf(fsr), adaptf(fsi), dataname = ParaviewDataNamefc, order = ParaviewOrderfc);
@@ -524,7 +524,11 @@ func bool printstats(string outputfilename, string filename, string meshfilename
 
 func bool printgains(string outputfilename, string basefilename, string meshfilename, int sym, real omega, real[int] & gains) {
       cout << "  Saving " + gains.n + " optimal gain(s) to '" + outputfilename + ".gain' in '" + workdir + "'." << endl;
-      cout << "\tm = " + sym + ", omega = " + omega;
+      cout << "\tsym = " + sym + ", omega = " + omega + ", gain(s) = [" + gains(0);
+      for (int kk = 1; kk < gains.n; ++kk){
+        cout << ", " + gains(kk);
+      }
+      cout << "]";
       if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
       if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
       cout << "." << endl;
