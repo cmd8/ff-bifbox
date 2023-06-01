@@ -85,6 +85,8 @@ else { // if output meshfile is given, adapt mesh
   adapt = true;
   meshout = meshout + "." + meshext;
   XMhg defu(uG), defu(tempu); // create private global FE functions
+  ChangeNumbering(J, ub[], q);
+  ChangeNumbering(J, ub[], q, inverse = true);
   for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
   if(mpirank == 0)  // Perform mesh adaptation (serially) on processor 0
