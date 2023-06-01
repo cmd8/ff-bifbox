@@ -3,14 +3,15 @@
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
-// This file can be used with Gmsh to create a mesh for the cylinder.
+// This file can be used with Gmsh to create a mesh for the cylinder as in
+// [D. Sipp and A. Lebedev, JFM (2007) DOI:10.1017/S0022112007008907].
 //
 
 n0 = 25;
 n1 = 2.5;
 n2 = 0.25;
 xmin = -60.0;
-xmax = 120.0;
+xmax = 200.0;
 rmax = 30.0;
 rcyl = 0.5;
 Mesh.Algorithm = 5;

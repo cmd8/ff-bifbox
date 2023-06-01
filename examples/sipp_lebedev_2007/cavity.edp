@@ -1,0 +1,49 @@
+//
+// cavity.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// This file can be used with FreeFEM to create a mesh for the cylinder as in
+// [D. Sipp and A. Lebedev, JFM (2007) DOI:10.1017/S0022112007008907].
+//
+
+assert(mpisize == 1); // Must be run with 1 processor
+include "settings_sipp_lebedev_2007.idp"
+real n0 = 100;
+real n1 = 50;
+real n2 = 25;
+real xmin = -1.2;
+real xmax = 2.5;
+real rmax = 0.5;
+real wcav = 1.0;
+real dcav = 1.0;
+
+string meshout = getARGV("-mo", "cavity.msh"); // mesh filename
+if(meshout.rfind(".msh") < 0) meshout = meshout + ".msh"; // add extension if not provided
+
+// Define borders
+//  o---------------------9------------------------o
+//  1                                              8
+//  o---2---o-3-o          o-----------7-----------o
+//              |          |
+//              4          6
+//              |          |
+//              o-----5----o
+border C01(t=0, 1){x=xmin; y=rmax*(1-t); label=BCinflow;}
+border C02(t=0, 1){x=xmin+(abs(xmin)-0.4)*t; y=0; label=BCslip;}
+border C03(t=0, 1){x=-0.4*(1-t); y=0; label=BCwall;}
+border C04(t=0, 1){x=0; y=-dcav*t; label=BCwall;}
+border C05(t=0, 1){x=wcav*t; y=-dcav; label=BCwall;}
+border C06(t=0, 1){x=wcav; y=-dcav*(1-t); label=BCwall;}
+border C07(t=0, 1){x=wcav+(xmax-wcav)*t; y=0; label=BCwall;}
+border C08(t=0, 1){x=xmax; y=rmax*t; label=BCopen;}
+border C09(t=0, 1){x=xmax+(xmin-xmax)*t; y=rmax; label=BCaxis;}
+// Assemble mesh
+mesh Thg = buildmesh(C01(n2*rmax) + C02(n1*(0.4-xmin)) + C03(n0*0.4)
+                     + C04(n1*dcav) + C05(n2*wcav) + C06(n1*dcav)
+                     + C07(n1*(xmax-wcav)) + C08(n1*rmax) + C09(n1*(xmax-xmin)));
+plot(Thg);
+int[int] meshlabels = labels(Thg);
+cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
+cout << "  Saving mesh '" + meshout + "'." << endl;
+savemesh(Thg, meshout);

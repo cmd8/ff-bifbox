@@ -1,0 +1,48 @@
+//
+// settings_sipp_lebedev_2007.idp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// Set dimension macro for 'macro_ddm.idp' (2)
+  macro dimension()2//EOM NOTE: only 2 for now
+// Load hpddm macros
+  include "macro_ddm.idp"
+  verbosity = getARGV("-v",0);
+// Define parameter and monitor names
+  string[int] paramnames = ["1/Re"]; // set parameter names
+  string[int] monitornames = ["Fx","Fy"]; // set monitor names
+// Define state vector and FE space
+  macro defu(u)[u,u#y,u#p]//EOM
+  macro initu(i)[i,i,i]//EOM
+  func Pk = [P2,P2,P1];
+// Define forcing vector and FE space (for resolvent analysis)
+  macro deff(f)[f,f#y]//EOM
+  macro initf(i)[i, i]//EOM
+  func Pkf = [P2,P2];
+// Define quantities for mesh adaptation and plotting in Paraview
+  macro adaptu(u)[u, u#y] ,u#p//EOM
+  macro adaptf(f)[f, f#y] //EOM
+// Name and order for real Paraview outputs
+  string ParaviewDataName = "velocity pressure";
+  string ParaviewDataNamef = "momentum";
+  int[int] ParaviewOrder = [1,1];
+  int[int] ParaviewOrderf = [1];
+// Name and order for complex Paraview outputs
+  string ParaviewDataNamec = "velocity_r pressure_r velocity_i pressure_i";
+  string ParaviewDataNamefc = "momentum_r momentum_i";
+  int[int] ParaviewOrderc = [ParaviewOrder,ParaviewOrder];
+  int[int] ParaviewOrderfc = [ParaviewOrderf,ParaviewOrderf];
+  // Initial conditions (if no guess)
+  macro InitialConditions()initu(1)//EOM
+// Boundary labels
+  int BCnull = 0;
+  int BCaxis = 1;
+  int BCopen = 2;
+  int BCinflow = 3;
+  int BCwall = 4;
+  int BCslip = 5;
+// Define solution monitors to extract: here x and y forces on BCwall
+  macro getmonitors(u){
+    monitors["Fx"] = int1d(Thg, BCwall)(u#p*N.x - params["1/Re"]*(2.0*dx(u  )*N.x + (dx(u#y) + dy(u))*N.y));
+    monitors["Fy"] = int1d(Thg, BCwall)(u#p*N.y - params["1/Re"]*(2.0*dy(u#y)*N.y + (dx(u#y) + dy(u))*N.x));
+  }// EOM
