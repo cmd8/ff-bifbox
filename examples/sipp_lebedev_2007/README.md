@@ -21,11 +21,10 @@ Note that, in this example of Sipp and Lebedev, viscosity is parameterized by 1/
 ```
 cd ~/your/path/to/ff-bifbox/
 ```
-2. (optional) Export working directory for easy reference.
+2. Export working directory for easy reference.
 ```
 export workdir=examples/sipp_lebedev_2007
 ```
-NOTE: If this step is skipped, replace each instance of `$workdir` with `examples/sipp_lebedev_2007` in the following.
 3. Create symbolic links for governing equations and solver settings.
 ```
 ln -sf $workdir/eqns_sipp_lebedev_2007.idp eqns.idp
@@ -70,8 +69,8 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cavity_16.base 
 ### First order
 1. Compute leading direct eigenmode at Re = 50 (cylinder) and Re = 4000 (cavity)
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder50.base -fo cylinder50 -eps_target 0.1+0.8i -sym 1
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cavity4000.base -fo cavity4000 -eps_target 0.1+8.0i -sym 0
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder50.base -fo cylinder50 -so "" -eps_target 0.1+0.8i -sym 1
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cavity4000.base -fo cavity4000 -so "" -eps_target 0.1+8.0i -sym 0
 ```
 NOTE: Here, the `-sym` argument specifies the asymmetric (1) or symmetric (0) reflective symmetry across the boundary `BCaxis`.
 
