@@ -53,20 +53,16 @@
 
 // MASS OPERATOR
   varf vM(defu(dum), defu(v))
-    = int2d(Th)(
-        vdotu(v, dum)
-    )
-    + int2d(Th)(
-        vdotu(v, um)
-    )
+    = int2d(Th)( vdotu(v, dum) )
+    + int2d(Th)( vdotu(v, um) )
     + HomBoundaryConditions(sym, dum);
 
 // FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
   varf vMq(defu(dum), defu(v))
     = int2d(Th)( vdotu(v, dum) );
 
-  varf vMf(deff(dum), deff(v))
-    = int2d(Th)( vdotu(v, dum) );
+  varf vMf(deff(fm), deff(v))
+    = int2d(Th)( vdotu(v, fm) );
 
   varf vP(deff(fm), defu(v))
     = int2d(Th)( vdotu(v, fm) );

@@ -1,5 +1,5 @@
 # 2D Incompressible Flow Example: Sipp and Lebedev. JFM. (2007)
-This file shows an example `ff-bifbox` workflow for reproducing the study:
+This file shows an example `ff-bifbox` workflow for reproducing the results of the paper:
 ```
 @article{sipp_lebedev_2007,
   title={Global stability of base and mean flows: a general approach and its applications to cylinder and open cavity flows},
@@ -12,7 +12,7 @@ This file shows an example `ff-bifbox` workflow for reproducing the study:
   pages={333–358}
 }
 ```
-The commands below illustrate how to perform a stability/bifurcation analysis of the 2D incompressible flow around a cylinder and an open cavity using `ff-bifbox`.
+The commands below illustrate how to perform a weakly nonlinear analysis of the 2D incompressible flow around a cylinder and an open cavity using `ff-bifbox`.
 
 Note that, in this example of Sipp and Lebedev, viscosity is parameterized by 1/Re instead of Re in order to make the equation system linear with respect to the control parameter. Though such scalings do improve the performance of predictor-corrector methods and weakly-nonlinear analysis, `ff-bifbox` does not require the system to be linear in the parameters.
 
@@ -56,7 +56,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi cavity.msh -fo 
 
 2. Continue base state along the parameter 1/Re with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi cylinder.base -fo cylinder -param 1/Re -h0 -1 -scount 2 -maxcount 8 -mo cylinder
+mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi cylinder.base -fo cylinder -param 1/Re -h0 -1 -scount 2 -maxcount 8 -mo cylinder -thetamax 5
 mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi cavity.base -fo cavity -param 1/Re -h0 -1 -scount 4 -maxcount 16 -mo cavity
 ```
 
@@ -82,14 +82,14 @@ mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity4000_0.mo
 
 3. Adapt the mesh to the critical solution, save .vtu files for Paraview
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -param 1/Re -pv 2
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity.hopf -fo cavity -mo cavityhopf -adaptto bda -param 1/Re -pv 2
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -param 1/Re -thetamax 5 -pv 1
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity.hopf -fo cavity -mo cavityhopf -adaptto bda -param 1/Re -pv 1
 ```
 
 ### Second order
 - Compute 2nd-order weakly-nonlinear analysis, save .vtu files for Paraview
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -param 1/Re -pv 2
-mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cavity.hopf -fo cavity -param 1/Re -pv 2
+mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -param 1/Re -pv 1
+mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cavity.hopf -fo cavity -param 1/Re -pv 1
 ```
 NOTE: the normalizations for the direct and adjoint eigenmodes (and therefore also the weakly-nonlinear corrections) used by `ff-bifbox` is different than the normalizations used by Sipp and Lebedev. This causes the results to differ by a scaling factor.

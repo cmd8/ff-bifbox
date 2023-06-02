@@ -1,5 +1,5 @@
 //
-// settings_sipp_lebedev_2007.idp
+// settings_douglas_etal_2021.idp
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
@@ -9,19 +9,19 @@
   include "macro_ddm.idp"
   verbosity = getARGV("-v",0);
 // Define parameter and monitor names
-  string[int] paramnames = ["1/Re"]; // set parameter names
-  string[int] monitornames = ["Fx", "Fy"]; // set monitor names
+  string[int] paramnames = ["1/Re", "S"]; // set parameter names
+  string[int] monitornames = ["minux(x,0)"]; // set monitor names
 // Define state vector and FE space
-  macro defu(u)[u, u#y, u#p]//EOM
-  macro initu(i)[i, i, i]//EOM
-  func Pk = [P2, P2, P1];
+  macro defu(u)[u, u#y, u#z, u#p, u#pc]//EOM
+  macro initu(i)[i, i, i, i, i]//EOM
+  func Pk = [P2, P2, P2, P1, P1];
 // Define forcing vector and FE space (for resolvent analysis)
-  macro deff(f)[f, f#y]//EOM
-  macro initf(i)[i, i]//EOM
-  func Pkf = [P2, P2];
+  macro deff(f)[f, f#y, f#z]//EOM
+  macro initf(i)[i, i, i]//EOM
+  func Pkf = [P2, P2, P2];
 // Define quantities for mesh adaptation and plotting in Paraview
-  macro adaptu(u)[u, u#y], u#p//EOM
-  macro adaptf(f)[f, f#y] //EOM
+  macro adaptu(u)[u, u#y, u#z], u#p//EOM
+  macro adaptf(f)[f, f#y, f#z]//EOM
 // Name and order for real Paraview outputs
   string ParaviewDataName = "velocity pressure";
   string ParaviewDataNamef = "momentum";
@@ -33,16 +33,23 @@
   int[int] ParaviewOrderc = [ParaviewOrder, ParaviewOrder];
   int[int] ParaviewOrderfc = [ParaviewOrderf, ParaviewOrderf];
   // Initial conditions (if no file)
-  macro InitialConditions()[1, 0, 0]//EOM
+  macro InitialConditions()initu(0)//EOM
 // Boundary labels
   int BCnull = 0;
   int BCaxis = 1;
   int BCopen = 2;
   int BCinflow = 3;
   int BCwall = 4;
-  int BCslip = 5;
-// Define solution monitors to extract: here x and y forces on BCwall
+  int BCpipe = 5;
+// Define solution monitors to extract:
   macro getmonitors(u){
-    monitors["Fx"] = int1d(Thg, BCwall)(u#p*N.x - params["1/Re"]*(2.0*dx(u  )*N.x + (dx(u#y) + dy(u))*N.y));
-    monitors["Fy"] = int1d(Thg, BCwall)(u#p*N.y - params["1/Re"]*(2.0*dy(u#y)*N.y + (dx(u#y) + dy(u))*N.x));
+    fespace Xh1(Thg, P2);
+    Xh1 UX = u;
+    varf Onaxis(UX, VX) = on(BCaxis, UX = 1);
+    real[int] onaxis = Onaxis(0, Xh1, tgv = 1);
+    int[int] indices(onaxis.sum);
+    real[int] uonaxis(indices.n);
+    for(int i=0, j=0; i<Xh1.ndof; ++i) if(onaxis[i]) {indices[j] = i; ++j;}
+    for(int i=0; i<indices.n; ++i) uonaxis[i] = UX[][indices[i]];
+    monitors["minux(x,0)"] = uonaxis.min;
   }// EOM

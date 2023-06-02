@@ -1,5 +1,5 @@
 # 2D Incompressible Flow Example: Garnaud, PhD Thesis, (2012)
-This file shows an example `ff-bifbox` workflow for reproducing the study in Chapter 6.4:
+This file shows an example `ff-bifbox` workflow for reproducing the results in Chapter 6.4 of the thesis:
 ```
 @phdthesis{garnaud_2012,
   TITLE = {{Modes, transient dynamics and forced response of circular jets}},
@@ -8,7 +8,6 @@ This file shows an example `ff-bifbox` workflow for reproducing the study in Cha
   SCHOOL = {{Ecole Polytechnique}},
   YEAR = {2012},
 }
-
 ```
 The commands below illustrate how to perform a resolvent analysis of an incompressible laminar axisymmetric jet using `ff-bifbox`.
 
@@ -59,7 +58,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi jet_15.base -fo
 
 4. Adapt mesh to Re = 1000 solution and recompute base state, save .vtu file for Paraview
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi jet1000.base -fo jet1000adapt -mo jet1000adapt -pv 2
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi jet1000.base -fo jet1000adapt -mo jet1000adapt -pv 1
 ```
 
 ### Resolvent analysis
@@ -69,8 +68,8 @@ mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.ba
 ```
 2. Compute forcing/response modes at St = [0.1, 0.48, 0.64, 0.95], save .vtu files for Paraview
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p1 -so "" -omega 0.314159 -pv 2
-mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p48 -so "" -omega 1.50796 -pv 2
-mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p64 -so "" -omega 2.01062 -pv 2
-mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p95 -so "" -omega 2.98451 -pv 2
+mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p1 -so "" -omega 0.314159 -pv 1
+mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p48 -so "" -omega 1.50796 -pv 1
+mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p64 -so "" -omega 2.01062 -pv 1
+mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p95 -so "" -omega 2.98451 -pv 1
 ```

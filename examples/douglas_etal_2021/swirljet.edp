@@ -1,0 +1,41 @@
+//
+// swirljet.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// This file can be used with FreeFEM to create a mesh for the laminar jet as in
+// [Xavier Garnaud, Ecole Polytechnique PhD Thesis, (2012)].
+//
+
+assert(mpisize == 1); // Must be run with 1 processor
+include "settings_douglas_etal_2021.idp"
+real n0 = 25;
+real n1 = 5;
+real n2 = 1;
+real xmin = -4.0;
+real rmax = 40.0;
+real rpipe = 0.5;
+
+string meshout = getARGV("-mo", "swirljet.msh"); // mesh filename
+if(meshout.rfind(".msh") < 0) meshout = meshout + ".msh"; // add extension if not provided
+
+// Define borders
+//              o--..__
+//              |      "-..
+//              4          3
+//              |           \
+//  o-----5-----o            \
+//  1                         |
+//  o------------2------------o
+border C01(t=0, 1){x=xmin; y=rpipe*(1-t); label=BCinflow;}
+border C02(t=0, 1){x=xmin+(rmax-xmin)*t; y=0; label=BCaxis;}
+border C03(t=0, 1){x=rmax*cos(pi/2*t); y=rmax*sin(pi/2*t); label=BCopen;}
+border C04(t=0, 1){x=0; y=rmax-(rmax-rpipe)*t; label=BCwall;}
+border C05(t=0, 1){x=xmin*t; y=rpipe; label=BCpipe;}
+// Assemble mesh
+mesh Thg = buildmesh(C01(n1*rpipe) + C02(n1*(rmax-xmin)) + C03(n2*rmax*pi/2) + C04(n1*(rmax-rpipe)) + C05(n0*abs(xmin)));
+
+int[int] meshlabels = labels(Thg);
+cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
+cout << "  Saving mesh '" + meshout + "'." << endl;
+savemesh(Thg, meshout);

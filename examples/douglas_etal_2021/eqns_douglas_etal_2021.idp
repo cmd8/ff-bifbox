@@ -1,0 +1,109 @@
+//
+// eqns_douglas_etal_2021.idp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// Define KSP parameters
+  string KSPparams = "";
+  string EPSparams = " -eps_pos_gen_non_hermitian ";
+// term macros ------------------------------------------------------
+  macro ndotu(u) (N.x*u + N.y*u#y) //EOM
+
+  macro tdotgrads(s) ( -N.y*dx(s) + N.x*dy(s) ) //EOM NOTE: grid scaling factors cancel
+
+  macro vdotu(v, u) ( y*(v*u + v#y*u#y + v#z*u#z) ) //EOM
+
+  macro divu(ik, u) ( y*(dx(u) + dy(u#y)) + u#y + (ik)*u#z ) // velocity divergence
+
+  macro ugradu(v, U, ik, u) (  v  *(y*(U*dx(u  ) + U#y*dy(u  )) + U#z* (ik)*u          )
+                             + v#y*(y*(U*dx(u#y) + U#y*dy(u#y)) + U#z*((ik)*u#y - u#z))
+                             + v#z*(y*(U*dx(u#z) + U#y*dy(u#z)) + U#z*((ik)*u#z + u#y)) ) // scaled convection term
+
+  macro visc(ij, v, ik, u) ( y*(dx(v)*dx(u) + dy(v)*dy(u) + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y) + dx(v#z)*dx(u#z) + dy(v#z)*dy(u#z))
+                            + ((ij)*v*(ik)*u + ((ij)*v#y - v#z)*((ik)*u#y - u#z) + ((ij)*v#z + v#y)*((ik)*u#z + u#y))/(y + 1.0e-12*(y == 0)) ) // EOM
+// Boundary conditions
+  macro BoundaryConditions(sym, u, U)
+    on(BCinflow, u = U - (2.0 - 8.0*y^2), u#z = U#z - 2.0*params["S"]*y)
+    + on(BCwall, u = U, u#y = U#y, u#z = U#z, u#pc = U#pc)
+    + on(BCpipe, u = U, u#y = U#y, u#z = U#z - params["S"], u#pc = U#pc)
+    + on((abs(sym) != 1)*BCaxis, u#y = U#y, u#z = U#z)
+    + on((abs(sym) >  0)*BCaxis, u = U)
+  // EOM
+  macro HomBoundaryConditions(sym, u)
+    on(BCinflow, u = 0, u#z = 0)
+    + on(BCwall, BCpipe, u = 0, u#y = 0, u#z = 0, u#pc = 0)
+    + on((abs(sym) != 1)*BCaxis, u#y = 0, u#z = 0)
+    + on((abs(sym) >  0)*BCaxis, u = 0)
+  // EOM
+// RESIDUAL OPERATOR
+  varf vR(defu(dum), defu(v))
+    = int2d(Th)(
+      ugradu(v, ub, 0, ub) - divu(0, v)*ubp + visc(0, v, 0, ub)*params["1/Re"]
+      - vp*divu(0, ub)
+    )
+    + int1d(Th, BCopen)(
+      y*ndotu(v)*ubpc - 0.5*vdotu(v, ub)*min(0.0, real(ndotu(ub)))
+      + vpc*(y*tdotgrads(ubpc) - ubz^2)
+    )
+    + BoundaryConditions(0, dum, ub);
+
+// JACOBIAN OPERATOR
+  varf vJ(defu(dum), defu(v))
+    = int2d(Th)(
+      iomega*vdotu(v, dum)
+      + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum) - divu(-ik, v)*dump + visc(-ik, v , ik, dum )*params["1/Re"]
+      - vp*divu(ik, dum)
+      + 1e-10*vpc*dumpc
+    )
+    + int1d(Th, BCopen)(
+      y*ndotu(v)*dumpc - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, dum)*ndotu(ub) + vdotu(v, ub)*ndotu(dum))
+      + vpc*(y*tdotgrads(dumpc) - 2.0*ubz*dumz)
+    )
+    + int2d(Th)(
+      iomega*vdotu(v, um)
+      + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - divu(-ik, v)*ump + visc(-ik, v , ik, um )*params["1/Re"]
+      - vp*divu(ik, um)
+    )
+    + int1d(Th, BCopen)(
+      y*ndotu(v)*umpc - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(ub) + vdotu(v, ub)*ndotu(um))
+      + vpc*(y*tdotgrads(umpc) - 2.0*ubz*umz)
+    )
+    + HomBoundaryConditions(sym, dum);
+
+// MASS OPERATOR
+  varf vM(defu(dum), defu(v))
+    = int2d(Th)( vdotu(v, dum) )
+    + int2d(Th)( vdotu(v, um) )
+    + HomBoundaryConditions(sym, dum);
+
+// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+  varf vMq(defu(dum), defu(v))
+    = int2d(Th)( vdotu(v, dum) );
+
+  varf vMf(deff(fm), deff(v))
+    = int2d(Th)( vdotu(v, fm) );
+
+  varf vP(deff(fm), defu(v))
+    = int2d(Th)( vdotu(v, fm) );
+
+// HESSIAN OPERATOR
+  varf vH(defu(dum), defu(v))
+    = int2d(Th)(
+      ugradu(v, um, ik2, um2) + ugradu(v, um2, ik, um)
+    )
+    + int1d(Th, BCopen)(
+      -0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(um2) + vdotu(v, um2)*ndotu(um))
+      - 2.0*vpc*um2z*umz
+    )
+    + int2d(Th)(
+      ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um)
+    )
+    + int1d(Th, BCopen)(
+      -0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(dum) + vdotu(v, dum)*ndotu(um))
+      - 2.0*vpc*dumz*umz
+    )
+    + HomBoundaryConditions(sym, dum);
+
+// TRESSIAN OPERATOR
+  varf vT(defu(dum), defu(v))
+    = HomBoundaryConditions(sym, dum);
