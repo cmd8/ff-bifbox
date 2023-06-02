@@ -315,10 +315,10 @@ while (count < maxcount){
       if(mpirank == 0) cout << "\tSign change detected. Orientation reversed." << endl;
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       real[int] Mq = vM(0, XMh, tgv = -10);
-      real Mnorm = sqrt(J(um[], Mq));
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
       ChangeNumbering(J, um[], qm, inverse = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
+      real Mnorm = sqrt(J(um[], Mq));
       um[] /= Mnorm; // so that <um[],M*um[]> = 1
       uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
       savefold(fileout + "_" + count + "signswitch", "", meshout, true, true);
@@ -432,10 +432,10 @@ while (count < maxcount){
     updatelambda(param2, lambda2);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     real[int] Mq = vM(0, XMh, tgv = -10);
-    real Mnorm = sqrt(J(um[], Mq));
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
     ChangeNumbering(J, uma[], qma, inverse = true);
+    real Mnorm = sqrt(J(um[], Mq));
     um[] /= Mnorm; // so that <um[],M*um[]> = 1
     uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
     savefold(fileout + "_" + count, fileout, meshout, (count % savecount == 0), true);

@@ -342,10 +342,10 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   updatelambda(param, lambda);
   ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
   complex[int] Mq = vM(0, XMh, tgv = -10);
-  complex Mnorm = sqrt(J(um[], Mq));
-    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
+  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
   ChangeNumbering(J, um[], qm, inverse = true);
   ChangeNumbering(J, uma[], qma, inverse = true);
+  complex Mnorm = sqrt(J(um[], Mq));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
   uma[] *= conj(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
   if(mpirank==0 && adapt) { // Save adapted mesh
