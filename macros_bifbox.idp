@@ -81,7 +81,7 @@ ratio = getARGV("-ratio",1.8),
 anisomax = getARGV("-anisomax",1.0),
 rescaling = bool(getARGV("-rescaling", 1)),
 power = getARGV("-power", 1.0),
-thetamax = getARGV("-thmax", 10.0)
+thetamax = getARGV("-thetamax", 10.0)
 //EOM
 
 // FUNCTIONS -------------------------------------------------------------------
