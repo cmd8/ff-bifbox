@@ -332,7 +332,7 @@ SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_linesearch_typ
                                                         + " -snes_monitor -snes_converged_reason "
                                                         );
 if (ret > 0) { // Save solution if solver converged and output file is given
-  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, excahnge = true);
+  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true);
   if(mpirank == 0) {
     lambda = real(qa(qa.n-2));
     omega = zerofreq ? 0.0 : real(qa(qa.n-1)); // Extract frequency value from state vector on proc 0
