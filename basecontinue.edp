@@ -124,10 +124,10 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta;
         if(mpirank == 0) dlambda = lambda - qap(qap.n-1); // Extract parameter value from state vector on proc 0
         broadcast(processor(0), dlambda);
         real[int] qdiff  = qa(0:qa.n - (mpirank == 0 ? 2 : 1)) - qap(0:qap.n - (mpirank == 0 ? 2 : 1));
-        ChangeNumbering(J, R, qdiff, inverse = true, exchange = false);
+        ChangeNumbering(J, R, qdiff, inverse = true);
         delta = sqrt(J(R, R) + dlambda^2); // distance to curve
-        ChangeNumbering(J, R, yqP0, inverse = true, exchange = false);
-        ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
+        ChangeNumbering(J, R, yqP0, inverse = true);
+        ChangeNumbering(J, yb[], yqP, inverse = true);
         alpha = (J(R, yb[]) + 1.0)/sqrt((J(R, R) + 1.0)*(J(yb[], yb[]) + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
@@ -189,7 +189,7 @@ broadcast(processor(0), lambda);
 }
 while (count < maxcount){
   real[int] qa0 = qa;
-  ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false); // PETSc to FreeFEM
+  ChangeNumbering(J, yb[], yqP, inverse = true); // PETSc to FreeFEM
   real h = h0/sqrt(J(yb[] ,yb[]) + 1.0); // use FreeFEM numbering here
   qa(0:qa.n - (mpirank == 0 ? 2 : 1)) -= (h*yqP);
   if (mpirank == 0) {
@@ -222,11 +222,11 @@ while (count < maxcount){
     }
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = false);
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
       if(mpirank == 0) lambda = qa(qa.n-1);
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
-      ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
+      ChangeNumbering(J, yb[], yqP, inverse = true);
       XMhg defu(uG), defu(yG), defu(tempu);
       for[i, v : restu] tempu[][v] = ub[][i];
       mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);

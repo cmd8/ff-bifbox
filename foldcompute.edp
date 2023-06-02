@@ -159,18 +159,18 @@ real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       real[int] Jl = vR(0, XMh, tgv = -1);
       real[int] Hl = vJ(0, XMh, tgv = -10);
       updatelambda(param, lambda);
-      real[int] temp, a0 = vR(0, XMh, tgv = -1);
+      real[int] tempP, a0 = vR(0, XMh, tgv = -1);
       Jl -= a0;
       Jl /= eps;
       a0 = vJ(0, XMh, tgv = -10);
       Hl -= a0;
       Hl /= eps;
-      ChangeNumbering(J, Jl, temp); // FreeFEM to PETSc
-      matrix tempPms = [[temp]]; // dense array to sparse matrix
+      ChangeNumbering(J, Jl, tempP); // FreeFEM to PETSc
+      matrix tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       H = vH(XMh, XMh, tgv = -10);
-      MatMultTranspose(H, qma, temp);
-      tempPms = [[temp]]; // dense array to sparse matrix
+      MatMultTranspose(H, qma, tempP);
+      tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       tempPms = [[J(uma[], Hl)]]; // dense array to sparse matrix
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
@@ -187,7 +187,7 @@ if(mpirank == 0) {
   qa.resize(qa.n + 1);
   qa(qa.n - 1) = lambda;
 }
-if (fileext == "fold"){
+if (fileext != "fold"){
   updatelambda(param, lambda + eps);
   real[int] Jl = vR(0, XMh, tgv = -1);
   updatelambda(param, lambda);
@@ -214,10 +214,11 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   if(mpirank == 0) lambda = qa(qa.n - 1);
   broadcast(processor(0), lambda);
   updatelambda(param, lambda);
-  ChangeNumbering(J, ub[], q, inverse = true);
+  ChangeNumbering(J, ub[], q, inverse = true, exchange = true);
   ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
   real[int] Mq = vM(0, XMh, tgv = -10);
   real Mnorm = sqrt(J(um[], Mq));
+  ChangeNumbering(J, ub[], q, inverse = true);
   ChangeNumbering(J, um[], qm, inverse = true);
   ChangeNumbering(J, uma[], qma, inverse = true);
   um[] /= Mnorm; // so that <um[],M*um[]> = 1

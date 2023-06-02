@@ -363,7 +363,7 @@ while (count < maxcount){
     h0 /= f;
     if (alpha < 0) {
       h0 *= -1.0;
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
       if(mpirank == 0) {
         lambda1 = real(qa(qa.n-3));
         omega = real(qa(qa.n-2));
@@ -378,6 +378,7 @@ while (count < maxcount){
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       complex[int] Mq = vM(0, XMh, tgv = -10);
       complex Mnorm = sqrt(J(um[], Mq));
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
       ChangeNumbering(J, um[], qm, inverse = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
       um[] /= Mnorm; // so that <um[],M*um[]> = 1
@@ -386,7 +387,7 @@ while (count < maxcount){
     }
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = false);
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
       if(mpirank == 0) {
         lambda1 = real(qa(qa.n-3));
         omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
@@ -399,7 +400,7 @@ while (count < maxcount){
       updatelambda(param2, lambda2);
       ChangeNumbering(J, um[], qm, inverse = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      ChangeNumbering(J, yb[], yqP, inverse = true, exchange = false);
+      ChangeNumbering(J, yb[], yqP, inverse = true);
       XMhg defu(uG), defu(umrG), defu(umiG), defu(umarG), defu(umaiG), defu(yG), defu(tempu);
       for[i, v : restu] tempu[][v] = real(ub[][i]);
       mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
@@ -492,7 +493,7 @@ while (count < maxcount){
         savemesh(Thg, workdir + meshout);
       }
     }
-    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
+    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
     if(mpirank == 0) {
       lambda1 = real(qa(qa.n-3));
       omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
@@ -506,6 +507,7 @@ while (count < maxcount){
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     complex[int] Mq = vM(0, XMh, tgv = -10);
     complex Mnorm = sqrt(J(um[], Mq));
+    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
     ChangeNumbering(J, uma[], qma, inverse = true);
     um[] /= Mnorm; // so that <um[],M*um[]> = 1

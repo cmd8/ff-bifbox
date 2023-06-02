@@ -303,7 +303,7 @@ while (count < maxcount){
     h0 /= f;
     if (alpha < 0) {
       h0 *= -1.0;
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true);
       if(mpirank == 0) {
         lambda1 = qa(qa.n-2);
         lambda2 = qa(qa.n-1);
@@ -316,6 +316,7 @@ while (count < maxcount){
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       real[int] Mq = vM(0, XMh, tgv = -10);
       real Mnorm = sqrt(J(um[], Mq));
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
       ChangeNumbering(J, um[], qm, inverse = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
       um[] /= Mnorm; // so that <um[],M*um[]> = 1
@@ -420,7 +421,7 @@ while (count < maxcount){
         savemesh(Thg, workdir + meshout);
       }
     }
-    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
+    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true);
     if(mpirank == 0) {
       lambda1 = qa(qa.n-2);
       lambda2 = qa(qa.n-1);
@@ -432,6 +433,7 @@ while (count < maxcount){
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     real[int] Mq = vM(0, XMh, tgv = -10);
     real Mnorm = sqrt(J(um[], Mq));
+    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
     ChangeNumbering(J, uma[], qma, inverse = true);
     um[] /= Mnorm; // so that <um[],M*um[]> = 1

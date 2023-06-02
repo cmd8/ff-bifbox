@@ -76,8 +76,7 @@ createMatu(Th, J, Pk);
 int sym = 0;
 real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp" // load equations
-set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
-real[int] q;
+
 // MESH ADAPTATION
 bool adapt = false;
 if(meshout == "") meshout = meshin; // if no adaptation
@@ -85,6 +84,7 @@ else { // if output meshfile is given, adapt mesh
   adapt = true;
   meshout = meshout + "." + meshext;
   XMhg defu(uG), defu(tempu); // create private global FE functions
+  real[int] q;
   ChangeNumbering(J, ub[], q);
   ChangeNumbering(J, ub[], q, inverse = true);
   for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
@@ -97,13 +97,13 @@ else { // if output meshfile is given, adapt mesh
   Mat Adapt;
   createMatu(Th, Adapt, Pk); // Partition new mesh and update the PETSc numbering
   J = Adapt;
-  set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
   defu(ub) = initu(0.0); // set local values to zero
   restu.resize(ub[].n); // Change size of restriction operator
   restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
   ub[] = uG[](restu); //restrict global solution to each local mesh
-  q.resize(J.n);  // Resize state vector
 }
+set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
+real[int] q;
 ChangeNumbering(J, ub[], q);
 // Function to build residual operator in PETSc numbering
 func real[int] funcR(real[int]& qPETSc) {
