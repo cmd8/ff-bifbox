@@ -197,7 +197,6 @@ if (fileext != "fold"){
   J = vJ(XMh, XMh, tgv = -1);
   ChangeNumbering(J, Jl, pP);
   KSPSolve(J, pP, qP);
-  KSPSolveTranspose(J, qP, pP);
 }
 else {
   ChangeNumbering(J, uma[], pP);
@@ -210,17 +209,16 @@ SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_linesearch_typ
                                                         + " -snes_monitor -snes_converged_reason "
                                                         );
 if (ret > 0) { // Save solution if solver converged and output file is given
-  real[int] q = qa(0:qa.n - (mpirank == 0 ? 2 : 1));
+  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true);
   if(mpirank == 0) lambda = qa(qa.n - 1);
   broadcast(processor(0), lambda);
   updatelambda(param, lambda);
-  ChangeNumbering(J, ub[], q, inverse = true, exchange = true);
   ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
   real[int] Mq = vM(0, XMh, tgv = -10);
-  real Mnorm = sqrt(J(um[], Mq));
-  ChangeNumbering(J, ub[], q, inverse = true);
+  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
   ChangeNumbering(J, um[], qm, inverse = true);
   ChangeNumbering(J, uma[], qma, inverse = true);
+  real Mnorm = sqrt(J(um[], Mq));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
   uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
   if(mpirank==0 && adapt) { // Save adapted mesh
