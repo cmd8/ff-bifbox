@@ -79,5 +79,41 @@ mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -dir $workdir -fi swirljet100_F.f
 
 7. Continue the neutral fold curve in the (1/Re,S)-plane with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 foldcontinue.edp -dir $workdir -fi swirljet100_B.fold -fo swirljet -mo swirljet -adaptto bda -param1 1/Re -param2 S -h0 1 -scount 2
+mpirun -n 4 FreeFem++-mpi -v 0 foldcontinue.edp -dir $workdir -fi swirljet100_B.fold -fo swirljet -mo swirljetfold -adaptto bda -thetamax 1 -param1 1/Re -param2 S -h0 4 -scount 4 -maxcount 32
+```
+
+### Unsteady 3D dynamics
+8. Compute base state at Re = 133, S = 1.8 with guess from Re = 100 continuation along S
+```
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi swirljet_10.base -fo swirljet1p8 -1/Re 0.0075 -S 1.8
+```
+
+9. Compute leading |m| = 1 and |m| = 2 eigenvalues
+```
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m1 -eps_target 0.1-0.8i -sym -1
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m2 -eps_target 0.1+0.4i -sym -2
+```
+
+10. Compute Hopf bifurcation points
+```
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljet1p8m1_0.mode -fo swirljetm1 -param 1/Re
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljet1p8m2_0.mode -fo swirljetm2 -param 1/Re
+```
+
+11. Adapt the mesh to the critical base/direct/adjoint solutions, save .vtu files for Paraview
+```
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljetm1.hopf -fo swirljetm1 -param 1/Re -mo swirljetm1 -adaptto bda -pv 1 -thetamax 1
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljetm2.hopf -fo swirljetm2 -param 1/Re -mo swirljetm2 -adaptto bda -pv 1 -thetamax 1
+```
+
+12. Compute 2nd-order weakly-nonlinear analysis, save .vtu files for Paraview
+```
+mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi swirljetm1.hopf -fo swirljetm1 -param 1/Re -pv 1
+mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi swirljetm2.hopf -fo swirljetm2 -param 1/Re -pv 1
+```
+
+13. Continue the neutral Hopf curves in the (1/Re,S)-plane with adaptive remeshing
+```
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi swirljetm1.hopf -fo swirljetm1 -mo swirljetm1hopf -adaptto bda -thetamax 1 -param1 1/Re -param2 S -h0 4 -scount 4 -maxcount 12
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi swirljetm2.hopf -fo swirljetm2 -mo swirljetm2hopf -adaptto bda -thetamax 1 -param1 1/Re -param2 S -h0 4 -scount 4 -maxcount 12
 ```
