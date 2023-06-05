@@ -111,7 +111,6 @@ string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
-real snesdivergencetolerance = getARGV("-snes_divergence_tolerance", 1.0e30);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym;
 real omega;
@@ -316,19 +315,15 @@ if(mpirank == 0) {
   qa(qa.n-1) = omega;
 }
 ChangeNumbering(J, um[], qP);
-if (fileext != "hopf"){
-  iomega = 1i*omega;
-  ik = 1i*real(sym);
-  J = vJ(XMh, XMh, tgv = -1);
-  KSPSolveHermitianTranspose(J, qP, pP);
-}
-else {
-  ChangeNumbering(J, uma[], pP);
+{
+  um[].re = J.D;
+  um[].im = 0.0;
+  complex[int] pFF = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, pFF, pP);
 }
 // solve nonlinear problem with SNES
 int ret;
 SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_linesearch_type " + sneslinesearchtype
-                                                        + " -snes_divergence_tolerance " + snesdivergencetolerance
                                                         + " -snes_monitor -snes_converged_reason "
                                                         );
 if (ret > 0) { // Save solution if solver converged and output file is given

@@ -102,7 +102,7 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       complex[int] Ra, R = vR(0, XMh, tgv = -1);
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       iomega = 1i*omega;
-      ik = 1i*real(m);
+      ik = 1i*real(sym);
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
       KSPSolveHermitianTranspose(J, qP, qma);
@@ -324,6 +324,10 @@ if(mpirank == 0) {
   }
   broadcast(processor(0), yl1);
   broadcast(processor(0), yw);
+  um[].re = J.D;
+  um[].im = 0.0;
+  complex[int] pFF = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, pFF, pP);
 }
 yqP0 = yqP;
 yl10 = yl1;
@@ -470,8 +474,11 @@ while (count < maxcount){
       ChangeNumbering(J, um[], qm);
       qma.resize(J.n);
       ChangeNumbering(J, uma[], qma);
-      pP.resize(J.n);
-      pP = qma;
+      pP.resize(J.n);      
+      um[].re = J.D;
+      um[].im = 0.0;
+      complex[int] pFF = vM(0, XMh, tgv = -10);
+      ChangeNumbering(J, pFF, pP);
       qP.resize(J.n);
       qP = qm;
       yqP.resize(J.n);
@@ -515,7 +522,10 @@ while (count < maxcount){
     savehopf(fileout + "_" + count, fileout, meshout, sym, omega, (count % savecount == 0), true);
     yqP0 = yqP;
     qP = qm;
-    pP = qma;
+    um[].re = J.D;
+    um[].im = 0.0;
+    complex[int] pFF = vM(0, XMh, tgv = -10);
+    ChangeNumbering(J, pFF, pP);
     yl10 = yl1;
     yw0 = yw;
   }
