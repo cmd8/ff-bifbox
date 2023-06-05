@@ -198,9 +198,11 @@ if (fileext != "fold"){
   ChangeNumbering(J, Jl, pP);
   KSPSolve(J, pP, qP);
 }
-else {
-  ChangeNumbering(J, uma[], pP);
-  ChangeNumbering(J, um[], qP);
+else ChangeNumbering(J, um[], qP);
+{
+  um[] = J.D;
+  real[int] pFF = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, pFF, pP);
 }
 // solve nonlinear problem with SNES
 int ret;
