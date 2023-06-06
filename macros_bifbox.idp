@@ -423,7 +423,7 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
   }
 }//EOM
 
-macro savewnl2(wnlfileout, hopffile, meshfile, sym, omega, linear, cubic, saveflag){
+macro savewnl2(wnlfileout, hopffile, meshfile, sym, omega, alpha, beta, saveflag){
   if (saveflag){
     XMhg<complex> defu(tempu), defu(umg), defu(um2g), defu(um3g);
     for[i, v : restu] tempu[][v] = um[][i];
@@ -434,7 +434,7 @@ macro savewnl2(wnlfileout, hopffile, meshfile, sym, omega, linear, cubic, savefl
     mpiAllReduce(tempu[], um3g[], mpiCommWorld, mpiSUM);
     if (mpirank == 0 && wnlfileout != ""){
       cout << "  Saving '" + wnlfileout + ".wnl2' over '" + hopffile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
-      cout << "\tsym = " + sym + ", omega = " + (omega) + ", linear = " + (linear) + ", cubic = " + (cubic);
+      cout << "\tsym = " + sym + ", omega = " + (omega) + ", alpha = " + (alpha) + ", beta = " + (beta);
       if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
       cout << "." << endl;
       {
@@ -444,8 +444,8 @@ macro savewnl2(wnlfileout, hopffile, meshfile, sym, omega, linear, cubic, savefl
         file << "file\t" << hopffile << endl;
         file << "sym\t" << sym << endl;
         file << "omega\t" << omega << endl;
-        file << "linear\t" << linear << endl;
-        file << "cubic\t" << cubic << endl;
+        file << "alpha\t" << alpha << endl;
+        file << "beta\t" << beta << endl;
         if(paramnames[0] != ""){
           for (int k = 0; k < paramnames.n; ++k){
             file << paramnames[k] << "\t" << params[paramnames[k]] << endl;

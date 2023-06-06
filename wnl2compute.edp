@@ -1,9 +1,19 @@
 //
-// wnlcompute.edp
+// wnl2compute.edp
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
-
+// This script computes the normal form at a Hopf point.
+// The normal form is written for the complex amplitude Z = A*exp(1i*omega*t) as:
+//    dZ/dt = Z*( alpha*(lambda - lambda0) + 1i*omega + beta*|Z|^2 )
+// where:
+//    alpha is the coefficient for the linear term from parameter changes,
+//    beta is the coefficient for the cubic term from harmonic interactions.
+// Using this convention, the bifurcation is supercritical for beta < 0, and
+// subcritical for beta > 0.
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
 load "iovtk"
 load "PETSc-complex"
 include "settings.idp"
@@ -49,6 +59,7 @@ set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPpara
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
   uma[] *= conj(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
 }
+complex[int] qDa(J.n), qAAs(J.n), qAA(J.n);
 // 2nd-order
 //  A: base modification due to parameter change
 ik = 0.0;
@@ -61,11 +72,11 @@ J = vJ(XMh, XMh, tgv = -1);
 updatelambda(param, lambda + eps);
 complex[int] tempP, temp = vR(0, XMh, tgv = -1);
 updatelambda(param, lambda);
-{ complex[int] temp1 = vR(0, XMh, tgv = -1); temp -= temp1; }
+complex[int] temp1 = vR(0, XMh, tgv = -1);
+temp -= temp1;
 temp /= -eps;
 ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
-complex[int] q21(J.n);
-KSPSolve(J, tempP, q21);
+KSPSolve(J, tempP, qDa);
 //  B: base modification due to quadratic nonlinear interaction
 ik = 1i*real(mm);
 ik2 = -ik;
@@ -76,8 +87,7 @@ temp = vH(0, XMh, tgv = -10);
 temp.re *= -1.0; // -2.0/2.0
 temp.im = 0.0;
 ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
-complex[int] q2AAs(J.n);
-KSPSolve(J, tempP, q2AAs);
+KSPSolve(J, tempP, qAAs);
 //  C: harmonic generation due to quadratic nonlinear interaction
 ik = 1i*real(mm);
 ik2 = ik;
@@ -91,8 +101,7 @@ ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
 ik = 2i*real(mm);
 iomega = 2i*omega;
 J = vJ(XMh, XMh, tgv = -1);
-complex[int] q2AA(J.n);
-KSPSolve(J, tempP, q2AA);
+KSPSolve(J, tempP, qAA);
 // 3rd-order
 //  A: fundamental modification due to parameter change and quadratic interaction of fundamental with 2nd order modification A.
 sym = mm;
@@ -103,11 +112,12 @@ iomega2 = 0.0;
 updatelambda(param, lambda + eps);
 temp = vJ(0, XMh, tgv = -10);
 updatelambda(param, lambda);
-{ complex[int] temp1 = vJ(0, XMh, tgv = -10); temp -= temp1; }
+temp1 = vJ(0, XMh, tgv = -10);
+temp -= temp1;
 temp /= eps;
-ChangeNumbering(J, um2[], q21, inverse = true, exchange = true); // FreeFEM to PETSc
+ChangeNumbering(J, um2[], qDa, inverse = true, exchange = true); // FreeFEM to PETSc
 temp += vH(0, XMh, tgv = -10); // 2.0/2.0
-complex Clambda = -J(uma[], temp);
+complex Calpha = -J(uma[], temp);
 //  B: fundamental modification due to cubic self-interaction of fundamental
 ik = 1i*real(sym);
 ik2 = 1i*real(sym);
@@ -124,7 +134,7 @@ ik = 1i*real(sym);
 ik2 = 0.0;
 iomega = 1i*omega;
 iomega2 = 0.0;
-ChangeNumbering(J, um2[], q2AAs, inverse = true, exchange = true); // FreeFEM to PETSc
+ChangeNumbering(J, um2[], qAAs, inverse = true, exchange = true); // FreeFEM to PETSc
 temp += vH(0, XMh, tgv = -10);
 //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
 ik = -1i*real(sym);
@@ -132,11 +142,11 @@ ik2 = 2i*real(sym);
 iomega = -1i*omega;
 iomega2 = 2i*omega;
 um[] = conj(um[]);
-ChangeNumbering(J, um2[], q2AA, inverse = true, exchange = true); // FreeFEM to PETSc
+ChangeNumbering(J, um2[], qAA, inverse = true, exchange = true); // FreeFEM to PETSc
 temp += vH(0, XMh, tgv = -10);
-complex Clandau = -J(uma[], temp);
+complex Cbeta = -J(uma[], temp);
 // Save output
-ChangeNumbering(J, um[], q21, inverse = true); // FreeFEM to PETSc
-ChangeNumbering(J, um2[], q2AAs, inverse = true); // FreeFEM to PETSc
-ChangeNumbering(J, um3[], q2AA, inverse = true); // FreeFEM to PETSc
-savewnl2(fileout, filein, meshin, mm, omega, Clambda, Clandau, true);
+ChangeNumbering(J, um[], qDa, inverse = true); // FreeFEM to PETSc
+ChangeNumbering(J, um2[], qAAs, inverse = true); // FreeFEM to PETSc
+ChangeNumbering(J, um3[], qAA, inverse = true); // FreeFEM to PETSc
+savewnl2(fileout, filein, meshin, mm, omega, Calpha, Cbeta, true);
