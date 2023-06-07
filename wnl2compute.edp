@@ -9,8 +9,8 @@
 // where:
 //    alpha is the coefficient for the linear term from parameter changes,
 //    beta is the coefficient for the cubic term from harmonic interactions.
-// Using this convention, the bifurcation is supercritical for beta < 0, and
-// subcritical for beta > 0.
+// Using this convention, the bifurcation is supercritical for real(beta) < 0,
+// and subcritical for real(beta) > 0.
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
