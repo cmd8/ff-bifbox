@@ -194,14 +194,23 @@ if (fileext != "fold"){
   Jl -= a0;
   Jl /= eps;
   J = vJ(XMh, XMh, tgv = -1);
-  ChangeNumbering(J, Jl, pP);
-  KSPSolve(J, pP, qP);
+  um[] = J^-1*Jl;
 }
-else ChangeNumbering(J, um[], qP);
 {
-  um[] = J.D;
-  real[int] pFF = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, pFF, pP);
+  real[int] Mq = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, Mq, qP);
+  if (fileext == "fold") {
+    um[] = uma[];
+    Mq = vM(0, XMh, tgv = -10);
+    ChangeNumbering(J, Mq, pP);
+  }
+  else {
+    ChangeNumbering(J, um[], qm);
+    KSPSolveTranspose(J, qm, pP);
+    ChangeNumbering(J, um[], pP, inverse = true, exchange = true);
+    Mq = vM(0, XMh, tgv = -10);
+    ChangeNumbering(J, Mq, pP);
+  }
 }
 // solve nonlinear problem with SNES
 int ret;

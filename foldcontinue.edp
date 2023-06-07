@@ -268,13 +268,15 @@ if(mpirank == 0) {
     yqP.resize(yqP.n-1);
   }
   broadcast(processor(0), yl1);
-  um[] = J.D;
-  real[int] pFF = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, pFF, pP);
+  ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+  a0 = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, a0, qP);
+  ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
+  a0 = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, a0, pP);
+  yqP0 = yqP;
+  yl10 = yl1;
 }
-yqP0 = yqP;
-yl10 = yl1;
-qP = qm;
 while (count < maxcount){
   real[int] qa0 = qa;
   ChangeNumbering(J, yb[], yqP, inverse = true); // PETSc to FreeFEM
@@ -400,12 +402,14 @@ while (count < maxcount){
       ChangeNumbering(J, um[], qm);
       qma.resize(J.n);
       ChangeNumbering(J, uma[], qma);
-      pP.resize(J.n);
-      um[] = J.D;
-      real[int] pFF = vM(0, XMh, tgv = -10);
-      ChangeNumbering(J, pFF, pP);
       qP.resize(J.n);
-      qP = qm;
+      ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+      real[int] Mq = vM(0, XMh, tgv = -10);
+      ChangeNumbering(J, Mq, qP);
+      pP.resize(J.n);
+      ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
+      Mq = vM(0, XMh, tgv = -10);
+      ChangeNumbering(J, Mq, pP);
       yqP.resize(J.n);
       ChangeNumbering(J, yb[], yqP);
       yqP0.resize(J.n);
@@ -443,11 +447,13 @@ while (count < maxcount){
     um[] /= Mnorm; // so that <um[],M*um[]> = 1
     uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
     savefold(fileout + "_" + count, fileout, meshout, (count % savecount == 0), true);
+    ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+    Mq = vM(0, XMh, tgv = -10);
+    ChangeNumbering(J, Mq, qP);
+    ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
+    Mq = vM(0, XMh, tgv = -10);
+    ChangeNumbering(J, Mq, pP);
     yqP0 = yqP;
-    qP = qm;
-    um[] = J.D;
-    real[int] pFF = vM(0, XMh, tgv = -10);
-    ChangeNumbering(J, pFF, pP);
     yl10 = yl1;
   }
   else {

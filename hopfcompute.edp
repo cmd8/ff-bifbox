@@ -26,39 +26,39 @@ RESIDUAL EVALUATION IN MINIMALLY AUGMENTED FORMULATION
  where g is the Hopf residual and v & w are the adjoint & direct eigenvectors.
  g, v, and w, can be found using minimially augmented systems:
  (For more details, see Govaerts, (2000), Ch. 4, particularly page 87.)
-       ┌           ┐┌   ┐   ┌   ┐
-       | -L     p0 || w |   | 0 |
-  (1)  |           ||   | = |   |
-       | q0'    0  || g |   | 1 |
-       └           ┘└   ┘   └   ┘
+       ┌                 ┐┌   ┐   ┌   ┐
+       | -L         M*p0 || w |   | 0 |
+  (1)  |                 ||   | = |   |
+       | (M*q0)'    0    || g |   | 1 |
+       └                 ┘└   ┘   └   ┘
  where q0, p0 are initial approximations of the direct & adjoint eigenvectors.
  This implies:
-      L*w = p0*g  and  q0'*w = 1
+     L*w = M*p0*g  and  (M*q0)'*w = 1
  so
-     w = L^-1*p0*g  and  g = 1.0/(q0'*L^-1*p0)
+     w = L^-1*M*p0*g  and  g = 1.0/((M*q0)'*L^-1*M*p0)
 
- At g = 0, we have L*w = 0 and q0'*w = 1.
+ At g = 0, we have L*w = 0 and (M*q0)'*w = 1.
 
  Similarly, we can find the adjoint eigenmode using the related system:
-                        ┌             ┐
-       ┌               ┐| -L       p0 |   ┌        ┐
-  (2)  |  v'   conj(h) ||             | = | 0    1 |
-       └               ┘| q0'     0   |   └        ┘
-                        └             ┘
+                        ┌                  ┐
+       ┌               ┐| -L          M*p0 |   ┌        ┐
+  (2)  |  v'   conj(h) ||                  | = | 0    1 |
+       └               ┘| (M*q0)'     0    |   └        ┘
+                        └                  ┘
  This implies:
-      v'*L = conj(h)*q0'  and  v'*p0 = 1
+      v'*L = conj(h)*(M*q0)'  and  v'*M*p0 = 1
    or, taking the complex conjugate transpose:
-        ┌           ┐┌   ┐   ┌   ┐
-        | -L'    q0 || v |   | 0 |
-  (2')  |           ||   | = |   |
-        | p0'    0  || h |   | 1 |
-        └           ┘└   ┘   └   ┘
+        ┌                 ┐┌   ┐   ┌   ┐
+        | -L'        M*q0 || v |   | 0 |
+  (2')  |                 ||   | = |   |
+        | (M*p0)'    0    || h |   | 1 |
+        └                 ┘└   ┘   └   ┘
  giving, equivalently,
-      L'*v = q0*h  and  p0'*v = 1
+     L'*v = M*q0*h  and  (M*p0)'*v = 1
  so
-     v = L'^-1*q0*h  and  h = 1.0/(p0'*L'^-1*q0)
+     v = L'^-1*M*q0*h  and  h = 1.0/((M*p0)'*L'^-1*M*q0)
 
- At h = 0, we have L'*v = 0 and p0'*v = 1, so v'*L = 0 and v'*p0 = 1.
+ At h = 0, we have L'*v = 0 and (M*p0)'*v = 1, so v'*L = 0 and v'*M*p0 = 1.
 
  It can be confirmed that g = conj(h) and that g = v'*L*w, h = w'*L'*v.
 
@@ -78,11 +78,11 @@ JACOBIAN CONSTRUCTION IN MINIMALLY AUGMENTED FORMULATION
 
  To determine the matrix entries, we differentiate Eq. (1) along each
  z in q, lambda, omega to find:
-       ┌           ┐┌       ┐   ┌         ┐
-       | -L     p0 || dw/dz |   | dL/dz*w |
-  (4)  |           ||       | = |         |
-       | q0'    0  || dg/dz |   | 0       |
-       └           ┘└       ┘   └         ┘
+       ┌                 ┐┌       ┐   ┌         ┐
+       | -L         M*p0 || dw/dz |   | dL/dz*w |
+  (4)  |                 ||       | = |         |
+       | (M*q0)'    0    || dg/dz |   | 0       |
+       └                 ┘└       ┘   └         ┘
  We now left-multiply Eq. (4) by [ v'   conj(h) ], finding due to Eq. (2) that:
 
   (5)  dg/dz = v'*dL/dz*w
@@ -314,12 +314,22 @@ if(mpirank == 0) {
   qa(qa.n-2) = lambda;
   qa(qa.n-1) = omega;
 }
-ChangeNumbering(J, um[], qP);
 {
-  um[].re = J.D;
-  um[].im = 0.0;
-  complex[int] pFF = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, pFF, pP);
+  complex[int] Mq = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, Mq, qP);
+  if (fileext == "hopf") {
+    um[] = uma[];
+    Mq = vM(0, XMh, tgv = -10);
+    ChangeNumbering(J, Mq, pP);
+  }
+  else {
+    J = vJ(XMh, XMh, tgv = -1);
+    ChangeNumbering(J, um[], qm);
+    KSPSolveHermitianTranspose(J, qm, pP);
+    ChangeNumbering(J, um[], pP, inverse = true, exchange = true);
+    Mq = vM(0, XMh, tgv = -10);
+    ChangeNumbering(J, Mq, pP);
+  }
 }
 // solve nonlinear problem with SNES
 int ret;
