@@ -61,7 +61,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi swirljet_10.bas
 
 4. Continue base state at Re = 100 along the parameter S with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi swirljet100.base -fo swirljet100 -param S -h0 1 -scount 5 -maxcount 100 -mo swirljet100 -thetamax 1
+mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi swirljet100.base -fo swirljet100 -param S -h0 5 -scount 5 -maxcount 100 -mo swirljet100 -thetamax 1
 ```
 
 5. Compute backward and forward fold bifurcations from steady solution branch on base-adapted mesh

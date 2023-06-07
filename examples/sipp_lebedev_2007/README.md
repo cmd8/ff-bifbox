@@ -92,4 +92,4 @@ mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity.hopf -fo
 mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -param 1/Re -pv 1
 mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cavity.hopf -fo cavity -param 1/Re -pv 1
 ```
-NOTE: the normalizations for the direct and adjoint eigenmodes (and therefore also the weakly-nonlinear corrections) used by `ff-bifbox` is different than the normalizations used by Sipp and Lebedev. This causes the results to differ by a scaling factor.
+NOTE: the normalizations for the direct and adjoint eigenmodes (and therefore also the weakly-nonlinear corrections) used by `ff-bifbox` is different than the normalizations used by Sipp and Lebedev. This causes the results to differ by a scaling factor. Further, the sign of the Stuart-Landau coefficients in Sipp and Lebedev JFM (2007) are opposite to those in the normal form used in `wnl2compute.edp`.
