@@ -28,7 +28,7 @@ IFMACRO(formulation,lowmach)
   macro pressure()1//EOM
 ENDIFMACRO
 IFMACRO(formulation,comp)
-  string[int] paramnames = ["Re","Pe","Ma","ga","a"]; // set parameter names
+  string[int] paramnames = ["Re","Pr","Ma","ga","a"]; // set parameter names
   string[int] monitornames = [""]; // set monitor names
   macro temperature()1//EOM
   macro density()1//EOM
