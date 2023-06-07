@@ -423,18 +423,31 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
   }
 }//EOM
 
-macro savewnl2(wnlfileout, hopffile, meshfile, sym, omega, alpha, beta, saveflag){
+macro savewnl2(wnlfileout, hopffile, meshfile, q2param, sym, omega, alpha, beta, saveflag){
   if (saveflag){
     XMhg<complex> defu(tempu), defu(umg), defu(um2g), defu(um3g);
-    for[i, v : restu] tempu[][v] = um[][i];
-    mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
+    XMhg<complex>[int] defu(umgparam)(paramnames.n);
+    if(paramnames[0] != ""){
+      for (int k = 0; k < paramnames.n; ++k){
+        um[] = q2param[k][];
+        for[i, v : restu] tempu[][v] = um[][i];
+        mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
+        umgparam[k][] = umg[];
+      }
+    }
     for[i, v : restu] tempu[][v] = um2[][i];
     mpiAllReduce(tempu[], um2g[], mpiCommWorld, mpiSUM);
     for[i, v : restu] tempu[][v] = um3[][i];
     mpiAllReduce(tempu[], um3g[], mpiCommWorld, mpiSUM);
     if (mpirank == 0 && wnlfileout != ""){
       cout << "  Saving '" + wnlfileout + ".wnl2' over '" + hopffile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
-      cout << "\tsym = " + sym + ", omega = " + (omega) + ", alpha = " + (alpha) + ", beta = " + (beta);
+      cout << "\tsym = " + sym + ", omega = " + (omega);
+      if(paramnames[0] != ""){
+        for (int k = 0; k < paramnames.n; ++k){
+          cout << ", alpha[" + paramnames[k] + "] = " + alpha[paramnames[k]];
+        }
+      }
+       cout << ", beta = " + (beta);
       if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
       cout << "." << endl;
       {
@@ -444,27 +457,41 @@ macro savewnl2(wnlfileout, hopffile, meshfile, sym, omega, alpha, beta, saveflag
         file << "file\t" << hopffile << endl;
         file << "sym\t" << sym << endl;
         file << "omega\t" << omega << endl;
-        file << "alpha\t" << alpha << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << "alpha[" + paramnames[k] + "]" << alpha[paramnames[k]] << endl;
+          }
+        }
         file << "beta\t" << beta << endl;
         if(paramnames[0] != ""){
           for (int k = 0; k < paramnames.n; ++k){
             file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
           }
         }
-        file << umg[] << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << umgparam[k][] << endl;
+          }
+        }
         file << um2g[] << endl;
         file << um3g[] << endl;
       }
       if (paraviewflag > 0){
-        cout << "  Saving '" + wnlfileout + "_wnl2_[param,mean,harm].vtu' in '" + workdir + "'." << endl;
+        cout << "  Saving '" + wnlfileout + "_wnl2_[param[:],mean,harm].vtu' in '" + workdir + "'." << endl;
         if (paraviewflag > 1){
           meshN Thgs = trunc(Thg, 1, split = paraviewflag);
           fespace XMhs(Thgs, Pk);
-          XMhs<complex> defu(ums) = defu(umg);
+          XMhs<complex> defu(ums);
           XMhs defu(usr), defu(usi);
-          usr[] = ums[].re;
-          usi[] = ums[].im;
-          savevtk(workdir + wnlfileout + "_wnl2_param.vtu", Thgs, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+          if(paramnames[0] != ""){
+            for (int k = 0; k < paramnames.n; ++k){
+              umg[] = umgparam[k][];
+              defu(ums) = defu(umg);
+              usr[] = ums[].re;
+              usi[] = ums[].im;
+              savevtk(workdir + wnlfileout + "_wnl2_param[" + k + "].vtu", Thg, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+            }
+          }
           defu(ums) = defu(um2g);
           usr[] = ums[].re;
           usi[] = ums[].im;
@@ -476,9 +503,14 @@ macro savewnl2(wnlfileout, hopffile, meshfile, sym, omega, alpha, beta, saveflag
         }
         else {
           XMhg defu(usr), defu(usi);
-          usr[] = umg[].re;
-          usi[] = umg[].im;
-          savevtk(workdir + wnlfileout + "_wnl2_param.vtu", Thg, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+          if(paramnames[0] != ""){
+            for (int k = 0; k < paramnames.n; ++k){
+              umg[] = umgparam[k][];
+              usr[] = umg[].re;
+              usi[] = umg[].im;
+              savevtk(workdir + wnlfileout + "_wnl2_param[" + k + "].vtu", Thg, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+            }
+          }
           usr[] = um2g[].re;
           usi[] = um2g[].im;
           savevtk(workdir + wnlfileout + "_wnl2_mean.vtu", Thg, adaptu(usr), adaptu(usi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
