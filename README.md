@@ -76,7 +76,7 @@ Make sure you have access to a recent [FreeFEM](https://freefem.org/) installati
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-TODO
+See the [examples](https://github.com/cmd8/ff-bifbox/tree/main/examples) folder.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
