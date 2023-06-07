@@ -11,9 +11,6 @@
   <p align="center">
     A bifurcation analysis toolbox built for FreeFEM.
     <br />
-    <a href="https://github.com/cmd8/ff-bifbox"><strong>Explore the docs »</strong></a>
-    <br />
-    <br />
     <a href="https://github.com/cmd8/ff-bifbox/issues">Report Bug</a>
     ·
     <a href="https://github.com/cmd8/ff-bifbox/issues">Request Feature</a>
