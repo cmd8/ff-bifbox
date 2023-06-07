@@ -126,7 +126,6 @@ if(paramnames[0] != ""){
     ChangeNumbering(J, um2[], qDa(k, :), inverse = true, exchange = true); // FreeFEM to PETSc
     temp += vH(0, XMh, tgv = -10); // 2.0/2.0
     alpha[paramnames[k]] = -J(uma[], temp);
-    cout << "alpha[" + paramnames[k] + "] = " + alpha[paramnames[k]] << endl;
   }
 }
 //  B: fundamental modification due to cubic self-interaction of fundamental
