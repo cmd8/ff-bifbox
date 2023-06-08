@@ -84,13 +84,13 @@ mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder.hopf -
 
 4. Continue the neutral Hopf curve in the (1/Re,Ma^2)-plane with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -thetamax 5 -param1 Ma^2 -param2 1/Re -h0 -1 -scount 4 -maxcount 20
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -thetamax 5 -param1 Ma^2 -param2 1/Re -h0 -1 -scount 3 -maxcount 12
 ```
 
 ### Second order
 - Compute 2nd-order weakly-nonlinear analysis, save .vtu files for Paraview
 ```
 mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -pv 1
-mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cylinder_20.hopf -fo cylinder_20 -pv 1
+mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cylinder_12.hopf -fo cylinder_12 -pv 1
 ```
 NOTE: the signs and normalizations used in `wnl2compute.edp` are different than those of the Stuart-Landau coefficients in Sipp and Lebedev JFM (2007).
