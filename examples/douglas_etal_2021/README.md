@@ -90,8 +90,8 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi swirljet_10.bas
 
 9. Compute leading |m| = 1 and |m| = 2 eigenvalues
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m1 -eps_target 0.1-0.8i -sym -1
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m2 -eps_target 0.1+0.4i -sym -2
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m1 -so "" -eps_target 0.1-0.8i -sym -1
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m2 -so "" -eps_target 0.1+0.4i -sym -2
 ```
 
 10. Compute Hopf bifurcation points
