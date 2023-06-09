@@ -114,7 +114,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi swirljetm2.hopf
 
 13. Continue the neutral Hopf curves in the (1/Re,S)-plane with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi swirljetm1.hopf -fo swirljetm1 -mo swirljetm1hopf -adaptto bda -thetamax 1 -param1 1/Re -param2 S -h0 4 -scount 4 -maxcount 12
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi swirljetm1.hopf -fo swirljetm1 -mo swirljetm1hopf -adaptto bda -thetamax 1 -param1 1/Re -param2 S -h0 4 -scount 4 -maxcount 20
 mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi swirljetm2.hopf -fo swirljetm2 -mo swirljetm2hopf -adaptto bda -thetamax 1 -param1 1/Re -param2 S -h0 4 -scount 4 -maxcount 12
 ```
 
@@ -122,4 +122,10 @@ mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi swirljetm2.hop
 ```
 mpirun -n 4 FreeFem++-mpi -v 0 doublehopfcompute.edp -dir $workdir -fi1 swirljetm2.hopf -fi2 swirljetm1.hopf -fo1 swirljetm2double -fo2 swirljetm1double -param1 1/Re -param2 S
 mpirun -n 4 FreeFem++-mpi -v 0 doublehopfcompute.edp -dir $workdir -fi1 swirljetm2double.hopf -fi2 swirljetm1double.hopf -fo2 swirljetm2double -fo1 swirljetm1double -param1 1/Re -param2 S -mo swirljetm1m2double -adaptto bda -pv 1 -thetamax 1
+```
+
+15. Compute the zero-Hopf point where the |m| = 1 curve intersects the fold curve
+```
+mpirun -n 4 FreeFem++-mpi -v 0 zerohopfcompute.edp -dir $workdir -fi1 swirljetm1_20.hopf -fo1 swirljetm1zero -fo2 swirljetm1zero -param1 1/Re -param2 S
+mpirun -n 4 FreeFem++-mpi -v 0 zerohopfcompute.edp -dir $workdir -fi1 swirljetm1zero.hopf -fi2 swirljetm1zero.fold -fo1 swirljetm1zero -fo2 swirljetm1zero -param1 1/Re -param2 S -mo swirljetm1zero -adaptto bda -pv 1 -thetamax 1
 ```
