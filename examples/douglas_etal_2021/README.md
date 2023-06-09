@@ -126,6 +126,5 @@ mpirun -n 4 FreeFem++-mpi -v 0 doublehopfcompute.edp -dir $workdir -fi1 swirljet
 
 15. Compute the zero-Hopf point where the |m| = 1 curve intersects the fold curve
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 zerohopfcompute.edp -dir $workdir -fi1 swirljetm1_20.hopf -fo1 swirljetm1zero -fo2 swirljetm1zero -param1 1/Re -param2 S
-mpirun -n 4 FreeFem++-mpi -v 0 zerohopfcompute.edp -dir $workdir -fi1 swirljetm1zero.hopf -fi2 swirljetm1zero.fold -fo1 swirljetm1zero -fo2 swirljetm1zero -param1 1/Re -param2 S -mo swirljetm1zero -adaptto bda -pv 1 -thetamax 1
+mpirun -n 4 FreeFem++-mpi -v 0 zerohopfcompute.edp -dir $workdir -fi1 swirljetm1_20.hopf -fo swirljetm1zero -param1 S -param2 1/Re -snes_divergence_tolerance 1e10
 ```
