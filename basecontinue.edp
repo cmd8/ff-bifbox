@@ -54,9 +54,6 @@ if(count > 0) {
   fileroot = fileroot(0:fileroot.rfind("_" + count)-1); // get file root
   meshroot = meshroot(0:meshroot.rfind("_" + count)-1); // get file root
 }
-bool adapt = false;
-if(meshout == "") meshout = meshin; // if no adaptation
-else adapt = true;  // if output meshfile is given, adapt mesh
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
@@ -88,6 +85,9 @@ createMatu(Th, J, Pk);
 int sym = 0;
 real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
+bool adapt = false;
+if(meshout != "")  adapt = true;  // if output meshfile is given, adapt mesh
+meshout = meshin; // if no adaptation
 // Build bordered block matrix from only Mat components
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Ja = [[J,JlPM],[yqPM',-1.0]]; // make dummy Jacobian

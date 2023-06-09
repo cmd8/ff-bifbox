@@ -55,9 +55,6 @@ if(count > 0) {
   meshroot = meshroot(0:meshroot.rfind("_" + count)-1); // get file root
 }
 assert(fileext == "hopf");
-bool adapt = false;
-if(meshout == "") meshout = meshin; // if no adaptation
-else adapt = true;  // if output meshfile is given, adapt mesh
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
@@ -77,7 +74,9 @@ Mat<complex> J;
 createMatu(Th, J, Pk);
 complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
-
+bool adapt = false;
+if(meshout != "") adapt = true;  // if output meshfile is given, adapt mesh
+meshout = meshin; // if no adaptation
 // Build bordered block matrix from only Mat components
 Mat<complex> JlPM(J.n, mpirank == 0 ? 2 : 0), gqPM(J.n, mpirank == 0 ? 2 : 0), glPM(mpirank == 0 ? 2 : 0, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
 Mat<complex> JlPMa(J.n + (mpirank == 0 ? 2 : 0), mpirank == 0 ? 1 : 0), yqPMa(J.n + (mpirank == 0 ? 2 : 0), mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
