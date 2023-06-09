@@ -5,10 +5,10 @@
 //
 // EXAMPLE USAGE:
 //  Initialize with fold from file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -param1 <PARAM1> -param1 <PARAM2> -fi <FILEIN> -fo <FILEOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -param1 <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fo <FILEOUT>
 //
 //  Initialize with fold from file, adapt mesh/solution
-// mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -param1 <PARAM1> -param1 <PARAM2> -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -param1 <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //

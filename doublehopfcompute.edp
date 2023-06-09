@@ -1,14 +1,14 @@
 //
-// hopfcontinue.edp
+// doublehopfcompute.edp
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // EXAMPLE USAGE:
-//  Initialize with fold from file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -param1 <PARAM1> -param1 <PARAM2> -fi <FILEIN> -fo <FILEOUT>
+//  Initialize with two mode or hopf files, solve on same mesh
+// mpirun -n 4 FreeFem++-mpi -v 0 doublehopfcompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fi2 <FILEIN2> -fo1 <FILEOUT1> -fo2 <FILEOUT2>
 //
-//  Initialize with fold from file, adapt mesh/solution
-// mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -param1 <PARAM1> -param1 <PARAM2> -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
+//  Initialize with hopf from file, adapt mesh to solution
+// mpirun -n 4 FreeFem++-mpi -v 0 doublehopfcompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fi2 <FILEIN2> -fo1 <FILEOUT1> -fo2 <FILEOUT2> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
