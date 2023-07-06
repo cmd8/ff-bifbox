@@ -67,3 +67,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fo vortexm2 -fi vo
 mpirun -n 4 FreeFem++-mpi -v 0 doublehopfcompute.edp -dir $workdir -fo1 vortexm1 -fo2 vortexm2 -fi1 vortexm1_0.mode -fi2 vortexm2_0.mode -param1 S -param2 1/Re
 mpirun -n 4 FreeFem++-mpi -v 0 doublehopfcompute.edp -dir $workdir -fo1 vortexm1 -fo2 vortexm2 -fi1 vortexm1.hopf -fi2 vortexm2.hopf -param1 S -param2 1/Re -adaptto bda -mo vortexm1m2adapt
 ```
+4. Perform codim-2 weakly-nonlinear analysis
+```
+mpirun -n 4 FreeFem++-mpi -v 0 doublewnl2compute.edp -dir $workdir -fo1 vortexm1 -fo2 vortexm2 -fi1 vortexm1.hopf -fi2 vortexm2.hopf
+```
