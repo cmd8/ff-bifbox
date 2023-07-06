@@ -44,15 +44,26 @@ The number of processors is set using the `-n` argument from `mpirun`. Here, thi
 ### Steady axisymmetric dynamics
 1. Compute base states on the created mesh at Re = 200 from default guess
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi vortex.msh -fo vortex -Re 200 -S 0
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi vortex.msh -fo vortex -1/Re 0.005 -S 0
 ```
-
-2. Adapt mesh
-```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi vortex.base -fo vortex -mo vortexadapt
-```
-
-3. Continue base state along the parameter S with adaptive remeshing
+2. Continue base state along the parameter S with adaptive remeshing
 ```
 mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi vortex.base -fo vortex -param S -h0 1 -scount 4 -maxcount 40 -mo vortexadapt
+```
+
+### Unsteady 3-D dynamics
+1. Compute base state near the double Hopf point
+```
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi vortex.msh -fo vortexDH -1/Re 0.0139 -S 1
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi vortexDH.base -fo vortexDH -S 1.44
+```
+2. Compute near-critical modes
+```
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fo vortexm1 -fi vortexDH.base -sym -1 -eps_target 0+1i
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fo vortexm2 -fi vortexDH.base -sym -2 -eps_target 0+2i
+```
+3. Compute double-Hopf point
+```
+mpirun -n 4 FreeFem++-mpi -v 0 doublehopfcompute.edp -dir $workdir -fo1 vortexm1 -fo2 vortexm2 -fi1 vortexm1_0.mode -fi2 vortexm2_0.mode -param1 S -param2 1/Re
+mpirun -n 4 FreeFem++-mpi -v 0 doublehopfcompute.edp -dir $workdir -fo1 vortexm1 -fo2 vortexm2 -fi1 vortexm1.hopf -fi2 vortexm2.hopf -param1 S -param2 1/Re -adaptto bda -mo vortexm1m2adapt
 ```

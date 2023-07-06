@@ -9,12 +9,8 @@
 // term macros ------------------------------------------------------
   macro zeta(a, b) (0.5 + 0.5*tanh(4.0*tan(-0.5*pi+pi*abs((a)-(b))/50.0)))//EOM
 
-  macro Retilde() ((x <= 70.0 && y <= 10.0)*params["Re"]
-                   + (x > 70.0 && y <= 10.0)*(params["Re"] + (0.1 - params["Re"])*zeta(x, 70.0))
-                   + (y > 10.0)*((params["Re"] + (x > 70.0)*(0.1 - params["Re"])*zeta(x, 70.0)) + (0.1 - (params["Re"] + (x > 70.0)*(0.1 - params["Re"])*zeta(x, 70.0)))*zeta(y, 10.0)))//EOM
-
-  macro Retilde1()(params["Re"] + (x > 70.0)*(0.1 - params["Re"])*zeta(x, 70.0)
-                               + (y > 10.0)*((0.1 - (params["Re"] + (x > 70.0)*(0.1 - params["Re"])*zeta(x, 70.0)))*zeta(y, 10.0)))//EOM
+  macro Retilde()(1.0/params["1/Re"] + (x > 70.0)*(0.1 - 1.0/params["1/Re"])*zeta(x, 70.0)
+                               + (y > 10.0)*((0.1 - (1.0/params["1/Re"] + (x > 70.0)*(0.1 - 1.0/params["1/Re"])*zeta(x, 70.0)))*zeta(y, 10.0)))//EOM
 
   macro vdotu(v, u) ( y*(v*u + v#y*u#y + v#z*u#z) ) //EOM
 

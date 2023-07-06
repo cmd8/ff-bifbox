@@ -25,7 +25,7 @@ string fileout = getARGV("-fo", "");
 real eps = getARGV("-eps", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
-int sym;
+int sym, mm;
 real omega, lambda;
 
 string fileroot, meshroot;
@@ -41,7 +41,7 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
 XMh<complex>[int] defu(q2param)(paramnames.n);
-ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym, omega);
+ub[].re = loadhopf(fileroot, meshin, um[], uma[], mm, omega);
 // Create distributed Mat
 Mat<complex> J;
 createMatu(Th, J, Pk);
@@ -64,7 +64,6 @@ ik = 0.0;
 ik2 = 0.0;
 iomega = 0.0;
 iomega2 = 0.0;
-int mm = sym;
 sym = 0;
 J = vJ(XMh, XMh, tgv = -1);
 if(paramnames[0] != ""){
