@@ -76,8 +76,8 @@ NOTE: Here, the `-sym` argument specifies the asymmetric (1) or symmetric (0) re
 
 2. Compute the critical point and critical base/direct/adjoint solution
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder50_0.mode -fo cylinder -param 1/Re
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity4000_0.mode -fo cavity -param 1/Re
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder50_0.mode -fo cylinder -param 1/Re -nf 0
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity4000_0.mode -fo cavity -param 1/Re -nf 0
 ```
 
 3. Adapt the mesh to the critical solution, save .vtu files for Paraview

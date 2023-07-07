@@ -36,6 +36,8 @@ string pctype = getARGV("-pc_type", "lu");
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym, sym1, sym2;
 real omega, omega1, omega2;
+complex[string] alpha1, alpha2;
+complex beta1, beta2;
 
 // Load mesh, make FE basis
 string fileroot1, fileroot2, meshroot, basefileroot;
@@ -55,7 +57,7 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
 if (fileext2 == "hopf") {
-  ub[].re = loadhopf(fileroot2, meshin, um2[], um3[], sym2, omega2);
+  ub[].re = loadhopf(fileroot2, meshin, um2[], um3[], sym2, omega2, alpha2, beta2);
 }
 else if (fileext2 == "mode") {
   complex eigenvalue;
@@ -69,7 +71,7 @@ else if (fileext2 == "rslv") {
 }
 else assert(false); // invalid input filetype
 if (fileext1 == "hopf") {
-  ub[].re = loadhopf(fileroot1, meshin, um[], uma[], sym1, omega1);
+  ub[].re = loadhopf(fileroot1, meshin, um[], uma[], sym1, omega1, alpha1, beta1);
 }
 else if (fileext1 == "mode") {
   complex eigenvalue;
@@ -86,14 +88,18 @@ if (basefileext == "base") {
   ub[].re = loadbase(basefileroot, meshin);
 }
 else if(basefileext == "fold") {
+  real[string] alpha;
+  real beta;
   real[int] qm, qma;
-  ub[].re = loadfold(basefileroot, meshin, qm, qma);
+  ub[].re = loadfold(basefileroot, meshin, qm, qma, alpha, beta);
 }
 else if(basefileext == "hopf") {
   int sym;
   real omega;
+  complex[string] alpha;
+  complex beta;
   complex[int] qm, qma;
-  ub[].re = loadhopf(basefileroot, meshin, qm, qma, sym, omega);
+  ub[].re = loadhopf(basefileroot, meshin, qm, qma, sym, omega, alpha, beta);
 }
 else if(basefileext == "tdns") {
   real time;
@@ -442,7 +448,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshout);
   }
-  savehopf(fileout1, "", meshout, sym1, omega1, true, true);
+  savehopf(fileout1, "", meshout, sym1, omega1, alpha1, beta1, true, true);
   ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 5 : 1)), inverse = true, exchange = true);
   ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
   Mq = vM(0, XMh, tgv = -10);
@@ -452,5 +458,5 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   Mnorm = sqrt(J(um[], Mq));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
   uma[] *= conj(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
-  savehopf(fileout2, "", meshout, sym2, omega2, true, true);
+  savehopf(fileout2, "", meshout, sym2, omega2, alpha2, beta2, true, true);
 }

@@ -30,7 +30,7 @@ string adaptto = getARGV("-adaptto", "b");
 real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 0.5);
 real deltamax = getARGV("-dmax", 4.0);
-real alphamax = getARGV("-amax", 30.)*pi/180.0;
+real anglemax = getARGV("-amax", 30.)*pi/180.0;
 int monotone = getARGV("-mono", 1);
 real eps = getARGV("-eps", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
@@ -64,16 +64,20 @@ if(count == 0) {
     ub[] = loadbase(fileroot, meshin);
   }
   else if(fileext == "fold") {
+    real[string] alpha;
+    real beta;
     real[int] qm, qma;
-    ub[] = loadfold(fileroot, meshin, qm, qma);
+    ub[] = loadfold(fileroot, meshin, qm, qma, alpha, beta);
   }
   else if(fileext == "hopf") {
     int sym;
     real omega;
+    complex[string] alpha;
+    complex beta;
     complex[int] qm, qma;
-    ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega);
+    ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega, alpha, beta);
   }
-  if(mpirank == 0 && savecount > 0) printstats(fileout, filein, meshin, 0, 0, 0);
+  savebase(filein, (savecount > 0 ? fileout : ""), meshin, false, false);
 }
 else {
   ub[] = loadbase(fileroot + "_" + count, meshin);
@@ -94,7 +98,7 @@ Ja = [[J,JlPM],[yqPM',-1.0]]; // make dummy Jacobian
 
 real[int] yqP(J.n), qap(J.n + (mpirank == 0 ? 1 : 0)), yqP0(J.n);
 int it, internalit, adaptflag;
-real f, kappa, alpha, res, resp, delta, deltap, maxdelta;
+real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
@@ -115,7 +119,7 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta;
       if (it == 0){
         kappa = 0.0;
         maxdelta = 0.0;
-        alpha = 0.0;
+        cosalpha = 0.0;
         delta = abs(h0);
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param + " = " << lambda << "." << endl;
       }
@@ -128,12 +132,12 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta;
         delta = sqrt(J(R, R) + dlambda^2); // distance to curve
         ChangeNumbering(J, R, yqP0, inverse = true);
         ChangeNumbering(J, yb[], yqP, inverse = true);
-        alpha = (J(R, yb[]) + 1.0)/sqrt((J(R, R) + 1.0)*(J(yb[], yb[]) + 1.0));
+        cosalpha = (J(R, yb[]) + 1.0)/sqrt((J(R, R) + 1.0)*(J(yb[], yb[]) + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
-        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(alpha)*acos(abs(alpha))*180./pi) << ",\t" + param + " = " << lambda << "." << endl;
+        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(cosalpha)*acos(abs(cosalpha))*180./pi) << ",\t" + param + " = " << lambda << "." << endl;
       }
-      f = max(acos(abs(alpha))/alphamax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
+      f = max(acos(abs(cosalpha))/anglemax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
       if (it > 0 && !adaptflag && (f > fmax || it-1 >= snesmaxit || res*(monotone!=0) > resp)) Ra(0) = NaN();
       ++internalit;
       return Ra;
@@ -211,7 +215,7 @@ while (count < maxcount){
   if (ret > 0) {
     ++count;
     h0 /= f;
-    if (alpha < 0) {
+    if (cosalpha < 0) {
       h0 *= -1.0;
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
       if(mpirank == 0) lambda = qa(qa.n-1);
@@ -293,7 +297,7 @@ while (count < maxcount){
       if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;
       if(it >= snesmaxit) cout << "\tFailed to converge within limit of " + snesmaxit + " iterations. Reattempting with smaller step." << endl;
       if(maxdelta >= deltamax) cout << "\tStep size exceeds " << deltamax << "." << endl;
-      if(acos(abs(alpha)) >= alphamax) cout << "\tAngle exceeds " << (alphamax*180./pi) << " degrees." << endl;
+      if(acos(abs(cosalpha)) >= anglemax) cout << "\tAngle exceeds " << (anglemax*180./pi) << " degrees." << endl;
     }
     h0 /= fmax;
     qa = qa0;

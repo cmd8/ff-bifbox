@@ -31,7 +31,7 @@ string adaptto = getARGV("-adaptto","b");
 real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 1.0);
 real deltamax = getARGV("-dmax", 4.0);
-real alphamax = getARGV("-amax", 30.)*pi/180.0;
+real anglemax = getARGV("-amax", 30.)*pi/180.0;
 int monotone = getARGV("-mono", 0);
 real eps1 = getARGV("-eps1", 1e-7);
 real eps2 = getARGV("-eps2", 1e-7);
@@ -40,6 +40,8 @@ string pctype = getARGV("-pc_type", "lu");
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym;
+real[string] alpha;
+real beta;
 
 // Load mesh, make FE basis
 string fileroot, meshroot;
@@ -59,11 +61,11 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(um), defu(uma), defu(yb), defu(um2), defu(um3);
 if (count == 0){
-  ub[] = loadfold(fileroot, meshin, um[], uma[]);
-  if(mpirank == 0) printstats(fileout, filein, meshin, 0, 0, 0);
+  ub[] = loadfold(fileroot, meshin, um[], uma[], alpha, beta);
+  savefold(filein, (savecount > 0 ? fileout : ""), meshin, alpha, beta, false, false);
 }
 else {
-  ub[] = loadfold(fileroot + "_" + count, meshin, um[], uma[]);
+  ub[] = loadfold(fileroot + "_" + count, meshin, um[], uma[], alpha, beta);
 }
 real lambda1 = getlambda(param1);
 real lambda2 = getlambda(param2);
@@ -82,7 +84,7 @@ Mat H(J), Ja = [[J, JlPM], [gqPM', glPM]], Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; 
 
 real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 2 : 0));
 int it, internalit, adaptflag;
-real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
+real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
@@ -117,7 +119,7 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
       if (it == 0){
         kappa = 0.0;
         maxdelta = 0.0;
-        alpha = 0.0;
+        cosalpha = 0.0;
         delta = abs(h0);
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << "." << endl;
       }
@@ -134,12 +136,12 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
         delta = sqrt(J(R, R) + dlambda1^2 + dlambda2^2); // distance to curve
         ChangeNumbering(J, R, yqP0, inverse = true);
         ChangeNumbering(J, yb[], yqP, inverse = true);
-        alpha = (J(R, yb[]) + yl10*yl1 + 1.0)/sqrt((J(R, R) + yl10^2 + 1.0)*(J(yb[], yb[]) + yl1^2 + 1.0));
+        cosalpha = (J(R, yb[]) + yl10*yl1 + 1.0)/sqrt((J(R, R) + yl10^2 + 1.0)*(J(yb[], yb[]) + yl1^2 + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
-        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(alpha)*acos(abs(alpha))*180./pi) << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << "." << endl;
+        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(cosalpha)*acos(abs(cosalpha))*180./pi) << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << "." << endl;
       }
-      f = max(acos(abs(alpha))/alphamax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
+      f = max(acos(abs(cosalpha))/anglemax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
       if (it > 0 && !adaptflag && (f > fmax || it-1 >= snesmaxit || res*(monotone!=0) > resp)) Ra(0) = NaN();
       ++internalit;
       return Ra;
@@ -304,7 +306,7 @@ while (count < maxcount){
   if (ret > 0) {
     ++count;
     h0 /= f;
-    if (alpha < 0) {
+    if (cosalpha < 0) {
       h0 *= -1.0;
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true);
       if(mpirank == 0) {
@@ -324,7 +326,7 @@ while (count < maxcount){
       real Mnorm = sqrt(J(um[], Mq));
       um[] /= Mnorm; // so that <um[],M*um[]> = 1
       uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
-      savefold(fileout + "_" + count + "signswitch", "", meshout, true, true);
+      savefold(fileout + "_" + count + "signswitch", "", meshout, alpha, beta, true, true);
     }
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
@@ -445,7 +447,7 @@ while (count < maxcount){
     real Mnorm = sqrt(J(um[], Mq));
     um[] /= Mnorm; // so that <um[],M*um[]> = 1
     uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
-    savefold(fileout + "_" + count, fileout, meshout, (count % savecount == 0), true);
+    savefold(fileout + "_" + count, fileout, meshout, alpha, beta, (count % savecount == 0), true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     Mq = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, Mq, qP);
@@ -461,7 +463,7 @@ while (count < maxcount){
       if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;
       if(it >= snesmaxit) cout << "\tFailed to converge within limit of " + snesmaxit + " iterations. Reattempting with smaller step." << endl;
       if(maxdelta >= deltamax) cout << "\tStep size exceeds " << deltamax << "." << endl;
-      if(acos(abs(alpha)) >= alphamax) cout << "\tAngle exceeds " << (alphamax*180./pi) << " degrees." << endl;
+      if(acos(abs(cosalpha)) >= anglemax) cout << "\tAngle exceeds " << (anglemax*180./pi) << " degrees." << endl;
     }
     h0 /= fmax;
     qa = qa0;

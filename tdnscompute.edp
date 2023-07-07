@@ -56,20 +56,24 @@ if (count == 0){
     ub[] = loadbase(fileroot, meshin);
   }
   else if(fileext == "fold") {
+    real[string] alpha;
+    real beta;
     real[int] qm, qma;
-    ub[] = loadfold(fileroot, meshin, qm, qma);
+    ub[] = loadfold(fileroot, meshin, qm, qma, alpha, beta);
   }
   else if(fileext == "hopf") {
     int sym;
     real omega;
+    complex[string] alpha;
+    complex beta;
     complex[int] qm, qma;
-    ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega);
+    ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega, alpha, beta);
   }
   else if(fileext == "tdns") {
     real time;
     ub[] = loadtdns(fileroot, meshin, time);
   }
-  if(mpirank == 0 && savecount > 0) printstats(fileout, filein, meshin, 0, 0, 0);
+  savetdns(filein, (savecount > 0 ? fileout : ""), meshin, filein, time, false, false);
 }
 else {
   ub[] = loadtdns(fileroot + "_" + count, meshin, time);

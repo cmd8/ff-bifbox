@@ -21,6 +21,7 @@ string meshin = getARGV("-mi", ""); // input meshfile with extension
 string meshout = getARGV("-mo", "");
 string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", filein);
+bool normalform = getARGV("-nf", 1);
 bool zerofreq = getARGV("-zero", 0);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
@@ -32,7 +33,7 @@ string adaptto = getARGV("-adaptto", "b");
 real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 1.0);
 real deltamax = getARGV("-dmax", 4.0);
-real alphamax = getARGV("-amax", 30.)*pi/180.0;
+real anglemax = getARGV("-amax", 30.)*pi/180.0;
 int monotone = getARGV("-mono", 0);
 real eps1 = getARGV("-eps1", 1e-7);
 real eps2 = getARGV("-eps2", 1e-7);
@@ -42,6 +43,8 @@ int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym;
 real omega;
+complex[string] alpha;
+complex beta;
 
 // Load mesh, make FE basis
 string fileroot, meshroot;
@@ -61,11 +64,11 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma), defu(yb), defu(um2), defu(um3);
 if (count == 0){
-  ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym, omega);
-  if(mpirank == 0) printstats(fileout, filein, meshin, sym, omega, 0);
+  ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym, omega, alpha, beta);
+  savehopf(filein, (savecount > 0 ? fileout : ""), meshin, sym, omega, alpha, beta, false, false);
 }
 else {
-  ub[].re = loadhopf(fileroot + "_" + count, meshin, um[], uma[], sym, omega);
+  ub[].re = loadhopf(fileroot + "_" + count, meshin, um[], uma[], sym, omega, alpha, beta);
 }
 real lambda1 = getlambda(param1);
 real lambda2 = getlambda(param2);
@@ -84,7 +87,7 @@ Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]], Jaa = [[Ja, JlPMa], [yqPMa',
 
 complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 3 : 0));
 int it, internalit, adaptflag;
-real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
+real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
 // FUNCTIONS
   func complex[int] funcRa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
@@ -124,7 +127,7 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       if (it == 0){
         kappa = 0.0;
         maxdelta = 0.0;
-        alpha = 0.0;
+        cosalpha = 0.0;
         delta = abs(h0);
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
       }
@@ -143,12 +146,12 @@ real f, kappa, alpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
         delta = sqrt(real(J(R, R)) + dlambda1^2 + domega^2 + dlambda2^2); // distance to curve
         ChangeNumbering(J, R, yqP0, inverse = true);
         ChangeNumbering(J, yb[], yqP, inverse = true);
-        alpha = (real(J(R, yb[])) + yl10*yl1 + yw0*yw + 1.0)/sqrt((real(J(R, R)) + yl10^2 + yw0^2 + 1.0)*(real(J(yb[], yb[])) + yl1^2 + yw^2 + 1.0));
+        cosalpha = (real(J(R, yb[])) + yl10*yl1 + yw0*yw + 1.0)/sqrt((real(J(R, R)) + yl10^2 + yw0^2 + 1.0)*(real(J(yb[], yb[])) + yl1^2 + yw^2 + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
-        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(alpha)*acos(abs(alpha))*180./pi) << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
+        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(cosalpha)*acos(abs(cosalpha))*180./pi) << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
       }
-      f = max(acos(abs(alpha))/alphamax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
+      f = max(acos(abs(cosalpha))/anglemax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
       if (it > 0 && !adaptflag && (f > fmax || it-1 >= snesmaxit || res*(monotone!=0) > resp)) Ra(0) = NaN();
       ++internalit;
       return Ra;
@@ -364,7 +367,7 @@ while (count < maxcount){
   if (ret > 0) {
     ++count;
     h0 /= f;
-    if (alpha < 0) {
+    if (cosalpha < 0) {
       h0 *= -1.0;
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
       if(mpirank == 0) {
@@ -386,7 +389,11 @@ while (count < maxcount){
       complex Mnorm = sqrt(J(um[], Mq));
       um[] /= Mnorm; // so that <um[],M*um[]> = 1
       uma[] *= conj(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
-      savehopf(fileroot + "_" + count + "signswitch", "", meshout, sym, omega, true, true);
+      for (int k = 0; k < paramnames.n; ++k){
+        alpha[paramnames[k]] = 0.0;
+      }
+      beta = 0.0;
+      savehopf(fileroot + "_" + count + "signswitch", "", meshout, sym, omega, alpha, beta, true, true);
     }
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
@@ -513,13 +520,119 @@ while (count < maxcount){
     updatelambda(param2, lambda2);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     complex[int] Mq = vM(0, XMh, tgv = -10);
-    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
-    ChangeNumbering(J, um[], qm, inverse = true);
-    ChangeNumbering(J, uma[], qma, inverse = true);
     complex Mnorm = sqrt(J(um[], Mq));
     um[] /= Mnorm; // so that <um[],M*um[]> = 1
     uma[] *= conj(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
-    savehopf(fileout + "_" + count, fileout, meshout, sym, omega, (count % savecount == 0), true);
+    ChangeNumbering(J, um[], qm);
+    ChangeNumbering(J, uma[], qma);
+    if (normalform){
+      complex[int] qAAs(J.n), qAA(J.n), tempP(J.n), temp(um[].n), temp1(um[].n);
+      complex[int,int] qDa(paramnames.n, J.n);
+      int mm = sym;
+      // 2nd-order
+      //  A: base modification due to parameter changes
+      ik = 0.0;
+      ik2 = 0.0;
+      iomega = 0.0;
+      iomega2 = 0.0;
+      sym = 0;
+      J = vJ(XMh, XMh, tgv = -1);
+      if(paramnames[0] != ""){
+        for (int k = 0; k < paramnames.n; ++k){
+          lambda1 = getlambda(paramnames[k]);
+          updatelambda(paramnames[k], lambda1 + eps1);
+          temp = vR(0, XMh, tgv = -1);
+          updatelambda(paramnames[k], lambda1);
+          temp1 = vR(0, XMh, tgv = -1);
+          temp -= temp1;
+          temp /= -eps1;
+          ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
+          KSPSolve(J, tempP, qAAs);
+          qDa(k, :) = qAAs;
+        }
+      }
+      //  B: base modification due to quadratic nonlinear interaction
+      ik = 1i*real(mm);
+      ik2 = -ik;
+      iomega = 1i*omega;
+      iomega2 = -iomega;
+      um2[] = conj(um[]);
+      temp = vH(0, XMh, tgv = -10);
+      temp.re *= -1.0; // -2.0/2.0
+      temp.im = 0.0;
+      ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
+      KSPSolve(J, tempP, qAAs);
+      //  C: harmonic generation due to quadratic nonlinear interaction
+      ik = 1i*real(mm); ik2 = ik;
+      iomega = 1i*omega; iomega2 = iomega;
+      um2[] = um[];
+      sym = 2*mm;
+      temp = vH(0, XMh, tgv = -10);
+      temp *= -0.5; // -1.0/2.0
+      ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
+      ik = 2i*real(mm);
+      iomega = 2i*omega;
+      J = vJ(XMh, XMh, tgv = -1);
+      KSPSolve(J, tempP, qAA);
+      // 3rd-order
+      //  A: fundamental modification due to parameter change and quadratic interaction of fundamental with 2nd order modification A.
+      sym = mm;
+      ik = 1i*real(sym);
+      ik2 = 0.0;
+      iomega = 1i*omega;
+      iomega2 = 0.0;
+      if(paramnames[0] != ""){
+        for (int k = 0; k < paramnames.n; ++k){
+          lambda1 = getlambda(paramnames[k]);
+          updatelambda(paramnames[k], lambda1 + eps1);
+          temp = vJ(0, XMh, tgv = -10);
+          updatelambda(paramnames[k], lambda1);
+          temp1 = vJ(0, XMh, tgv = -10);
+          temp -= temp1;
+          temp /= eps1;
+          ChangeNumbering(J, um2[], qDa(k, :), inverse = true, exchange = true); // FreeFEM to PETSc
+          temp += vH(0, XMh, tgv = -10); // 2.0/2.0
+          alpha[paramnames[k]] = -J(uma[], temp);
+        }
+      }
+      //  B: fundamental modification due to cubic self-interaction of fundamental
+      ik = 1i*real(sym);
+      ik2 = 1i*real(sym);
+      ik3 = -1i*real(sym);
+      iomega = 1i*omega;
+      iomega2 = 1i*omega;
+      iomega3 = -1i*omega;
+      um2[] = um[];
+      um3[] = conj(um[]);
+      temp = vT(0, XMh, tgv = -10);
+      temp *= 0.5; //3.0/6.0
+      //  C: fundamental modification due to quadratic interaction of fundamental with 2nd order modification B
+      ik = 1i*real(sym);
+      ik2 = 0.0;
+      iomega = 1i*omega;
+      iomega2 = 0.0;
+      ChangeNumbering(J, um2[], qAAs, inverse = true, exchange = true); // FreeFEM to PETSc
+      temp += vH(0, XMh, tgv = -10);
+      //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
+      ik = -1i*real(sym);
+      ik2 = 2i*real(sym);
+      iomega = -1i*omega;
+      iomega2 = 2i*omega;
+      um[] = conj(um[]);
+      ChangeNumbering(J, um2[], qAA, inverse = true, exchange = true); // FreeFEM to PETSc
+      temp += vH(0, XMh, tgv = -10);
+      beta = -J(uma[], temp);
+      um[] = conj(um[]);
+    } else {
+      for (int k = 0; k < paramnames.n; ++k){
+        alpha[paramnames[k]] = 0.0;
+      }
+      beta = 0.0;
+    }
+    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
+    ChangeNumbering(J, um[], qm, inverse = true);
+    ChangeNumbering(J, uma[], qma, inverse = true);
+    savehopf(fileout + "_" + count, fileout, meshout, sym, omega, alpha, beta, (count % savecount == 0), true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     Mq = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, Mq, qP);
@@ -536,7 +649,7 @@ while (count < maxcount){
       if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;
       if(it >= snesmaxit) cout << "\tFailed to converge within limit of " + snesmaxit + " iterations. Reattempting with smaller step." << endl;
       if(maxdelta >= deltamax) cout << "\tStep size exceeds " << deltamax << "." << endl;
-      if(acos(abs(alpha)) >= alphamax) cout << "\tAngle exceeds " << (alphamax*180./pi) << " degrees." << endl;
+      if(acos(abs(cosalpha)) >= anglemax) cout << "\tAngle exceeds " << (anglemax*180./pi) << " degrees." << endl;
     }
     h0 /= fmax;
     qa = qa0;

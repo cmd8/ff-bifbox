@@ -103,7 +103,9 @@ if (mpirank==0){
   else if (fileext == "fold"){
     XMhg defu(ub), defu(um), defu(uma);
     restu = 0:XMhg.ndof-1;
-    ub[] = loadfold(fileroot, meshin, um[], uma[]);
+    real[string] alpha;
+    real beta;
+    ub[] = loadfold(fileroot, meshin, um[], uma[], alpha, beta);
     cout << "  Saving '" + fileout + "_fold_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
     if (paraviewflag > 1){
       meshN Thgs = trunc(Thg, 1, split = paraviewflag);
@@ -127,7 +129,9 @@ if (mpirank==0){
     restu = 0:XMhg.ndof-1;
     real omega;
     int sym;
-    ub[] = loadhopf(fileroot, meshin, um[], uma[], sym, omega);
+    complex[string] alpha;
+    complex beta;
+    ub[] = loadhopf(fileroot, meshin, um[], uma[], sym, omega, alpha, beta);
     cout << "  Saving '" + fileout + "_hopf_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
     if (paraviewflag > 1){
       meshN Thgs = trunc(Thg, 1, split = paraviewflag);
