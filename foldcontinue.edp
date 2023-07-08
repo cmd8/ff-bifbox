@@ -21,6 +21,7 @@ string meshin = getARGV("-mi", ""); // input meshfile with extension
 string meshout = getARGV("-mo", "");
 string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", filein);
+bool normalform = getARGV("-nf", 1);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
@@ -326,6 +327,10 @@ while (count < maxcount){
       real Mnorm = sqrt(J(um[], Mq));
       um[] /= Mnorm; // so that <um[],M*um[]> = 1
       uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
+      for (int k = 0; k < paramnames.n; ++k){
+        alpha[paramnames[k]] = 0.0;
+      }
+      beta = 0.0;
       savefold(fileout + "_" + count + "signswitch", "", meshout, alpha, beta, true, true);
     }
     if (adapt && (count % savecount == 0)){
@@ -441,12 +446,42 @@ while (count < maxcount){
     updatelambda(param2, lambda2);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     real[int] Mq = vM(0, XMh, tgv = -10);
-    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
     ChangeNumbering(J, uma[], qma, inverse = true);
     real Mnorm = sqrt(J(um[], Mq));
     um[] /= Mnorm; // so that <um[],M*um[]> = 1
     uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
+    ChangeNumbering(J, um[], qm);
+    ChangeNumbering(J, uma[], qma);
+    ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+    if(normalform){
+      real[int] temp(um[].n), temp1(um[].n);
+      // 2nd-order
+      //  A: base modification due to parameter changes
+      if(paramnames[0] != ""){
+        for (int k = 0; k < paramnames.n; ++k){
+          lambda1 = getlambda(paramnames[k]);
+          updatelambda(paramnames[k], lambda1 + eps1);
+          temp = vR(0, XMh, tgv = -1);
+          updatelambda(paramnames[k], lambda1);
+          temp1 = vR(0, XMh, tgv = -1);
+          temp -= temp1;
+          temp /= -eps1;
+          alpha[paramnames[k]] = -J(uma[], temp);
+        }
+      }
+      //  B: base modification due to quadratic nonlinear interaction
+      um2[] = um[];
+      temp = vH(0, XMh, tgv = -10);
+      beta = -0.5*J(uma[], temp);
+    } else {
+      for (int k = 0; k < paramnames.n; ++k){
+        alpha[paramnames[k]] = 0.0;
+      }
+      beta = 0.0;
+    }
+    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
+    ChangeNumbering(J, um[], qm, inverse = true);
     savefold(fileout + "_" + count, fileout, meshout, alpha, beta, (count % savecount == 0), true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     Mq = vM(0, XMh, tgv = -10);

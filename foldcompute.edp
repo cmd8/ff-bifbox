@@ -27,6 +27,7 @@ string meshin = getARGV("-mi", "");
 string meshout = getARGV("-mo", "");
 string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", "");
+bool normalform = getARGV("-nf", 1);
 string param = getARGV("-param", "");
 string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
@@ -34,7 +35,6 @@ string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym = 0;
-complex eigenvalue;
 real[string] alpha;
 real beta;
 
@@ -228,15 +228,45 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   updatelambda(param, lambda);
   ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
   real[int] Mq = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
   ChangeNumbering(J, um[], qm, inverse = true);
   ChangeNumbering(J, uma[], qma, inverse = true);
   real Mnorm = sqrt(J(um[], Mq));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
   uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
+  ChangeNumbering(J, um[], qm);
+  ChangeNumbering(J, uma[], qma);
+  ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+  if (normalform){
+    real[int] temp(um[].n), temp1(um[].n);
+    // 2nd-order
+    //  A: base modification due to parameter changes
+    if(paramnames[0] != ""){
+      for (int k = 0; k < paramnames.n; ++k){
+        lambda = getlambda(paramnames[k]);
+        updatelambda(paramnames[k], lambda + eps);
+        temp = vR(0, XMh, tgv = -1);
+        updatelambda(paramnames[k], lambda);
+        temp1 = vR(0, XMh, tgv = -1);
+        temp -= temp1;
+        temp /= -eps;
+        alpha[paramnames[k]] = -J(uma[], temp);
+      }
+    }
+    //  B: base modification due to quadratic nonlinear interaction
+    um2[] = um[];
+    temp = vH(0, XMh, tgv = -10);
+    beta = -0.5*J(uma[], temp);
+  } else {
+    for (int k = 0; k < paramnames.n; ++k){
+      alpha[paramnames[k]] = 0.0;
+    }
+    beta = 0.0;
+  }
   if(mpirank==0 && adapt) { // Save adapted mesh
     cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshout);
   }
+  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
+  ChangeNumbering(J, um[], qm, inverse = true);
   savefold(fileout, "", meshout, alpha, beta, true, true);
 }

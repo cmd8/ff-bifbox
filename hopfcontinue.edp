@@ -520,11 +520,14 @@ while (count < maxcount){
     updatelambda(param2, lambda2);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     complex[int] Mq = vM(0, XMh, tgv = -10);
+    ChangeNumbering(J, um[], qm, inverse = true);
+    ChangeNumbering(J, uma[], qma, inverse = true);
     complex Mnorm = sqrt(J(um[], Mq));
     um[] /= Mnorm; // so that <um[],M*um[]> = 1
     uma[] *= conj(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
     ChangeNumbering(J, um[], qm);
     ChangeNumbering(J, uma[], qma);
+    ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     if (normalform){
       complex[int] qAAs(J.n), qAA(J.n), tempP(J.n), temp(um[].n), temp1(um[].n);
       complex[int,int] qDa(paramnames.n, J.n);
@@ -622,7 +625,6 @@ while (count < maxcount){
       ChangeNumbering(J, um2[], qAA, inverse = true, exchange = true); // FreeFEM to PETSc
       temp += vH(0, XMh, tgv = -10);
       beta = -J(uma[], temp);
-      um[] = conj(um[]);
     } else {
       for (int k = 0; k < paramnames.n; ++k){
         alpha[paramnames[k]] = 0.0;
@@ -631,7 +633,6 @@ while (count < maxcount){
     }
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
-    ChangeNumbering(J, uma[], qma, inverse = true);
     savehopf(fileout + "_" + count, fileout, meshout, sym, omega, alpha, beta, (count % savecount == 0), true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     Mq = vM(0, XMh, tgv = -10);
