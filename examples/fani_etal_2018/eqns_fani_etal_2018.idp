@@ -27,12 +27,11 @@
 
   macro ugradf(U, ik, f)   ( U*dx(f) + U#y*dy(f) ) // scalar advection term
 // Boundary conditions
-  macro BoundaryConditions(sym, u, U)
+  macro BoundaryConditions(u, U)
     on(BCwall, u = U, u#y = U#y )
     + on(BCslip, u#y = U#y )
     + on(BCinflow, u = U - 1.0, u#y = U#y, u#T = U#T - 1.0)
-    + on((abs(int(sym)) % 2 == 0)*BCaxis, u#y = U#y )
-    + on((abs(int(sym)) % 2 != 0)*BCaxis, u = U, u#T = U#T)
+    + on(BCaxis, u#y = U#y )
   // EOM
   macro HomBoundaryConditions(sym, u)
     on(BCwall, u = 0, u#y = 0 )
@@ -48,7 +47,7 @@
       + ubR*ugradu(v, ub, 0, ub) - divu(0, v)*(ubR*ubT - 1.0)/(params["gamma"]*params["Ma^2"]) + visc(0, v, 0, ub)*params["1/Re"] + beta1(x,y)*(vdotu(v, ub) - v*1.0)
       + vT*(ubR*ugradf(ub, 0, ubT) + (params["gamma"] - 1.0)*(ubR*ubT*divu(0, ub) - params["gamma"]*params["Ma^2"]*params["1/Re"]*visc(0, ub, 0, ub))) + params["gamma"]*params["1/Pr"]*params["1/Re"]*diff(0, vT, 0, ubT) + beta1(x,y)*gdotf(vT, (ubT - 1.0))
     )
-    + BoundaryConditions(0, dum, ub);
+    + BoundaryConditions(dum, ub);
 
 // JACOBIAN OPERATOR
   varf vJ(defu(dum), defu(v))

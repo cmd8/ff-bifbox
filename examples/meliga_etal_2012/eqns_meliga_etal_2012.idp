@@ -23,11 +23,10 @@
   macro visc(ij, v, ik, u) ( y*(dx(v)*dx(u) + dy(v)*dy(u) + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y) + dx(v#z)*dx(u#z) + dy(v#z)*dy(u#z))
                             + ((ij)*v*(ik)*u + ((ij)*v#y - v#z)*((ik)*u#y - u#z) + ((ij)*v#z + v#y)*((ik)*u#z + u#y))/(y + 1.0e-12*(y == 0)) ) // EOM
 // Boundary conditions
-  macro BoundaryConditions(sym, u, U)
+  macro BoundaryConditions(u, U)
     on(BCinflow, u = U - 1.0, u#y = U#y, u#z = U#z - params["S"]*((y <= 1.0)*y*(2.0 - y^2) + (y > 1.0)/(y+(y == 0))))
     + on(BCslip, u#y = U#y, u#z = U#z)
-    + on((abs(sym) != 1)*BCaxis, u#y = U#y, u#z = U#z)
-    + on((abs(sym) >  0)*BCaxis, u = U)
+    + on(BCaxis, u#y = U#y, u#z = U#z)
   // EOM
   macro HomBoundaryConditions(sym, u)
     on(BCinflow, u = 0, u#y = 0, u#z = 0)
@@ -41,7 +40,7 @@
       ugradu(v, ub, 0, ub) - divu(0, v)*ubp + visc(0, v, 0, ub)/Retilde
       - vp*divu(0, ub)
     )
-    + BoundaryConditions(0, dum, ub);
+    + BoundaryConditions(dum, ub);
 
 // JACOBIAN OPERATOR
   varf vJ(defu(dum), defu(v))

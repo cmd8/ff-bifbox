@@ -218,9 +218,7 @@ set(J, sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ -ksp_type " + ksptype 
 // PREDICTOR
 real[int] qa;
 ChangeNumbering(J, ub[], qa);
-ChangeNumbering(J, ub[], qa, inverse = true, exchange = true);
 ChangeNumbering(J, um[], qm);
-ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
 ChangeNumbering(J, uma[], qma);
 ChangeNumbering(J, uma[], qma, inverse = true);
 if(mpirank == 0) {
@@ -379,6 +377,8 @@ while (count < maxcount){
       defu(yb) = initu(0.0);
       defu(um) = initu(0.0);
       defu(uma) = initu(0.0);
+      defu(um2) = initu(0.0);
+      defu(um3) = initu(0.0);
       restu.resize(ub[].n); // Change size of restriction operator
       restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
       ub[] = uG[](restu);
@@ -409,6 +409,7 @@ while (count < maxcount){
       qma.resize(J.n);
       ChangeNumbering(J, uma[], qma);
       qP.resize(J.n);
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       real[int] Mq = vM(0, XMh, tgv = -10);
       ChangeNumbering(J, Mq, qP);
@@ -453,7 +454,6 @@ while (count < maxcount){
     uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
     ChangeNumbering(J, um[], qm);
     ChangeNumbering(J, uma[], qma);
-    ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     if(normalform){
       real[int] temp(um[].n), temp1(um[].n);
       // 2nd-order
@@ -471,10 +471,12 @@ while (count < maxcount){
         }
       }
       //  B: base modification due to quadratic nonlinear interaction
+      ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       um2[] = um[];
       temp = vH(0, XMh, tgv = -10);
       beta = -0.5*J(uma[], temp);
-    } else {
+    }
+    else {
       for (int k = 0; k < paramnames.n; ++k){
         alpha[paramnames[k]] = 0.0;
       }
@@ -483,6 +485,7 @@ while (count < maxcount){
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
     savefold(fileout + "_" + count, fileout, meshout, alpha, beta, (count % savecount == 0), true);
+    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     Mq = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, Mq, qP);
@@ -493,7 +496,7 @@ while (count < maxcount){
     yl10 = yl1;
   }
   else {
-    if (mpirank == 0){
+    if(mpirank == 0){
       if(res*(monotone!=0) >= resp) cout << "\tResidual norm failed to decrease. Reattempting with smaller step." << endl;
       if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;
       if(it >= snesmaxit) cout << "\tFailed to converge within limit of " + snesmaxit + " iterations. Reattempting with smaller step." << endl;

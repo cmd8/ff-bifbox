@@ -22,12 +22,11 @@
   macro visc(ij, v, ik, u) ( y*(dx(v)*dx(u) + dy(v)*dy(u) + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y) + dx(v#z)*dx(u#z) + dy(v#z)*dy(u#z))
                             + ((ij)*v*(ik)*u + ((ij)*v#y - v#z)*((ik)*u#y - u#z) + ((ij)*v#z + v#y)*((ik)*u#z + u#y))/(y + 1.0e-12*(y == 0)) ) // EOM
 // Boundary conditions
-  macro BoundaryConditions(sym, u, U)
+  macro BoundaryConditions(u, U)
     on(BCinflow, u = U - (2.0 - 8.0*y^2), u#z = U#z - 2.0*params["S"]*y)
     + on(BCwall, u = U, u#y = U#y, u#z = U#z, u#pc = U#pc)
     + on(BCpipe, u = U, u#y = U#y, u#z = U#z - params["S"], u#pc = U#pc)
-    + on((abs(sym) != 1)*BCaxis, u#y = U#y, u#z = U#z)
-    + on((abs(sym) >  0)*BCaxis, u = U)
+    + on(BCaxis, u#y = U#y, u#z = U#z)
   // EOM
   macro HomBoundaryConditions(sym, u)
     on(BCinflow, u = 0, u#z = 0)
@@ -45,7 +44,7 @@
       y*ndotu(v)*ubpc - 0.5*vdotu(v, ub)*min(0.0, real(ndotu(ub)))
       + vpc*(y*tdotgrads(ubpc) - ubz^2)
     )
-    + BoundaryConditions(0, dum, ub);
+    + BoundaryConditions(dum, ub);
 
 // JACOBIAN OPERATOR
   varf vJ(defu(dum), defu(v))

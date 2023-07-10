@@ -191,33 +191,34 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
       Jl2 -= a0;
       Jl1 /= eps1;
       Jl2 /= eps2;
-      complex[int] dummy(J.n), bm = vJ(0, XMh, tgv = -10);
+      complex[int] temp1(J.n), temp2(J.n), bm = vJ(0, XMh, tgv = -10);
       Hl1 -= bm;
       Hl2 -= bm;
       Hl1 /= eps1;
       Hl2 /= eps2;
-      ChangeNumbering(J, Jl1, yqP); // FreeFEM to PETSc
-      matrix<complex> tempPms = [[yqP, 0]]; // dense array to sparse matrix
+      ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
+      temp1.im = 0.0;
+      matrix<complex> tempPms = [[temp1, 0]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+      sym = 0;
+      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+      sym = mm;
+      MatMultHermitianTranspose(H, qma, temp1); // gqr,i
+      if(!zerofreq) temp2.re = -temp1.im;
+      temp1.im = 0.0;
+      tempPms = [[temp1, temp2]]; // dense array to sparse matrix
+      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       complex gl1 = J(uma[], Hl1);
-      if (zerofreq) tempPms = [[real(gl1), 0], [0, 1.0]];
+      if(zerofreq) tempPms = [[real(gl1), 0], [0, 1.0]];
       else {
         bm = vM(0, XMh, tgv = -10);
         complex gw = J(uma[], bm);
         tempPms = [[real(gl1), -imag(gw)], [imag(gl1), real(gw)]];
       }
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-      sym = 0;
-      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
-      sym = mm;
-      MatMultHermitianTranspose(H, qma, yqP); // gqr,i
-      if(!zerofreq) dummy.re = -yqP.im;
-      yqP.im = 0.0;
-      tempPms = [[yqP, dummy]]; // dense array to sparse matrix
-      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       ChangeNumbering(J, Jl2, yqP); // FreeFEM to PETSc
       complex gl2 = J(uma[], Hl2);
-      if (mpirank == 0) {
+      if(mpirank == 0) {
         yqP.resize(yqP.n+2);
         yqP(yqP.n-2) = real(gl2);
         yqP(yqP.n-1) = zerofreq ? 0.0 : imag(gl2);
@@ -249,11 +250,9 @@ set(J, sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ -ksp_type " + ksptype 
 // PREDICTOR
 complex[int] qa;
 ChangeNumbering(J, ub[], qa);
-ChangeNumbering(J, ub[], qa, inverse = true, exchange = true);
 ChangeNumbering(J, um[], qm);
-ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
 ChangeNumbering(J, uma[], qma);
-ChangeNumbering(J, uma[], qma, inverse = true, exchange = true);
+ChangeNumbering(J, uma[], qma, inverse = true);
 if(mpirank == 0) {
   qa.resize(qa.n+3);
   qa(qa.n-3) = lambda1;
@@ -278,14 +277,23 @@ if(mpirank == 0) {
   Jl2 -= a0;
   Jl1 /= eps1;
   Jl2 /= eps2;
-  complex[int] dummy(J.n), bm = vJ(0, XMh, tgv = -10);
+  complex[int] temp1(J.n), temp2(J.n), bm = vJ(0, XMh, tgv = -10);
   Hl1 -= bm;
   Hl2 -= bm;
   Hl1 /= eps1;
   Hl2 /= eps2;
-  ChangeNumbering(J, Jl1, yqP); // FreeFEM to PETSc
-  matrix<complex> tempPms = [[yqP, 0]]; // dense array to sparse matrix
+  ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
+  temp1.im = 0.0;
+  matrix<complex> tempPms = [[temp1, 0]]; // dense array to sparse matrix
   ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+  sym = 0;
+  H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+  sym = mm;
+  MatMultHermitianTranspose(H, qma, temp1); // gqr,i
+  if(!zerofreq) temp2.re = -temp1.im;
+  temp1.im = 0.0;
+  tempPms = [[temp1, temp2]]; // dense array to sparse matrix
+  ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
   complex gl1 = J(uma[], Hl1);
   if (zerofreq) tempPms = [[real(gl1), 0], [0, 1.0]];
   else {
@@ -294,14 +302,6 @@ if(mpirank == 0) {
     tempPms = [[real(gl1), -imag(gw)], [imag(gl1), real(gw)]];
   }
   ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-  sym = 0;
-  H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
-  sym = mm;
-  MatMultHermitianTranspose(H, qma, yqP); // gqr,i
-  if(!zerofreq) dummy.re = -yqP.im;
-  yqP.im = 0.0;
-  tempPms = [[yqP, dummy]]; // dense array to sparse matrix
-  ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
   ChangeNumbering(J, Jl2, yqP); // FreeFEM to PETSc
   complex gl2 = J(uma[], Hl2);
   if (mpirank == 0) {
@@ -386,9 +386,9 @@ while (count < maxcount){
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
       ChangeNumbering(J, um[], qm, inverse = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      complex Mnorm = sqrt(J(um[], Mq));
+      real Mnorm = sqrt(real(J(um[], Mq)));
       um[] /= Mnorm; // so that <um[],M*um[]> = 1
-      uma[] *= conj(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
+      uma[] *= (Mnorm/J(Mq, uma[])); // so that <uma[],M*um[]> = 1
       for (int k = 0; k < paramnames.n; ++k){
         alpha[paramnames[k]] = 0.0;
       }
@@ -449,6 +449,8 @@ while (count < maxcount){
       defu(yb) = initu(0.0);
       defu(um) = initu(0.0);
       defu(uma) = initu(0.0);
+      defu(um2) = initu(0.0);
+      defu(um3) = initu(0.0);
       restu.resize(ub[].n); // Change size of restriction operator
       restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
       ub[].re = uG[](restu);
@@ -481,6 +483,7 @@ while (count < maxcount){
       qma.resize(J.n);
       ChangeNumbering(J, uma[], qma);
       qP.resize(J.n);
+      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       complex[int] Mq = vM(0, XMh, tgv = -10);
       ChangeNumbering(J, Mq, qP);
@@ -522,12 +525,11 @@ while (count < maxcount){
     complex[int] Mq = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, um[], qm, inverse = true);
     ChangeNumbering(J, uma[], qma, inverse = true);
-    complex Mnorm = sqrt(J(um[], Mq));
+    real Mnorm = sqrt(real(J(um[], Mq)));
     um[] /= Mnorm; // so that <um[],M*um[]> = 1
-    uma[] *= conj(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
+    uma[] *= (Mnorm/J(Mq, uma[])); // so that <uma[],M*um[]> = 1
     ChangeNumbering(J, um[], qm);
     ChangeNumbering(J, uma[], qma);
-    ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     if (normalform){
       complex[int] qAAs(J.n), qAA(J.n), tempP(J.n), temp(um[].n), temp1(um[].n);
       complex[int,int] qDa(paramnames.n, J.n);
@@ -559,6 +561,7 @@ while (count < maxcount){
       ik2 = -ik;
       iomega = 1i*omega;
       iomega2 = -iomega;
+      ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       um2[] = conj(um[]);
       temp = vH(0, XMh, tgv = -10);
       temp.re *= -1.0; // -2.0/2.0
@@ -625,7 +628,12 @@ while (count < maxcount){
       ChangeNumbering(J, um2[], qAA, inverse = true, exchange = true); // FreeFEM to PETSc
       temp += vH(0, XMh, tgv = -10);
       beta = -J(uma[], temp);
-    } else {
+      ik2 = 0.0;
+      ik3 = 0.0;
+      iomega2 = 0.0;
+      iomega3 = 0.0;
+    }
+    else {
       for (int k = 0; k < paramnames.n; ++k){
         alpha[paramnames[k]] = 0.0;
       }
@@ -634,6 +642,7 @@ while (count < maxcount){
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
     savehopf(fileout + "_" + count, fileout, meshout, sym, omega, alpha, beta, (count % savecount == 0), true);
+    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     Mq = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, Mq, qP);
@@ -645,7 +654,7 @@ while (count < maxcount){
     yw0 = yw;
   }
   else {
-    if (mpirank == 0){
+    if(mpirank == 0){
       if(res*(monotone!=0) >= resp) cout << "\tResidual norm failed to decrease. Reattempting with smaller step." << endl;
       if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;
       if(it >= snesmaxit) cout << "\tFailed to converge within limit of " + snesmaxit + " iterations. Reattempting with smaller step." << endl;

@@ -117,6 +117,8 @@ else { // if output meshfile is given, adapt mesh
   defu(ub) = initu(0.0); // set local values to zero
   defu(um) = initu(0.0); // set local values to zero
   defu(uma) = initu(0.0); // set local values to zero
+  defu(um2) = initu(0.0);
+  defu(um3) = initu(0.0);
   restu.resize(ub[].n); // Change size of restriction operator
   restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
   ub[] = uG[](restu); //restrict global solution to each local mesh
@@ -235,7 +237,6 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
   ChangeNumbering(J, um[], qm);
   ChangeNumbering(J, uma[], qma);
-  ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
   if (normalform){
     real[int] temp(um[].n), temp1(um[].n);
     // 2nd-order
@@ -253,10 +254,12 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       }
     }
     //  B: base modification due to quadratic nonlinear interaction
+    ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     um2[] = um[];
     temp = vH(0, XMh, tgv = -10);
     beta = -0.5*J(uma[], temp);
-  } else {
+  }
+  else {
     for (int k = 0; k < paramnames.n; ++k){
       alpha[paramnames[k]] = 0.0;
     }

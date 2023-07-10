@@ -16,12 +16,11 @@
   macro visc(ij, v, ik, u)  (  dx(v  )*dx(u  ) + dy(v  )*dy(u  )
                              + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y) ) // viscous term
 // Boundary conditions
-  macro BoundaryConditions(sym, u, U)
+  macro BoundaryConditions(u, U)
     on(BCwall, u = U, u#y = U#y)
     + on(BCslip, u#y = U#y)
     + on(BCinflow, u = U - 1., u#y = U#y)
-    + on((abs(int(sym)) % 2 == 0)*BCaxis, u#y = U#y)
-    + on((abs(int(sym)) % 2 != 0)*BCaxis, u = U)
+    + on(u#y = U#y)
   // EOM
   macro HomBoundaryConditions(sym, u)
     on(BCinflow, BCwall, u = 0, u#y = 0)
@@ -35,7 +34,7 @@
       ugradu(v, ub, 0, ub) - divu(0, v)*ubp + visc(0, v, 0, ub)*params["1/Re"]
       - vp*divu(0, ub)
     )
-    + BoundaryConditions(0, dum, ub);
+    + BoundaryConditions(dum, ub);
 
 // JACOBIAN OPERATOR
   varf vJ(defu(dum), defu(v))
