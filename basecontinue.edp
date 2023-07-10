@@ -38,6 +38,7 @@ string pctype = getARGV("-pc_type", "lu");
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int refactor = getARGV("-refact", snesmaxit);
+bool forcesave = false;
 
 // Load mesh, make FE basis
 string fileroot, meshroot;
@@ -217,12 +218,8 @@ while (count < maxcount){
     h0 /= f;
     if (cosalpha < 0) {
       h0 *= -1.0;
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
-      if(mpirank == 0) lambda = qa(qa.n-1);
-      broadcast(processor(0), lambda);
-      updatelambda(param, lambda);
       if(mpirank == 0) cout << "\tFold detected. Orientation reversed." << endl;
-      savebase(fileout + "_" + count + "foldguess", "", meshout, true, true);
+      forcesave = true;
     }
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
@@ -288,7 +285,8 @@ while (count < maxcount){
     if(mpirank == 0) lambda = qa(qa.n-1);
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
-    savebase(fileout + "_" + count, (savecount > 0 ? fileout : ""), meshout, (count % savecount == 0), true);
+    savebase(fileout + "_" + count, (savecount > 0 ? fileout : ""), meshout, ((count % savecount == 0) || forcesave), true);
+    forcesave = false;
     yqP0 = yqP;
   }
   else {

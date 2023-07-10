@@ -45,6 +45,7 @@ int sym;
 real omega;
 complex[string] alpha;
 complex beta;
+bool forcesave = false;
 
 // Load mesh, make FE basis
 string fileroot, meshroot;
@@ -369,31 +370,8 @@ while (count < maxcount){
     h0 /= f;
     if (cosalpha < 0) {
       h0 *= -1.0;
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
-      if(mpirank == 0) {
-        lambda1 = real(qa(qa.n-3));
-        omega = real(qa(qa.n-2));
-        lambda2 = real(qa(qa.n-1));
-      }
-      broadcast(processor(0), lambda1);
-      broadcast(processor(0), omega);
-      broadcast(processor(0), lambda2);
-      updatelambda(param1, lambda1);
-      updatelambda(param2, lambda2);
       if(mpirank == 0) cout << "\tSign change detected. Orientation reversed." << endl;
-      ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-      complex[int] Mq = vM(0, XMh, tgv = -10);
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
-      ChangeNumbering(J, um[], qm, inverse = true);
-      ChangeNumbering(J, uma[], qma, inverse = true);
-      real Mnorm = sqrt(real(J(um[], Mq)));
-      um[] /= Mnorm; // so that <um[],M*um[]> = 1
-      uma[] *= (Mnorm/J(Mq, uma[])); // so that <uma[],M*um[]> = 1
-      for (int k = 0; k < paramnames.n; ++k){
-        alpha[paramnames[k]] = 0.0;
-      }
-      beta = 0.0;
-      savehopf(fileroot + "_" + count + "signswitch", "", meshout, sym, omega, alpha, beta, true, true);
+      forcesave = true;
     }
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
@@ -641,7 +619,8 @@ while (count < maxcount){
     }
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
-    savehopf(fileout + "_" + count, fileout, meshout, sym, omega, alpha, beta, (count % savecount == 0), true);
+    savehopf(fileout + "_" + count, fileout, meshout, sym, omega, alpha, beta, ((count % savecount == 0) || forcesave), true);
+    forcesave = false;
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     Mq = vM(0, XMh, tgv = -10);
