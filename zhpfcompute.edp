@@ -216,17 +216,19 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       sym = 0;
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, p2P, q2m);
+      q2m.im = 0.0;
       KSPSolveTranspose(J, q2P, q2ma);
+      q2ma.im = 0.0;
       ChangeNumbering(J, R, q2P, inverse = true);
       ChangeNumbering(J, um2[], q2m, inverse = true);
-      complex h = 1.0/J(R, um2[]);
-      q2m *= real(h); // rescale direct mode
-      q2ma *= real(h); // rescale adjoint mode
+      real h = 1.0/real(J(R, um2[]));
+      q2m *= h; // rescale direct mode
+      q2ma *= h; // rescale adjoint mode
       if(mpirank == 0) {
         Ra.resize(Ra.n+3); // Append 0 to residual vector on proc 0
         Ra(Ra.n-3) = real(g);
         Ra(Ra.n-2) = zerofreq ? 0.0 : imag(g);
-        Ra(Ra.n-1) = real(h);
+        Ra(Ra.n-1) = h;
       }
       return Ra;
   }
@@ -337,7 +339,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       return 0;
   }
 
-set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
+set(Ja, sparams = "-ksp_type fgmres -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
 set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
 
 // Initialize
@@ -380,11 +382,10 @@ if(mpirank == 0) {
     Jl -= a0;
     Jl /= eps1;
     J = vJ(XMh, XMh, tgv = -1);
-    ChangeNumbering(J, Jl, q2P);
-    KSPSolve(J, q2P, q2m);
+    um[] = J^-1*Jl;
   }
-  ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
   Mq = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, um[], q2m);
   ChangeNumbering(J, um2[], q2m, inverse = true);
   Mnorm = sqrt(real(J(um2[], Mq)));
   Mq /= Mnorm;
@@ -396,7 +397,7 @@ if(mpirank == 0) {
   }
   Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, um2[], q2m, inverse = true);
-  Mq *= (Mnorm/J(um2[], Mq)); // so that <uma[],M*um[]> = 1
+  Mq *= real(Mnorm/J(um2[], Mq)); // so that <uma[],M*um[]> = 1
   ChangeNumbering(J, Mq, p2P);
 }
 // solve nonlinear problem with SNES
@@ -421,9 +422,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
   ChangeNumbering(J, um[], q1m, inverse = true);
   ChangeNumbering(J, uma[], q1ma, inverse = true);
-  complex Mnorm = sqrt(J(um[], Mq));
+  real Mnorm = sqrt(real(J(um[], Mq)));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
-  uma[] *= conj(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
+  uma[] *= (Mnorm/J(Mq, uma[])); // so that <uma[],M*um[]> = 1
   if(mpirank==0 && adapt) { // Save adapted mesh
     cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshout);
@@ -435,9 +436,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
   ChangeNumbering(J, um[], q2m, inverse = true);
   ChangeNumbering(J, uma[], q2ma, inverse = true);
-  Mnorm = sqrt(J(um[], Mq));
+  Mnorm = sqrt(real(J(um[], Mq)));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
-  uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
+  uma[] *= real(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
   {
     real[int] ubo = ub[].re;
     real[int] umo = um[].re;
