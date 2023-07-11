@@ -86,7 +86,7 @@ Mat H(J), Ja = [[J, JlPM], [gqPM', glPM]], Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; 
 
 real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 2 : 0));
 int it, internalit, adaptflag;
-real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10;
+real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10, beta0;
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
@@ -277,6 +277,7 @@ if(mpirank == 0) {
   ChangeNumbering(J, a0, pP);
   yqP0 = yqP;
   yl10 = yl1;
+  beta0 = beta;
 }
 while (count < maxcount){
   real[int] qa0 = qa;
@@ -308,7 +309,7 @@ while (count < maxcount){
     h0 /= f;
     if (cosalpha < 0) {
       h0 *= -1.0;
-      if(mpirank == 0) cout << "\tSign change detected. Orientation reversed." << endl;
+      if(mpirank == 0) cout << "\tOrientation reversed." << endl;
       forcesave = true;
     }
     if (adapt && (count % savecount == 0)){
@@ -462,9 +463,13 @@ while (count < maxcount){
       }
       beta = 0.0;
     }
+    if (beta*beta0 < 0) {
+      if(mpirank == 0) cout << "\tCusp bifurcation detected." << endl;
+      forcesave = true;
+    }
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
-    savefold(fileout + "_" + count, fileout, meshout, alpha, beta, ((count % savecount == 0) || forcesave), true);
+    savefold(fileout + "_" + count + (forcesave ? "specialpt" : ""), fileout, meshout, alpha, beta, ((count % savecount == 0) || forcesave), true);
     forcesave = false;
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
@@ -475,6 +480,7 @@ while (count < maxcount){
     ChangeNumbering(J, Mq, pP);
     yqP0 = yqP;
     yl10 = yl1;
+    beta0 = beta;
   }
   else {
     if(mpirank == 0){

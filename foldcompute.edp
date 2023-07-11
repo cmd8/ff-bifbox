@@ -219,9 +219,8 @@ if (fileext != "fold"){
   ChangeNumbering(J, Mq, qP);
   if (fileext == "fold") um[] = uma[];
   else {
-    ChangeNumbering(J, um[], qm);
-    KSPSolveTranspose(J, qm, pP);
-    ChangeNumbering(J, um[], pP, inverse = true, exchange = true);
+    KSPSolveTranspose(J, qP, qma);
+    ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
   }
   Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, um[], qm, inverse = true);

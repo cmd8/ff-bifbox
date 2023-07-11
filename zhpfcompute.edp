@@ -1,14 +1,14 @@
 //
-// zerohopfcompute.edp
+// zhpfcompute.edp
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // EXAMPLE USAGE:
 //  Initialize with hopf file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 zerohopfcompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fo <FILEOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 zhpfcompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fo <FILEOUT>
 //
 //  Initialize with hopf and fold files, adapt mesh to solution
-// mpirun -n 4 FreeFem++-mpi -v 0 zerohopfcompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fi2 <FILEIN2> -fo <FILEOUT> -mo <MESHOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 zhpfcompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fi2 <FILEIN2> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
@@ -20,10 +20,13 @@ include "macros_bifbox.idp"
 // arguments
 string meshin = getARGV("-mi", ""); // input meshfile with extension
 string meshout = getARGV("-mo", "");
-string filein1 = getARGV("-fi1", "");
+string filein = getARGV("-fi", "");
 string filein2 = getARGV("-fi2", "");
 string basefilein = getARGV("-bfi", "");
 string fileout = getARGV("-fo", "");
+bool normalform = getARGV("-nf", 1);
+bool wnlsave = getARGV("-wnl", 0);
+int dhpfselect = getARGV("-dhpf", 1);
 bool zerofreq = getARGV("-zero", 0);
 string param1 = getARGV("-param1", "");
 string param2 = getARGV("-param2", "");
@@ -42,12 +45,12 @@ real betaR;
 
 // Load mesh, make FE basis
 string fileroot1, fileroot2, meshroot, basefileroot;
-string fileext1 = parsefilename(filein1, fileroot1); //extract file name and extension
+string fileext1 = parsefilename(filein, fileroot1); //extract file name and extension
 string fileext2 = parsefilename(filein2, fileroot2); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if((fileext1 == "mode" || fileext1 == "rslv") && basefilein == "") basefilein = readbasename(workdir + filein1);
+if((fileext1 == "mode" || fileext1 == "rslv") && basefilein == "") basefilein = readbasename(workdir + filein);
 string basefileext = parsefilename(basefilein, basefileroot);
-if(meshin == "") meshin = readmeshname(workdir + filein1); // get mesh file
+if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshroot); // trim extension from output mesh, if given
 // Load mesh, make FE basis
@@ -62,6 +65,7 @@ if (fileext2 == "fold") {
   um2[].re = umi[];
   um3[].re = umai[];
 }
+else if (fileext2 != "") assert(false); // invalid input filetype
 if (fileext1 == "hopf") {
   ub[].re = loadhopf(fileroot1, meshin, um[], uma[], sym1, omega1, alphaC, betaC);
 }
@@ -92,6 +96,14 @@ else if(basefileext == "hopf") {
   complex beta;
   complex[int] qm, qma;
   ub[].re = loadhopf(basefileroot, meshin, qm, qma, sym, omega, alpha, beta);
+}
+else if(basefileext == "dhpf") {
+  int sym1, sym2;
+  real omega1, omega2;
+  complex[string] alpha1, alpha2;
+  complex beta1, beta2, gamma1, gamma2;
+  complex[int] q1m, q1ma, q2m, q2ma;
+  ub[].re = loaddhpf(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
 }
 else if(basefileext == "tdns") {
   real time;
@@ -345,7 +357,7 @@ if(mpirank == 0) {
   real Mnorm = sqrt(real(J(um[], Mq)));
   Mq /= Mnorm;
   ChangeNumbering(J, Mq, q1P);
-  if (fileext1 == "hopf") um[] = uma[];
+  if (fileext1 == "hopf" || fileext1 == "dhpf" || fileext1 == "zhpf") um[] = uma[];
   else {
     ik = 1i*real(sym1);
     iomega = 1i*omega1;
@@ -360,15 +372,7 @@ if(mpirank == 0) {
   sym = 0;
   ik = 0.0;
   iomega = 0.0;
-  if (fileext2 == "fold") {
-    um[] = um2[];
-    Mq = vM(0, XMh, tgv = -10);
-    ChangeNumbering(J, Mq, q2P);
-    um[] = um3[];
-    Mq = vM(0, XMh, tgv = -10);
-    ChangeNumbering(J, Mq, p2P);
-  }
-  else {
+  if (fileext2 != "fold" && fileext2 != "zhpf"){
     updatelambda(param1, lambda1 + eps1);
     complex[int] Jl = vR(0, XMh, tgv = -1);
     updatelambda(param1, lambda1);
@@ -376,15 +380,24 @@ if(mpirank == 0) {
     Jl -= a0;
     Jl /= eps1;
     J = vJ(XMh, XMh, tgv = -1);
-    um[] = J^-1*Jl;
-    Mq = vM(0, XMh, tgv = -10);
-    ChangeNumbering(J, Mq, q2P);
-    ChangeNumbering(J, um[], q2m);
-    KSPSolveTranspose(J, q2m, p2P);
-    ChangeNumbering(J, um[], p2P, inverse = true, exchange = true);
-    Mq = vM(0, XMh, tgv = -10);
-    ChangeNumbering(J, Mq, p2P);
+    um2[] = J^-1*Jl;
   }
+  um[] = um2[];
+  Mq = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, um2[], q2m);
+  ChangeNumbering(J, um2[], q2m, inverse = true);
+  Mnorm = sqrt(real(J(um2[], Mq)));
+  Mq /= Mnorm;
+  ChangeNumbering(J, Mq, q2P);
+  if (fileext2 == "fold" || fileext1 == "zhpf") um[] = um3[];
+  else {
+    KSPSolveTranspose(J, q2P, q2ma);
+    ChangeNumbering(J, um[], q2ma, inverse = true, exchange = true);
+  }
+  Mq = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, um2[], q2m, inverse = true);
+  Mq *= (Mnorm/J(um2[], Mq)); // so that <uma[],M*um[]> = 1
+  ChangeNumbering(J, Mq, p2P);
 }
 // solve nonlinear problem with SNES
 int ret;

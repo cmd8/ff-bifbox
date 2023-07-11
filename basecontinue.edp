@@ -226,7 +226,7 @@ while (count < maxcount){
     h0 /= f;
     if (cosalpha < 0) {
       h0 *= -1.0;
-      if(mpirank == 0) cout << "\tFold detected. Orientation reversed." << endl;
+      if(mpirank == 0) cout << "\tFold bifurcation detected. Orientation reversed." << endl;
       forcesave = true;
     }
     if (adapt && (count % savecount == 0)){
@@ -293,7 +293,7 @@ while (count < maxcount){
     if(mpirank == 0) lambda = qa(qa.n-1);
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
-    savebase(fileout + "_" + count, (savecount > 0 ? fileout : ""), meshout, ((count % savecount == 0) || forcesave), true);
+    savebase(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, ((count % savecount == 0) || forcesave), true);
     forcesave = false;
     yqP0 = yqP;
   }
