@@ -106,6 +106,8 @@ string filein = getARGV("-fi", "");
 string basefilein = getARGV("-bfi", "");
 string fileout = getARGV("-fo", "");
 bool normalform = getARGV("-nf", 1);
+bool wnlsave = getARGV("-wnl", 0);
+int dhpfselect = getARGV("-dhpf", 1);
 bool zerofreq = getARGV("-zero", 0);
 string param = getARGV("-param", "");
 string adaptto = getARGV("-adaptto", "b");
@@ -135,6 +137,19 @@ XMh<complex> defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
 if (fileext == "hopf") {
   ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym, omega, alpha, beta);
 }
+else if(fileext == "dhpf") {
+  int symN;
+  real omegaN;
+  complex[string] alphaN;
+  complex betaN, gamma1, gamma2;
+  complex[int] qNm, qNma;
+  if(dhpfselect == 1){
+    ub[].re = loaddhpf(fileroot, meshin, um[], uma[], qNm, qNma, sym, symN, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2);
+  }
+  else if(dhpfselect == 2){
+    ub[].re = loaddhpf(fileroot, meshin, qNm, qNma, um[], uma[], symN, sym, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2);
+  }
+}
 else if (fileext == "mode") {
   complex eigenvalue;
   um[] = loadmode(fileroot, meshin, sym, eigenvalue);
@@ -143,7 +158,7 @@ else if (fileext == "mode") {
 else if (fileext == "rslv") {
   real gain;
   complex[int] fm;
-  um[] = loadresolvent(fileroot, meshin, fm, sym, omega, gain);
+  um[] = loadrslv(fileroot, meshin, fm, sym, omega, gain);
 }
 else assert(false); // invalid input filetype
 if (basefileext == "base") {
@@ -162,6 +177,14 @@ else if(basefileext == "hopf") {
   complex beta;
   complex[int] qm, qma;
   ub[].re = loadhopf(basefileroot, meshin, qm, qma, sym, omega, alpha, beta);
+}
+else if(basefileext == "dhpf") {
+  int sym1, sym2;
+  real omega1, omega2;
+  complex[string] alpha1, alpha2;
+  complex beta1, beta2, gamma1, gamma2;
+  complex[int] q1m, q1ma, q2m, q2ma;
+  ub[].re = loaddhpf(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
 }
 else if(basefileext == "tdns") {
   real time;
@@ -463,10 +486,27 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, um2[], qAA, inverse = true, exchange = true); // FreeFEM to PETSc
     temp += vH(0, XMh, tgv = -10);
     beta = -J(uma[], temp);
-    um[] = conj(um[]);
+    if(wnlsave){
+      complex[int] val(1);
+      XMh<complex>[int] defu(vec)(1);
+      val = 0.0;
+      if(paramnames[0] != ""){
+        for (int k = 0; k < paramnames.n; ++k){
+          ChangeNumbering(J, vec[0][], qDa(k, :), inverse = true); // FreeFEM to PETSc
+          savemode(fileout + "_wnl_param" + k, "", fileout + ".hopf", meshout, vec, val, 0, true);
+        }
+      }
+      ChangeNumbering(J, vec[0][], qAAs, inverse = true); // FreeFEM to PETSc
+      savemode(fileout + "_wnl_AAs", "", fileout + ".hopf", meshout, vec, val, 0, true);
+      ChangeNumbering(J, vec[0][], qAA, inverse = true); // FreeFEM to PETSc
+      val = 2i*omega;
+      savemode(fileout + "_wnl_AA", "", fileout + ".hopf", meshout, vec, val, (2.0*sym), true);
+    }
   } else {
-    for (int k = 0; k < paramnames.n; ++k){
-      alpha[paramnames[k]] = 0.0;
+    if(paramnames[0] != ""){
+      for (int k = 0; k < paramnames.n; ++k){
+        alpha[paramnames[k]] = 0.0;
+      }
     }
     beta = 0.0;
   }

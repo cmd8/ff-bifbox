@@ -85,11 +85,4 @@ mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity4000_0.mo
 mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -param 1/Re -thetamax 5 -pv 1
 mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity.hopf -fo cavity -mo cavityhopf -adaptto bda -param 1/Re -pv 1
 ```
-
-### Second order
-- Compute 2nd-order weakly-nonlinear analysis, save .vtu files for Paraview
-```
-mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -pv 1
-mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cavity.hopf -fo cavity -pv 1
-```
-NOTE: the normalizations for the direct and adjoint eigenmodes (and therefore also the weakly-nonlinear corrections) used by `ff-bifbox` are different than the normalizations used by Sipp and Lebedev. This causes the results to differ by a scaling factor. Further, the sign of the Stuart-Landau coefficients in Sipp and Lebedev JFM (2007) are opposite to those in the normal form used in `wnl2compute.edp`.
+NOTE: the normalizations for the direct and adjoint eigenmodes (and therefore also the weakly-nonlinear corrections) used by `ff-bifbox` are different than the normalizations used by Sipp and Lebedev. This causes the results to differ by a scaling factor. Further, the sign of the Stuart-Landau coefficients in Sipp and Lebedev JFM (2007) are opposite to those in the normal form used in `hopfcompute.edp`.

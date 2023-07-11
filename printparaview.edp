@@ -72,7 +72,7 @@ if (mpirank==0){
     int sym;
     real omega;
     real gain;
-    um[] = loadresolvent(fileroot, meshin, fm[], sym, omega, gain);
+    um[] = loadrslv(fileroot, meshin, fm[], sym, omega, gain);
     cout << "  Saving '" + fileout + "_rslv_[forcing,response].vtu' in '" + workdir + "'." << endl;
     if (paraviewflag > 1){
       meshN Thgs = trunc(Thg, 1, split = paraviewflag);

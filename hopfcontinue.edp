@@ -22,6 +22,8 @@ string meshout = getARGV("-mo", "");
 string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", filein);
 bool normalform = getARGV("-nf", 1);
+bool wnlsave = getARGV("-wnl", 0);
+int dhpfselect = getARGV("-dhpf", 1);
 bool zerofreq = getARGV("-zero", 0);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
@@ -58,14 +60,29 @@ if(count > 0) {
   fileroot = fileroot(0:fileroot.rfind("_" + count)-1); // get file root
   meshroot = meshroot(0:meshroot.rfind("_" + count)-1); // get file root
 }
-assert(fileext == "hopf");
+assert(fileext == "hopf" || fileext == "dhpf");
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma), defu(yb), defu(um2), defu(um3);
 if (count == 0){
-  ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym, omega, alpha, beta);
+  if( fileext == "hopf"){
+    ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym, omega, alpha, beta);
+  }
+  else if(fileext == "dhpf") {
+    int symN;
+    real omegaN;
+    complex[string] alphaN;
+    complex betaN, gamma1, gamma2;
+    complex[int] qNm, qNma;
+    if(dhpfselect == 1){
+      ub[].re = loaddhpf(fileroot, meshin, um[], uma[], qNm, qNma, sym, symN, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2);
+    }
+    else if(dhpfselect == 2){
+      ub[].re = loaddhpf(fileroot, meshin, qNm, qNma, um[], uma[], symN, sym, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2);
+    }
+  }
   savehopf(filein, (savecount > 0 ? fileout : ""), meshin, sym, omega, alpha, beta, false, false);
 }
 else {
@@ -610,10 +627,28 @@ while (count < maxcount){
       ik3 = 0.0;
       iomega2 = 0.0;
       iomega3 = 0.0;
+      if(wnlsave){
+        complex[int] val(1);
+        XMh<complex>[int] defu(vec)(1);
+        val = 0.0;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            ChangeNumbering(J, vec[0][], qDa(k, :), inverse = true); // FreeFEM to PETSc
+            savemode(fileout + "_" + count + "_wnl_param" + k, "", fileout + "_" + count + ".hopf", meshout, vec, val, 0, true);
+          }
+        }
+        ChangeNumbering(J, vec[0][], qAAs, inverse = true); // FreeFEM to PETSc
+        savemode(fileout + "_" + count + "_wnl_AAs", "", fileout + ".hopf", meshout, vec, val, 0, true);
+        ChangeNumbering(J, vec[0][], qAA, inverse = true); // FreeFEM to PETSc
+        val = 2i*omega;
+        savemode(fileout + "_" + count + "_wnl_AA", "", fileout + ".hopf", meshout, vec, val, (2.0*sym), true);
+      }
     }
     else {
-      for (int k = 0; k < paramnames.n; ++k){
-        alpha[paramnames[k]] = 0.0;
+      if(paramnames[0] != ""){
+        for (int k = 0; k < paramnames.n; ++k){
+          alpha[paramnames[k]] = 0.0;
+        }
       }
       beta = 0.0;
     }

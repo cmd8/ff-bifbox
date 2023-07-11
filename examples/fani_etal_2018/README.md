@@ -74,7 +74,7 @@ NOTE: Here, the `-sym` argument specifies the asymmetric (1) or symmetric (0) re
 
 2. Compute the critical point and critical base/direct/adjoint solution
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder50_0.mode -fo cylinder -param 1/Re
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder50_0.mode -fo cylinder -param 1/Re -nf 0
 ```
 
 3. Adapt the mesh to the critical solution, save .vtu files for Paraview
@@ -87,10 +87,4 @@ mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder.hopf -
 mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -thetamax 5 -param1 Ma^2 -param2 1/Re -h0 -1 -scount 3 -maxcount 12
 ```
 
-### Second order
-- Compute 2nd-order weakly-nonlinear analysis, save .vtu files for Paraview
-```
-mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -pv 1
-mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi cylinder_12.hopf -fo cylinder_12 -pv 1
-```
-NOTE: the signs and normalizations used in `wnl2compute.edp` are different than those of the Stuart-Landau coefficients in Sipp and Lebedev JFM (2007).
+NOTE: the signs and normalizations of the normal form coefficients used in `hopfcompute.edp` are different than those of the Stuart-Landau coefficients in Sipp and Lebedev JFM (2007).

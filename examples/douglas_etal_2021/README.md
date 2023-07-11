@@ -67,8 +67,8 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi swirljet100.ba
 5. Compute backward and forward fold bifurcations from steady solution branch on base-adapted mesh
 ```
 cd $workdir && declare -a foldguesslist=(*foldguess.base) && cd -
-mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -dir $workdir -fi ${foldguesslist[0]} -fo swirljet100_B -param S -mo swirljet100_B -adaptto b -thetamax 1
-mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -dir $workdir -fi ${foldguesslist[1]} -fo swirljet100_F -param S -mo swirljet100_F -adaptto b -thetamax 1
+mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -dir $workdir -fi ${foldguesslist[0]} -fo swirljet100_B -param S -mo swirljet100_B -adaptto b -thetamax 1 -nf 0
+mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -dir $workdir -fi ${foldguesslist[1]} -fo swirljet100_F -param S -mo swirljet100_F -adaptto b -thetamax 1 -nf 0
 ```
 
 6. Adapt the mesh to the critical base/direct/adjoint solutions, save .vtu files for Paraview
@@ -96,8 +96,8 @@ mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi swirljet1p8.bas
 
 10. Compute Hopf bifurcation points
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljet1p8m1_0.mode -fo swirljetm1 -param 1/Re
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljet1p8m2_0.mode -fo swirljetm2 -param 1/Re
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljet1p8m1_0.mode -fo swirljetm1 -param 1/Re -nf 0
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljet1p8m2_0.mode -fo swirljetm2 -param 1/Re -nf 0
 ```
 
 11. Adapt the mesh to the critical base/direct/adjoint solutions, save .vtu files for Paraview
@@ -106,25 +106,19 @@ mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljetm1.hopf
 mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljetm2.hopf -fo swirljetm2 -param 1/Re -mo swirljetm2 -adaptto bda -pv 1 -thetamax 1
 ```
 
-12. Compute 2nd-order weakly-nonlinear analysis, save .vtu files for Paraview
-```
-mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi swirljetm1.hopf -fo swirljetm1 -param 1/Re -pv 1
-mpirun -n 4 FreeFem++-mpi -v 0 wnl2compute.edp -dir $workdir -fi swirljetm2.hopf -fo swirljetm2 -param 1/Re -pv 1
-```
-
-13. Continue the neutral Hopf curves in the (1/Re,S)-plane with adaptive remeshing
+12. Continue the neutral Hopf curves in the (1/Re,S)-plane with adaptive remeshing
 ```
 mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi swirljetm1.hopf -fo swirljetm1 -mo swirljetm1hopf -adaptto bda -thetamax 1 -param1 1/Re -param2 S -h0 4 -scount 4 -maxcount 20
 mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi swirljetm2.hopf -fo swirljetm2 -mo swirljetm2hopf -adaptto bda -thetamax 1 -param1 1/Re -param2 S -h0 4 -scount 4 -maxcount 12
 ```
 
-14. Compute the double-Hopf point where the |m| = 1 and |m| = 2 curves cross
+13. Compute the double-Hopf point where the |m| = 1 and |m| = 2 curves cross
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 doublehopfcompute.edp -dir $workdir -fi1 swirljetm2.hopf -fi2 swirljetm1.hopf -fo1 swirljetm2double -fo2 swirljetm1double -param1 1/Re -param2 S
-mpirun -n 4 FreeFem++-mpi -v 0 doublehopfcompute.edp -dir $workdir -fi1 swirljetm2double.hopf -fi2 swirljetm1double.hopf -fo2 swirljetm2double -fo1 swirljetm1double -param1 1/Re -param2 S -mo swirljetm1m2double -adaptto bda -pv 1 -thetamax 1
+mpirun -n 4 FreeFem++-mpi -v 0 dhpfcompute.edp -dir $workdir -fi swirljetm2.hopf -fi2 swirljetm1.hopf -fo swirljetm2m1 -param1 1/Re -param2 S -nf 0
+mpirun -n 4 FreeFem++-mpi -v 0 dhpfcompute.edp -dir $workdir -fi swirljetm2m1.dhpf -fo swirljetm2m1 -param1 1/Re -param2 S -mo swirljetm2m1 -adaptto bda -pv 1 -thetamax 1
 ```
 
-15. Compute the zero-Hopf point where the |m| = 1 curve intersects the fold curve
+14. Compute the zero-Hopf point where the |m| = 1 curve intersects the fold curve
 ```
 mpirun -n 4 FreeFem++-mpi -v 0 zerohopfcompute.edp -dir $workdir -fi1 swirljetm1_20.hopf -fo swirljetm1zero -param1 S -param2 1/Re -snes_divergence_tolerance 1e10
 ```

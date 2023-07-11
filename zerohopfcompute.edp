@@ -73,7 +73,7 @@ else if (fileext1 == "mode") {
 else if (fileext1 == "rslv") {
   real gain;
   complex[int] fm;
-  um[] = loadresolvent(fileroot1, meshin, fm, sym1, omega1, gain);
+  um[] = loadrslv(fileroot1, meshin, fm, sym1, omega1, gain);
 }
 else assert(false); // invalid input filetype
 if (basefileext == "base") {
@@ -339,23 +339,24 @@ if(mpirank == 0) {
 }
 {
   sym = sym1;
-  ik = 1i*real(sym1);
-  iomega = 1i*omega1;
   complex[int] Mq = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, um[], q1m);
+  ChangeNumbering(J, um[], q1m, inverse = true);
+  real Mnorm = sqrt(real(J(um[], Mq)));
+  Mq /= Mnorm;
   ChangeNumbering(J, Mq, q1P);
-  if (fileext1 == "hopf") {
-    um[] = uma[];
-    Mq = vM(0, XMh, tgv = -10);
-    ChangeNumbering(J, Mq, p1P);
-  }
+  if (fileext1 == "hopf") um[] = uma[];
   else {
+    ik = 1i*real(sym1);
+    iomega = 1i*omega1;
     J = vJ(XMh, XMh, tgv = -1);
-    ChangeNumbering(J, um[], q1m);
-    KSPSolveHermitianTranspose(J, q1m, p1P);
-    ChangeNumbering(J, um[], p1P, inverse = true, exchange = true);
-    Mq = vM(0, XMh, tgv = -10);
-    ChangeNumbering(J, Mq, p1P);
+    KSPSolveHermitianTranspose(J, q1P, q1ma);
+    ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);
   }
+  Mq = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, um[], q1m, inverse = true);
+  Mq *= (Mnorm/J(um[], Mq)); // so that <uma[],M*um[]> = 1
+  ChangeNumbering(J, Mq, p1P);
   sym = 0;
   ik = 0.0;
   iomega = 0.0;
