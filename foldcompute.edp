@@ -208,11 +208,12 @@ if (fileext != "fold"){
   Jl -= a0;
   Jl /= eps;
   J = vJ(XMh, XMh, tgv = -1);
-  um[] = J^-1*Jl;
+  ChangeNumbering(J, Jl, qP);
+  KSPSolve(J, qP, qm);
 }
 {
+  ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
   real[int] Mq = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, um[], qm);
   ChangeNumbering(J, um[], qm, inverse = true);
   real Mnorm = sqrt(real(J(um[], Mq)));
   Mq /= Mnorm;

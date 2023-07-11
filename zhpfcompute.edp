@@ -380,11 +380,11 @@ if(mpirank == 0) {
     Jl -= a0;
     Jl /= eps1;
     J = vJ(XMh, XMh, tgv = -1);
-    um2[] = J^-1*Jl;
+    ChangeNumbering(J, Jl, q2P);
+    KSPSolve(J, q2P, q2m);
   }
-  um[] = um2[];
+  ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
   Mq = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, um2[], q2m);
   ChangeNumbering(J, um2[], q2m, inverse = true);
   Mnorm = sqrt(real(J(um2[], Mq)));
   Mq /= Mnorm;
