@@ -183,7 +183,7 @@ macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, sym, sa
       um[] = evecs[ii][];
       for[i, v : restu] tempu[][v] = um[][i];
       mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
-      string modefileout0 = modefileout + "_" + ii;
+      string modefileout0 = modefileout + ((ii > 0) ? ("_" + ii) : "");
       if (mpirank == 0 && modefileout != ""){
         cout << "  Saving '" + modefileout0 + ".mode' over '" + basefile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
         cout << "\tsym = " + sym + ", eval = " + evals(ii);
@@ -262,7 +262,7 @@ macro saverslv(rslvfileout, gainsfile, basefile, meshfile, fvecs, uvecs, gains, 
       mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
       for[i, v : restf] tempf[][v] = fm[][i];
       mpiAllReduce(tempf[], fmg[], mpiCommWorld, mpiSUM);
-      string fileout = rslvfileout + "_" + ii;
+      string fileout = rslvfileout + ((ii > 0) ? ("_" + ii) : "");
       if (mpirank == 0 && rslvfileout != ""){
         cout << "  Saving '" + fileout + ".rslv' over '" + basefile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
         cout << "\tsym = " + sym + ", omega = " + omega + ", gain = " + gains(ii);

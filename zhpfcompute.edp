@@ -37,7 +37,7 @@ string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym, sym1;
-real omega, omega1;
+real omega;
 complex[string] alphaC;
 complex betaC;
 real[string] alphaR;
@@ -67,17 +67,17 @@ if (fileext2 == "fold") {
 }
 else if (fileext2 != "") assert(false); // invalid input filetype
 if (fileext1 == "hopf") {
-  ub[].re = loadhopf(fileroot1, meshin, um[], uma[], sym1, omega1, alphaC, betaC);
+  ub[].re = loadhopf(fileroot1, meshin, um[], uma[], sym1, omega, alphaC, betaC);
 }
 else if (fileext1 == "mode") {
   complex eigenvalue;
   um[] = loadmode(fileroot1, meshin, sym1, eigenvalue);
-  omega1 = imag(eigenvalue);
+  omega = imag(eigenvalue);
 }
 else if (fileext1 == "rslv") {
   real gain;
   complex[int] fm;
-  um[] = loadrslv(fileroot1, meshin, fm, sym1, omega1, gain);
+  um[] = loadrslv(fileroot1, meshin, fm, sym1, omega, gain);
 }
 else assert(false); // invalid input filetype
 if (basefileext == "base") {
@@ -190,17 +190,17 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
         lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
-        omega1 = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
+        omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
         lambda2 = real(qa(qa.n-1)); // Extract parameter value from state vector on proc 0
       }
       broadcast(processor(0), lambda1);
-      broadcast(processor(0), omega1);
+      broadcast(processor(0), omega);
       broadcast(processor(0), lambda2);
       updatelambda(param1, lambda1);
       updatelambda(param2, lambda2);
       complex[int] Ra, R = vR(0, XMh, tgv = -1);
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
-      iomega = 1i*omega1;
+      iomega = 1i*omega;
       ik = 1i*real(sym1);
       sym = sym1;
       J = vJ(XMh, XMh, tgv = -1);
@@ -237,11 +237,11 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
         lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
-        omega1 = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
+        omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
         lambda2 = real(qa(qa.n-1)); // Extract parameter value from state vector on proc 0
       }
       broadcast(processor(0), lambda1);
-      broadcast(processor(0), omega1);
+      broadcast(processor(0), omega);
       broadcast(processor(0), lambda2);
       ChangeNumbering(J, uma[], q1ma, inverse = true);
       ChangeNumbering(J, um3[], q2ma, inverse = true);
@@ -250,7 +250,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       complex[int] Jl1 = vR(0, XMh, tgv = -1);
       sym = sym1;
       ik = 1i*real(sym1);
-      iomega = 1i*omega1;
+      iomega = 1i*omega;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
       complex[int] Hl1 = vJ(0, XMh, tgv = -10);
       sym = 0;
@@ -263,7 +263,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       complex[int] Jl2 = vR(0, XMh, tgv = -1);
       sym = sym1;
       ik = 1i*real(sym1);
-      iomega = 1i*omega1;
+      iomega = 1i*omega;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
       complex[int] Hl2 = vJ(0, XMh, tgv = -10);
       sym = 0;
@@ -279,7 +279,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       Jl2 /= eps2;
       sym = sym1;
       ik = 1i*real(sym1);
-      iomega = 1i*omega1;
+      iomega = 1i*omega;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
       a0 = vJ(0, XMh, tgv = -10);
       Hl1 -= a0;
@@ -311,7 +311,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       else {
         sym = sym1;
         ik = 1i*real(sym1);
-        iomega = 1i*omega1;
+        iomega = 1i*omega;
         ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
         a0 = vM(0, XMh, tgv = -10);
         gw = J(uma[], a0);
@@ -322,7 +322,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       sym = 0;
       ik = 1i*real(sym1);
-      iomega = 1i*omega1;
+      iomega = 1i*omega;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
       MatMultHermitianTranspose(H, q1ma, temp1); // gqr,i
@@ -348,7 +348,7 @@ ChangeNumbering(J, ub[], qa);
 if(mpirank == 0) {
   qa.resize(qa.n+3);
   qa(qa.n-3) = lambda1;
-  qa(qa.n-2) = omega1;
+  qa(qa.n-2) = omega;
   qa(qa.n-1) = lambda2;
 }
 {
@@ -362,7 +362,7 @@ if(mpirank == 0) {
   if (fileext1 == "hopf" || fileext1 == "dhpf" || fileext1 == "zhpf") um[] = uma[];
   else {
     ik = 1i*real(sym1);
-    iomega = 1i*omega1;
+    iomega = 1i*omega;
     J = vJ(XMh, XMh, tgv = -1);
     KSPSolveHermitianTranspose(J, q1P, q1ma);
     ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);
@@ -409,11 +409,11 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
   if(mpirank == 0) {
     lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
-    omega1 = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
+    omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
     lambda2 = real(qa(qa.n-1)); // Extract parameter value from state vector on proc 0
   }
   broadcast(processor(0), lambda1);
-  broadcast(processor(0), omega1);
+  broadcast(processor(0), omega);
   broadcast(processor(0), lambda2);
   updatelambda(param1, lambda1);
   updatelambda(param2, lambda2);
@@ -429,7 +429,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshout);
   }
-  savehopf(fileout, "", meshout, sym1, omega1, alphaC, betaC, true, true);
+  savehopf(fileout, "", meshout, sym1, omega, alphaC, betaC, true, true);
   ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
   ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
   Mq = vM(0, XMh, tgv = -10);

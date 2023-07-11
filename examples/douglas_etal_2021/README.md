@@ -96,8 +96,8 @@ mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi swirljet1p8.bas
 
 10. Compute Hopf bifurcation points
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljet1p8m1_0.mode -fo swirljetm1 -param 1/Re -nf 0
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljet1p8m2_0.mode -fo swirljetm2 -param 1/Re -nf 0
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljet1p8m1.mode -fo swirljetm1 -param 1/Re -nf 0
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljet1p8m2.mode -fo swirljetm2 -param 1/Re -nf 0
 ```
 
 11. Adapt the mesh to the critical base/direct/adjoint solutions, save .vtu files for Paraview
@@ -120,5 +120,6 @@ mpirun -n 4 FreeFem++-mpi -v 0 dhpfcompute.edp -dir $workdir -fi swirljetm2m1.dh
 
 14. Compute the zero-Hopf point where the |m| = 1 curve intersects the fold curve
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 zhpfcompute.edp -dir $workdir -fi1 swirljetm1_20.hopf -fo swirljetm1zero -param1 S -param2 1/Re -snes_divergence_tolerance 1e10
+cd $workdir && declare -a zhpfguesslist=(*specialpt.hopf) && cd -
+mpirun -n 4 FreeFem++-mpi -v 0 zhpfcompute.edp -dir $workdir -fi ${zhpfguesslist[0]} -fo swirljetm1 -param1 S -param2 1/Re -snes_divergence_tolerance 1e10
 ```
