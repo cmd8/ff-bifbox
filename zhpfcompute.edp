@@ -301,8 +301,8 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       complex gw, gl1 = J(uma[], Hl1);
       complex gl2 = J(uma[], Hl2);
-      complex hl1 = J(um3[], Kl1);
-      complex hl2 = J(um3[], Kl2);
+      real hl1 = real(J(um3[], Kl1));
+      real hl2 = real(J(um3[], Kl2));
       if (zerofreq) {
         gw = 1.0;
         gl1 = real(gl1);
@@ -316,9 +316,9 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
         a0 = vM(0, XMh, tgv = -10);
         gw = J(uma[], a0);
       }
-      tempPms = [[real(gl1), -imag(gw), real(gl2) ],
-                 [imag(gl1),  real(gw), imag(gl2) ],
-                 [real(hl1),  0       , real(hl2) ]];
+      tempPms = [[ real(gl1), -imag(gw), real(gl2) ],
+                 [ imag(gl1),  real(gw), imag(gl2) ],
+                 [ hl1      ,  0       , hl2       ]];
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       sym = 0;
       ik = 1i*real(sym1);

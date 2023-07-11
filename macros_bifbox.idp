@@ -183,7 +183,7 @@ macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, sym, sa
       um[] = evecs[ii][];
       for[i, v : restu] tempu[][v] = um[][i];
       mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
-      string modefileout0 = modefileout + ((val.n > 1) ? ("_" + ii) : "");
+      string modefileout0 = modefileout + "_" + ii;
       if (mpirank == 0 && modefileout != ""){
         cout << "  Saving '" + modefileout0 + ".mode' over '" + basefile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
         cout << "\tsym = " + sym + ", eval = " + evals(ii);
