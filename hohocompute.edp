@@ -1,14 +1,14 @@
 //
-// dhpfcompute.edp
+// hohocompute.edp
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // EXAMPLE USAGE:
 //  Initialize with two mode or hopf files, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 dhpfcompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fi2 <FILEIN2> -fo <FILEOUT1>
+// mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fi2 <FILEIN2> -fo <FILEOUT1>
 //
-//  Initialize with dhpf from file, adapt mesh to solution
-// mpirun -n 4 FreeFem++-mpi -v 0 dhpfcompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fo <FILEOUT1> -mo <MESHOUT>
+//  Initialize with hoho from file, adapt mesh to solution
+// mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fo <FILEOUT1> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
@@ -25,8 +25,8 @@ string basefilein = getARGV("-bfi", "");
 string fileout = getARGV("-fo", "");
 bool normalform = getARGV("-nf", 1);
 bool wnlsave = getARGV("-wnl", 0);
-int dhpfselect = getARGV("-dhpf", 1);
-int dhpfselect2 = getARGV("-dhpf2", 1);
+int hohoselect = getARGV("-hoho", 1);
+int hohoselect2 = getARGV("-hoho2", 1);
 bool zerofreq1 = getARGV("-zero1", 0);
 bool zerofreq2 = getARGV("-zero2", 0);
 string param1 = getARGV("-param1", "");
@@ -61,17 +61,23 @@ XMh<complex> defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
 if (fileext2 == "hopf") {
   ub[].re = loadhopf(fileroot2, meshin, um2[], um3[], sym2, omega2, alpha2, beta2);
 }
-else if (fileext2 == "dhpf") {
+else if (fileext2 == "foho") {
+  complex[string] alpha1;
+  complex beta1, gamma1, gamma2;
+  complex[int] q1m, q1ma;
+  ub[].re = loadfoho(fileroot2, meshin, q1m, q1ma, um2[], um3[], sym2, omega2, alpha2, alpha1, beta2, beta1, gamma2, gamma1);
+}
+else if (fileext2 == "hoho") {
   int symN;
   real omegaN;
   complex[string] alphaN;
   complex betaN, gammaN;
   complex[int] qNm, qNma;
-  if(dhpfselect2 == 1){
-    ub[].re = loaddhpf(fileroot2, meshin, um2[], um3[], qNm, qNma, sym2, symN, omega2, omegaN, alpha2, alphaN, beta2, betaN, gammaN, gamma2);
+  if(hohoselect2 == 1){
+    ub[].re = loadhoho(fileroot2, meshin, um2[], um3[], qNm, qNma, sym2, symN, omega2, omegaN, alpha2, alphaN, beta2, betaN, gammaN, gamma2);
   }
-  else if(dhpfselect2 == 2){
-    ub[].re = loaddhpf(fileroot2, meshin, qNm, qNma, um2[], um3[], symN, sym2, omegaN, omega2, alphaN, alpha2, betaN, beta2, gamma2, gammaN);
+  else if(hohoselect2 == 2){
+    ub[].re = loadhoho(fileroot2, meshin, qNm, qNma, um2[], um3[], symN, sym2, omegaN, omega2, alphaN, alpha2, betaN, beta2, gamma2, gammaN);
   }
 }
 else if (fileext2 == "mode") {
@@ -85,21 +91,27 @@ else if (fileext2 == "rslv") {
   um2[] = loadrslv(fileroot2, meshin, fm, sym2, omega2, gain);
 }
 else if (fileext2 != "") assert(false); // invalid input filetype
-if (fileext1 == "dhpf" && fileext2 == "") {
-  ub[].re = loaddhpf(fileroot1, meshin, um[], uma[], um2[], um3[], sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+if (fileext1 == "hoho" && fileext2 == "") {
+  ub[].re = loadhoho(fileroot1, meshin, um[], uma[], um2[], um3[], sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
 }
-else if (fileext1 == "dhpf" && fileext2 != "") {
+else if (fileext1 == "hoho" && fileext2 != "") {
   int symN;
   real omegaN;
   complex[string] alphaN;
   complex betaN, gammaN;
   complex[int] qNm, qNma;
-  if(dhpfselect == 1){
-    ub[].re = loaddhpf(fileroot1, meshin, um[], uma[], qNm, qNma, sym1, symN, omega1, omegaN, alpha1, alphaN, beta1, betaN, gamma1, gammaN);
+  if(hohoselect == 1){
+    ub[].re = loadhoho(fileroot1, meshin, um[], uma[], qNm, qNma, sym1, symN, omega1, omegaN, alpha1, alphaN, beta1, betaN, gamma1, gammaN);
   }
-  else if(dhpfselect == 2){
-    ub[].re = loaddhpf(fileroot1, meshin, qNm, qNma, um[], uma[], symN, sym1, omegaN, omega1, alphaN, alpha1, betaN, beta1, gammaN, gamma1);
+  else if(hohoselect == 2){
+    ub[].re = loadhoho(fileroot1, meshin, qNm, qNma, um[], uma[], symN, sym1, omegaN, omega1, alphaN, alpha1, betaN, beta1, gammaN, gamma1);
   }
+}
+else if (fileext1 == "foho") {
+  complex[string] alpha2;
+  complex beta2, gamma1, gamma2;
+  complex[int] q2m, q2ma;
+  ub[].re = loadfoho(fileroot1, meshin, um[], uma[], q2m, q2ma, sym1, omega1, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
 }
 else if (fileext1 == "hopf") {
   ub[].re = loadhopf(fileroot1, meshin, um[], uma[], sym1, omega1, alpha1, beta1);
@@ -132,13 +144,21 @@ else if(basefileext == "hopf") {
   complex[int] qm, qma;
   ub[].re = loadhopf(basefileroot, meshin, qm, qma, sym, omega, alpha, beta);
 }
-else if(basefileext == "dhpf") {
+else if(basefileext == "foho") {
+  int sym;
+  real omega;
+  complex[string] alpha1, alpha2;
+  complex beta1, beta2, gamma1, gamma2;
+  complex[int] q1m, q1ma, q2m, q2ma;
+  ub[].re = loadfoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+}
+else if(basefileext == "hoho") {
   int sym1, sym2;
   real omega1, omega2;
   complex[string] alpha1, alpha2;
   complex beta1, beta2, gamma1, gamma2;
   complex[int] q1m, q1ma, q2m, q2ma;
-  ub[].re = loaddhpf(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+  ub[].re = loadhoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
 }
 else if(basefileext == "tdns") {
   real time;
@@ -425,7 +445,7 @@ if(mpirank == 0) {
   real Mnorm = sqrt(real(J(um[], Mq)));
   Mq /= Mnorm;
   ChangeNumbering(J, Mq, q1P);
-  if (fileext1 == "hopf" || fileext1 == "zhpf" || fileext1 == "dhpf") um[] = uma[];
+  if (fileext1 == "hopf" || fileext1 == "foho" || fileext1 == "hoho") um[] = uma[];
   else {
     ik = 1i*real(sym1);
     iomega = 1i*omega1;
@@ -445,7 +465,7 @@ if(mpirank == 0) {
   Mnorm = sqrt(real(J(um[], Mq)));
   Mq /= Mnorm;
   ChangeNumbering(J, Mq, q2P);
-  if (fileext2 == "hopf" || fileext2 == "zhpf" || fileext2 == "dhpf") um[] = um3[];
+  if (fileext2 == "hopf" || fileext2 == "foho" || fileext2 == "hoho") um[] = um3[];
   else {
     ik = 1i*real(sym2);
     iomega = 1i*omega2;
@@ -803,25 +823,25 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
           ChangeNumbering(J, vec[0][], qDa(k, :), inverse = true); // FreeFEM to PETSc
-          savemode(fileout + "_wnl_param" + k, "", fileout + ".dhpf", meshout, vec, val, 0, true);
+          savemode(fileout + "_wnl_param" + k, "", fileout + ".hoho", meshout, vec, val, 0, true);
         }
       }
       ChangeNumbering(J, vec[0][], qAAs, inverse = true); // FreeFEM to PETSc
-      savemode(fileout + "_wnl_AAs", "", fileout + ".dhpf", meshout, vec, val, 0, true);
+      savemode(fileout + "_wnl_AAs", "", fileout + ".hoho", meshout, vec, val, 0, true);
       ChangeNumbering(J, vec[0][], qBBs, inverse = true); // FreeFEM to PETSc
-      savemode(fileout + "_wnl_BBs", "", fileout + ".dhpf", meshout, vec, val, 0, true);
+      savemode(fileout + "_wnl_BBs", "", fileout + ".hoho", meshout, vec, val, 0, true);
       ChangeNumbering(J, vec[0][], qABs, inverse = true); // FreeFEM to PETSc
       val = 1i*(omega1 - omega2);
-      savemode(fileout + "_wnl_ABs", "", fileout + ".dhpf", meshout, vec, val, (sym1 - sym2), true);
+      savemode(fileout + "_wnl_ABs", "", fileout + ".hoho", meshout, vec, val, (sym1 - sym2), true);
       ChangeNumbering(J, vec[0][], qAA, inverse = true); // FreeFEM to PETSc
       val = 2i*omega1;
-      savemode(fileout + "_wnl_AA", "", fileout + ".dhpf", meshout, vec, val, (2.0*sym1), true);
+      savemode(fileout + "_wnl_AA", "", fileout + ".hoho", meshout, vec, val, (2.0*sym1), true);
       ChangeNumbering(J, vec[0][], qAB, inverse = true); // FreeFEM to PETSc
       val = 1i*(omega1 + omega2);
-      savemode(fileout + "_wnl_AB", "", fileout + ".dhpf", meshout, vec, val, (sym1 + sym2), true);
+      savemode(fileout + "_wnl_AB", "", fileout + ".hoho", meshout, vec, val, (sym1 + sym2), true);
       ChangeNumbering(J, vec[0][], qBB, inverse = true); // FreeFEM to PETSc
       val = 2i*omega2;
-      savemode(fileout + "_wnl_BB", "", fileout + ".dhpf", meshout, vec, val, (2.0*sym2), true);
+      savemode(fileout + "_wnl_BB", "", fileout + ".hoho", meshout, vec, val, (2.0*sym2), true);
     }
   }
   else {
@@ -845,5 +865,5 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, uma[], q1ma, inverse = true);
   ChangeNumbering(J, um2[], q2m, inverse = true);
   ChangeNumbering(J, um3[], q2ma, inverse = true);
-  savedhpf(fileout, "", meshout, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, true, true);
+  savehoho(fileout, "", meshout, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, true, true);
 }

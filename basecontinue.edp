@@ -78,13 +78,21 @@ if(count == 0) {
     complex[int] qm, qma;
     ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega, alpha, beta);
   }
-  else if(fileext == "dhpf") {
+  else if(fileext == "hoho") {
     int sym1, sym2;
     real omega1, omega2;
     complex[string] alpha1, alpha2;
     complex beta1, beta2, gamma1, gamma2;
     complex[int] q1m, q1ma, q2m, q2ma;
-    ub[] = loaddhpf(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+    ub[] = loadhoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+  }
+  else if(fileext == "foho") {
+    int sym;
+    real omega;
+    complex[string] alpha1, alpha2;
+    complex beta1, beta2, gamma1, gamma2;
+    complex[int] q1m, q1ma, q2m, q2ma;
+    ub[] = loadfoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
   }
   savebase(filein, (savecount > 0 ? fileout : ""), meshin, false, false);
 }
@@ -203,7 +211,7 @@ broadcast(processor(0), lambda);
 while (count < maxcount){
   real[int] qa0 = qa;
   ChangeNumbering(J, yb[], yqP, inverse = true); // PETSc to FreeFEM
-  real h = h0/sqrt(J(yb[] ,yb[]) + 1.0); // use FreeFEM numbering here
+  real h = h0/sqrt(J(yb[], yb[]) + 1.0); // use FreeFEM numbering here
   qa(0:qa.n - (mpirank == 0 ? 2 : 1)) -= (h*yqP);
   if (mpirank == 0) {
     qa(qa.n-1) += h; // -= (-1.0*h)

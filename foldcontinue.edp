@@ -56,14 +56,27 @@ if(count > 0) {
   fileroot = fileroot(0:fileroot.rfind("_" + count)-1); // get file root
   meshroot = meshroot(0:meshroot.rfind("_" + count)-1); // get file root
 }
-assert(fileext == "fold");
+assert(fileext == "fold" || fileext == "foho");
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(um), defu(uma), defu(yb), defu(um2), defu(um3);
 if (count == 0){
-  ub[] = loadfold(fileroot, meshin, um[], uma[], alpha, beta);
+  if( fileext == "hopf"){
+    ub[] = loadfold(fileroot, meshin, um[], uma[], alpha, beta);
+  }
+  else if(fileext == "foho") {
+    int sym;
+    real omega;
+    complex[string] alpha1, alpha2;
+    complex beta1, beta2, gamma1, gamma2;
+    complex[int] q1m, q1ma;
+    XMh<complex> defu(umi), defu(umai);
+    ub[] = loadfoho(fileroot, meshin, q1m, q1ma, umi[], umai[], sym, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+    um[] = umi[].re;
+    uma[] = umai[].re;
+  }
   savefold(filein, (savecount > 0 ? fileout : ""), meshin, alpha, beta, false, false);
 }
 else {

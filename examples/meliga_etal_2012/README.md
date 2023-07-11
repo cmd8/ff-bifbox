@@ -62,8 +62,8 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi vortexDH.base -
 mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fo vortexm1 -fi vortexDH.base -sym -1 -eps_target 0+1i
 mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fo vortexm2 -fi vortexDH.base -sym -2 -eps_target 0+2i
 ```
-3. Compute double-Hopf point
+3. Compute Hopf-Hopf point
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 dhpfcompute.edp -dir $workdir -fo vortex -fi vortexm1.mode -fi2 vortexm2.mode -param1 S -param2 1/Re -nf 0
-mpirun -n 4 FreeFem++-mpi -v 0 dhpfcompute.edp -dir $workdir -fo vortex -fi vortex.dhpf -param1 S -param2 1/Re -adaptto bda -mo vortexm1m2adapt
+mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -dir $workdir -fo vortex -fi vortexm1.mode -fi2 vortexm2.mode -param1 S -param2 1/Re -nf 0
+mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -dir $workdir -fo vortex -fi vortex.hoho -param1 S -param2 1/Re -adaptto bda -mo vortexm1m2adapt
 ```

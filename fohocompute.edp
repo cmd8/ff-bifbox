@@ -1,14 +1,14 @@
 //
-// zhpfcompute.edp
+// fohocompute.edp
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // EXAMPLE USAGE:
 //  Initialize with hopf file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 zhpfcompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fo <FILEOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 fohocompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fo <FILEOUT>
 //
 //  Initialize with hopf and fold files, adapt mesh to solution
-// mpirun -n 4 FreeFem++-mpi -v 0 zhpfcompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fi2 <FILEIN2> -fo <FILEOUT> -mo <MESHOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 fohocompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fi2 <FILEIN2> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
@@ -26,7 +26,7 @@ string basefilein = getARGV("-bfi", "");
 string fileout = getARGV("-fo", "");
 bool normalform = getARGV("-nf", 1);
 bool wnlsave = getARGV("-wnl", 0);
-int dhpfselect = getARGV("-dhpf", 1);
+int hohoselect = getARGV("-hoho", 1);
 bool zerofreq = getARGV("-zero", 0);
 string param1 = getARGV("-param1", "");
 string param2 = getARGV("-param2", "");
@@ -38,10 +38,8 @@ string pctype = getARGV("-pc_type", "lu");
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym, sym1;
 real omega;
-complex[string] alphaC;
-complex betaC;
-real[string] alphaR;
-real betaR;
+complex[string] alpha1, alpha2;
+complex beta1, beta2, gamma1, gamma2;
 
 // Load mesh, make FE basis
 string fileroot1, fileroot2, meshroot, basefileroot;
@@ -60,14 +58,52 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
 if (fileext2 == "fold") {
+  real[string] alphaR;
+  real betaR;
   XMh defu(umi), defu(umai);
   ub[].re = loadfold(fileroot2, meshin, umi[], umai[], alphaR, betaR);
   um2[].re = umi[];
   um3[].re = umai[];
+  if(paramnames[0] != ""){
+    for (int k = 0; k < paramnames.n; ++k){
+      alpha2[paramnames[k]] = alphaR[paramnames[k]];
+    }
+  }
+  beta2 = betaR;
+}
+else if(fileext2 == "foho") {
+  int sym;
+  real omega;
+  complex[string] alpha1;
+  complex beta1, gamma1;
+  complex[int] q1m, q1ma;
+  ub[].re = loadfoho(fileroot2, meshin, q1m, q1ma, um2[], um3[], sym, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
 }
 else if (fileext2 != "") assert(false); // invalid input filetype
-if (fileext1 == "hopf") {
-  ub[].re = loadhopf(fileroot1, meshin, um[], uma[], sym1, omega, alphaC, betaC);
+if (fileext1 == "foho" && fileext2 == "") {
+  ub[].re = loadfoho(fileroot1, meshin, um[], uma[], um2[], um3[], sym1, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+}
+else if (fileext1 == "foho" && fileext2 != "") {
+  complex[string] alpha2;
+  complex beta2, gamma2;
+  complex[int] q2m, q2ma;
+  ub[].re = loadfoho(fileroot1, meshin, um[], uma[], q2m, q2ma, sym1, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+}
+else if (fileext1 == "hoho") {
+  int symN;
+  real omegaN;
+  complex[string] alphaN;
+  complex betaN, gammaN;
+  complex[int] qNm, qNma;
+  if(hohoselect == 1){
+    ub[].re = loadhoho(fileroot1, meshin, um[], uma[], qNm, qNma, sym1, symN, omega, omegaN, alpha1, alphaN, beta1, betaN, gamma1, gammaN);
+  }
+  else if(hohoselect == 2){
+    ub[].re = loadhoho(fileroot1, meshin, qNm, qNma, um[], uma[], symN, sym1, omegaN, omega, alphaN, alpha1, betaN, beta1, gammaN, gamma1);
+  }
+}
+else if (fileext1 == "hopf") {
+  ub[].re = loadhopf(fileroot1, meshin, um[], uma[], sym1, omega, alpha1, beta1);
 }
 else if (fileext1 == "mode") {
   complex eigenvalue;
@@ -97,13 +133,21 @@ else if(basefileext == "hopf") {
   complex[int] qm, qma;
   ub[].re = loadhopf(basefileroot, meshin, qm, qma, sym, omega, alpha, beta);
 }
-else if(basefileext == "dhpf") {
+else if(basefileext == "foho") {
+  int sym;
+  real omega;
+  complex[string] alpha1, alpha2;
+  complex beta1, beta2, gamma1, gamma2;
+  complex[int] q1m, q1ma, q2m, q2ma;
+  ub[].re = loadfoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+}
+else if(basefileext == "hoho") {
   int sym1, sym2;
   real omega1, omega2;
   complex[string] alpha1, alpha2;
   complex beta1, beta2, gamma1, gamma2;
   complex[int] q1m, q1ma, q2m, q2ma;
-  ub[].re = loaddhpf(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+  ub[].re = loadhoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
 }
 else if(basefileext == "tdns") {
   real time;
@@ -339,7 +383,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       return 0;
   }
 
-set(Ja, sparams = "-ksp_type fgmres -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
 set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
 
 // Initialize
@@ -359,7 +403,7 @@ if(mpirank == 0) {
   real Mnorm = sqrt(real(J(um[], Mq)));
   Mq /= Mnorm;
   ChangeNumbering(J, Mq, q1P);
-  if (fileext1 == "hopf" || fileext1 == "dhpf" || fileext1 == "zhpf") um[] = uma[];
+  if (fileext1 == "hopf" || fileext1 == "hoho" || fileext1 == "foho") um[] = uma[];
   else {
     ik = 1i*real(sym1);
     iomega = 1i*omega;
@@ -374,7 +418,7 @@ if(mpirank == 0) {
   sym = 0;
   ik = 0.0;
   iomega = 0.0;
-  if (fileext2 != "fold" && fileext2 != "zhpf"){
+  if (fileext2 != "fold" && fileext2 != "foho"){
     updatelambda(param1, lambda1 + eps1);
     complex[int] Jl = vR(0, XMh, tgv = -1);
     updatelambda(param1, lambda1);
@@ -390,7 +434,7 @@ if(mpirank == 0) {
   Mnorm = sqrt(real(J(um2[], Mq)));
   Mq /= Mnorm;
   ChangeNumbering(J, Mq, q2P);
-  if (fileext2 == "fold" || fileext1 == "zhpf") um[] = um3[];
+  if (fileext2 == "fold" || fileext2 == "foho") um[] = um3[];
   else {
     KSPSolveTranspose(J, q2P, q2ma);
     ChangeNumbering(J, um[], q2ma, inverse = true, exchange = true);
@@ -419,34 +463,46 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   updatelambda(param2, lambda2);
   ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
   complex[int] Mq = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
   ChangeNumbering(J, um[], q1m, inverse = true);
   ChangeNumbering(J, uma[], q1ma, inverse = true);
   real Mnorm = sqrt(real(J(um[], Mq)));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
   uma[] *= (Mnorm/J(Mq, uma[])); // so that <uma[],M*um[]> = 1
+  ChangeNumbering(J, um[], q1m);
+  ChangeNumbering(J, uma[], q1ma);
+  ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
+  Mq = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, um2[], q2m, inverse = true);
+  ChangeNumbering(J, um3[], q2ma, inverse = true);
+  Mnorm = sqrt(real(J(um2[], Mq)));
+  um2[] /= Mnorm; // so that <um[],M*um[]> = 1
+  um3[] *= (Mnorm/J(Mq, um3[])); // so that <uma[],M*um[]> = 1
+  ChangeNumbering(J, um2[], q2m);
+  ChangeNumbering(J, um3[], q2ma);
+  if(normalform){
+    complex[int] qAAs(J.n), qABs(J.n), qBBs(J.n), qAA(J.n), qAB(J.n), qBB(J.n), tempP(J.n), temp(um[].n), temp1(um[].n);
+    complex[int,int] qDa(paramnames.n, J.n);
+  }
+  else {
+    if(paramnames[0] != ""){
+      for (int k = 0; k < paramnames.n; ++k){
+        alpha1[paramnames[k]] = 0.0;
+        alpha2[paramnames[k]] = 0.0;
+      }
+    }
+    beta1 = 0.0;
+    beta2 = 0.0;
+    gamma1 = 0.0;
+    gamma2 = 0.0;
+  }
   if(mpirank==0 && adapt) { // Save adapted mesh
     cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshout);
   }
-  savehopf(fileout, "", meshout, sym1, omega, alphaC, betaC, true, true);
-  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
-  ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-  Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
-  ChangeNumbering(J, um[], q2m, inverse = true);
-  ChangeNumbering(J, uma[], q2ma, inverse = true);
-  Mnorm = sqrt(real(J(um[], Mq)));
-  um[] /= Mnorm; // so that <um[],M*um[]> = 1
-  uma[] *= real(Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
-  {
-    real[int] ubo = ub[].re;
-    real[int] umo = um[].re;
-    real[int] umao = uma[].re;
-    XMh defu(ub), defu(um), defu(uma);
-    ub[] = ubo;
-    um[] = umo;
-    uma[] = umao;
-    savefold(fileout, "", meshout, alphaR, betaR, true, true);
-  }
+  ChangeNumbering(J, um[], q1m, inverse = true);
+  ChangeNumbering(J, uma[], q1ma, inverse = true);
+  ChangeNumbering(J, um2[], q2m, inverse = true);
+  ChangeNumbering(J, um3[], q2ma, inverse = true);
+  savefoho(fileout, "", meshout, sym1, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2, true, true);
 }

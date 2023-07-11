@@ -108,18 +108,18 @@ mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi swirljetm2.hopf
 
 12. Continue the neutral Hopf curves in the (1/Re,S)-plane with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi swirljetm1.hopf -fo swirljetm1 -mo swirljetm1hopf -adaptto bda -thetamax 1 -param1 1/Re -param2 S -h0 4 -scount 4 -maxcount 20
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi swirljetm1.hopf -fo swirljetm1 -mo swirljetm1hopf -adaptto bda -thetamax 1 -param1 1/Re -param2 S -h0 4 -scount 4 -maxcount 32
 mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi swirljetm2.hopf -fo swirljetm2 -mo swirljetm2hopf -adaptto bda -thetamax 1 -param1 1/Re -param2 S -h0 4 -scount 4 -maxcount 12
 ```
 
-13. Compute the double-Hopf point where the |m| = 1 and |m| = 2 curves cross
+13. Compute the Hopf-Hopf point where the |m| = 1 and |m| = 2 curves cross
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 dhpfcompute.edp -dir $workdir -fi swirljetm2.hopf -fi2 swirljetm1.hopf -fo swirljetm2m1 -param1 1/Re -param2 S -nf 0
-mpirun -n 4 FreeFem++-mpi -v 0 dhpfcompute.edp -dir $workdir -fi swirljetm2m1.dhpf -fo swirljetm2m1 -param1 1/Re -param2 S -mo swirljetm2m1 -adaptto bda -pv 1 -thetamax 1
+mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -dir $workdir -fi swirljetm2.hopf -fi2 swirljetm1.hopf -fo swirljetm2m1 -param1 1/Re -param2 S -nf 0
+mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -dir $workdir -fi swirljetm2m1.hoho -fo swirljetm2m1 -param1 1/Re -param2 S -mo swirljetm2m1 -adaptto bda -pv 1 -thetamax 1
 ```
 
-14. Compute the zero-Hopf point where the |m| = 1 curve intersects the fold curve
+14. Compute the fold-Hopf point where the |m| = 1 curve intersects the fold curve
 ```
-cd $workdir && declare -a zhpfguesslist=(*specialpt.hopf) && cd -
-mpirun -n 4 FreeFem++-mpi -v 0 zhpfcompute.edp -dir $workdir -fi ${zhpfguesslist[0]} -fo swirljetm1 -param1 S -param2 1/Re -snes_divergence_tolerance 1e10
+cd $workdir && declare -a fohoguesslist=(*specialpt.hopf) && cd -
+mpirun -n 4 FreeFem++-mpi -v 0 fohocompute.edp -dir $workdir -fi ${fohoguesslist[0]} -fo swirljetm1 -param1 S -param2 1/Re -snes_divergence_tolerance 1e10
 ```

@@ -23,7 +23,7 @@ string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", filein);
 bool normalform = getARGV("-nf", 1);
 bool wnlsave = getARGV("-wnl", 0);
-int dhpfselect = getARGV("-dhpf", 1);
+int hohoselect = getARGV("-hoho", 1);
 bool zerofreq = getARGV("-zero", 0);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
@@ -46,7 +46,7 @@ string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -s
 int sym;
 real omega;
 complex[string] alpha;
-complex beta;
+complex beta, alpha0;
 bool forcesave = false;
 
 // Load mesh, make FE basis
@@ -60,7 +60,7 @@ if(count > 0) {
   fileroot = fileroot(0:fileroot.rfind("_" + count)-1); // get file root
   meshroot = meshroot(0:meshroot.rfind("_" + count)-1); // get file root
 }
-assert(fileext == "hopf" || fileext == "dhpf");
+assert(fileext == "hopf" || fileext == "foho" || fileext == "hoho");
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
@@ -68,19 +68,25 @@ restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma), defu(yb), defu(um2), defu(um3);
 if (count == 0){
   if( fileext == "hopf"){
-    ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym, omega, alpha, beta);
+    ub[].re = loadhopf(fileroot, meshin, um[], ualpha0ma[], sym, omega, alpha, beta);
   }
-  else if(fileext == "dhpf") {
+  else if (fileext == "foho") {
+    complex[string] alpha2;
+    complex beta2, gamma1, gamma2;
+    complex[int] q2m, q2ma;
+    ub[].re = loadfoho(fileroot, meshin, um[], uma[], q2m, q2ma, sym, omega, alpha, alpha2, beta, beta2, gamma1, gamma2);
+  }
+  else if(fileext == "hoho") {
     int symN;
     real omegaN;
     complex[string] alphaN;
     complex betaN, gamma1, gamma2;
     complex[int] qNm, qNma;
-    if(dhpfselect == 1){
-      ub[].re = loaddhpf(fileroot, meshin, um[], uma[], qNm, qNma, sym, symN, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2);
+    if(hohoselect == 1){
+      ub[].re = loadhoho(fileroot, meshin, um[], uma[], qNm, qNma, sym, symN, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2);
     }
-    else if(dhpfselect == 2){
-      ub[].re = loaddhpf(fileroot, meshin, qNm, qNma, um[], uma[], symN, sym, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2);
+    else if(hohoselect == 2){
+      ub[].re = loadhoho(fileroot, meshin, qNm, qNma, um[], uma[], symN, sym, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2);
     }
   }
   savehopf(filein, (savecount > 0 ? fileout : ""), meshin, sym, omega, alpha, beta, false, false);
@@ -354,6 +360,7 @@ if(mpirank == 0) {
   yqP0 = yqP;
   yl10 = yl1;
   yw0 = yw;
+  alpha0 = alpha[paramnames[0]];
   beta0 = beta;
 }
 while (count < maxcount){
@@ -655,7 +662,10 @@ while (count < maxcount){
       beta = 0.0;
     }
     if (real(beta)*real(beta0) < 0) {
-      if(mpirank == 0) cout << "\tBautin bifurcation detected." << endl;
+      if(mpirank == 0) {
+        if(real(alpha0)*real(alpha[paramnames[0]]) < 0) cout << "\tFold-Hopf bifurcation detected." << endl;
+        else cout << "\tBautin bifurcation detected." << endl;
+      }
       forcesave = true;
     }
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
@@ -672,6 +682,7 @@ while (count < maxcount){
     yqP0 = yqP;
     yl10 = yl1;
     yw0 = yw;
+    alpha0 = alpha[paramnames[0]];
     beta0 = beta;
   }
   else {
