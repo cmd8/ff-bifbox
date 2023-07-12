@@ -53,9 +53,9 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi cylinder.msh -f
 mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi cylinder.base -fo cylinder -param 1/Re -h0 -1 -scount 2 -maxcount 14 -mo cylinder -thetamax 5
 ```
 
-3. Compute base states at Re = 50 and Re = 150 with guesses from continuation
+3. Compute base states at Re ~ 50 and Re = 150 with guesses from continuation
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder_8.base -fo cylinder50 -1/Re 0.02
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder_8.base -fo cylinder50 -1/Re 0.021
 mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder_14.base -fo cylinder150 -1/Re 0.0066666666667
 ```
 
@@ -67,7 +67,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder150.bas
 ### First order
 1. Compute leading direct eigenmode at Re = 50 and Re = 150
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder50.base -fo cylinder50 -so "" -eps_target 0.1+0.8i -sym 1
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder50.base -fo cylinder50 -so "" -eps_target 0.1+0.7i -sym 1
 mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder150.base -fo cylinder150 -so "" -eps_target 0.2+0.8i -sym 1 -pv 1
 ```
 NOTE: Here, the `-sym` argument specifies the asymmetric (1) or symmetric (0) reflective symmetry across the boundary `BCaxis`.

@@ -18,6 +18,14 @@
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
+/*
+ This script computes the normal form at a non-degenerate fold point.
+ The normal form is written for the real amplitude A as:
+    dA/dt =  alpha*dlambda + beta*A^2
+ where:
+    alpha is the coefficient for the term from parameter changes,
+    beta is the coefficient for the term from harmonic interactions.
+*/
 load "iovtk"
 load "PETSc"
 include "settings.idp"
@@ -63,14 +71,11 @@ else if(fileext == "fold") {
 }
 else if(fileext == "foho") {
   int sym;
-  real omega;
-  complex[string] alpha1, alpha2;
-  complex beta1, beta2, gamma1, gamma2;
+  real omega, beta23, gamma22, gamma23;
+  complex[string] alpha1;
+  complex beta1, gamma12, gamma13;
   complex[int] q1m, q1ma;
-  XMh<complex> defu(umi), defu(umai);
-  ub[] = loadfoho(fileroot, meshin, q1m, q1ma, umi[], umai[], sym, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
-  um[] = umi[].re;
-  uma[] = umai[].re;
+  ub[] = loadfoho(fileroot, meshin, q1m, q1ma, um[], uma[], sym, omega, alpha1, alpha, beta1, beta, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(fileext == "hopf") {
   int sym;
@@ -269,7 +274,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
         updatelambda(paramnames[k], lambda);
         temp1 = vR(0, XMh, tgv = -1);
         temp -= temp1;
-        temp /= -eps;
+        temp /= eps;
         alpha[paramnames[k]] = -J(uma[], temp);
       }
     }

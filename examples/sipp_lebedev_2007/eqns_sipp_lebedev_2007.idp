@@ -9,30 +9,29 @@
 // term macros ------------------------------------------------------
   macro vdotu(v, u) ( v*u + v#y*u#y) // velocity inner product
 
-  macro divu(ik, u) ( dx(u) + dy(u#y)) // velocity divergence
+  macro divu(u) ( dx(u) + dy(u#y)) // velocity divergence
 
-  macro ugradu(v, U, ik, u) (  v  *(U*dx(u  ) + U#y*dy(u  )) + v#y*(U*dx(u#y) + U#y*dy(u#y)) ) // velocity advection term
+  macro ugradu(v, U, u) ( v*(U*dx(u) + U#y*dy(u)) + v#y*(U*dx(u#y) + U#y*dy(u#y)) ) // velocity advection term
 
-  macro visc(ij, v, ik, u)  (  dx(v  )*dx(u  ) + dy(v  )*dy(u  )
-                             + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y) ) // viscous term
+  macro visc(v, u)  (  dx(v)*dx(u) + dy(v)*dy(u) + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y) ) // viscous term
 // Boundary conditions
   macro BoundaryConditions(u, U)
     on(BCwall, u = U, u#y = U#y)
     + on(BCslip, u#y = U#y)
     + on(BCinflow, u = U - 1., u#y = U#y)
-    + on(u#y = U#y)
+    + on(BCaxis, u#y = U#y)
   // EOM
   macro HomBoundaryConditions(sym, u)
     on(BCinflow, BCwall, u = 0, u#y = 0)
     + on(BCslip, u#y = 0)
-    + on((abs(int(sym)) % 2 == 0)*BCaxis, u#y = 0)
-    + on((abs(int(sym)) % 2 != 0)*BCaxis, u = 0)
+    + on(((abs(int(sym)) % 2) == 0)*BCaxis, u#y = 0)
+    + on(((abs(int(sym)) % 2) != 0)*BCaxis, u = 0)
   // EOM
 // RESIDUAL OPERATOR
   varf vR(defu(dum), defu(v))
     = int2d(Th)(
-      ugradu(v, ub, 0, ub) - divu(0, v)*ubp + visc(0, v, 0, ub)*params["1/Re"]
-      - vp*divu(0, ub)
+      ugradu(v, ub, ub) - divu(v)*ubp + visc(v, ub)*params["1/Re"]
+      - vp*divu(ub)
     )
     + BoundaryConditions(dum, ub);
 
@@ -40,13 +39,13 @@
   varf vJ(defu(dum), defu(v))
     = int2d(Th)(
       iomega*vdotu(v, dum)
-      + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum) - divu(-ik, v)*dump + visc(-ik, v , ik, dum )*params["1/Re"]
-      - vp*divu(ik, dum)
+      + ugradu(v, dum, ub) + ugradu(v, ub, dum) - divu(v)*dump + visc(v, dum)*params["1/Re"]
+      - vp*divu(dum)
     )
     + int2d(Th)(
       iomega*vdotu(v, um)
-      + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - divu(-ik, v)*ump + visc(-ik, v , ik, um )*params["1/Re"]
-      - vp*divu(ik, um)
+      + ugradu(v, um, ub) + ugradu(v, ub, um) - divu(v)*ump + visc(v, um)*params["1/Re"]
+      - vp*divu(um)
     )
     + HomBoundaryConditions(sym, dum);
 
@@ -69,10 +68,10 @@
 // HESSIAN OPERATOR
   varf vH(defu(dum), defu(v))
     = int2d(Th)(
-      ugradu(v, um, ik2, um2) + ugradu(v, um2, ik, um)
+      ugradu(v, um, um2) + ugradu(v, um2, um)
     )
     + int2d(Th)(
-      ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um)
+      ugradu(v, um, dum) + ugradu(v, dum, um)
     )
     + HomBoundaryConditions(sym, dum);
 

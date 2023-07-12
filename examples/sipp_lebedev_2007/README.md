@@ -62,7 +62,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi cavity.base -f
 
 3. Compute base states at Re = 50 (cylinder) and Re = 4000 (cavity) with guess from continuation
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder_8.base -fo cylinder50 -1/Re 0.02
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder_8.base -fo cylinder50 -1/Re 0.021
 mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cavity_16.base -fo cavity4000 -1/Re 0.00025
 ```
 

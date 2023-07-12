@@ -12,6 +12,16 @@
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
+/*
+ This script computes the normal form at a non-degenerate Hopf-Hopf point.
+ The normal form is written for the complex amplitudes Y = A1*exp(1i*omega1*t) and Z = A2*exp(1i*omega2*t) as:
+    dY/dt = Y*( alpha1*dlambda + 1i*omega1 + beta1*|Y|^2  + gamma1*|Z|^2 )
+    dZ/dt = Z*( alpha2*dlambda + 1i*omega2 + gamma2*|Y|^2 + beta2*|Z|^2  )
+ where:
+    alpha are the coefficients for the terms from parameter changes,
+    beta are the coefficients for the terms from self-coupling harmonic interactions,
+    gamma are the coefficients for the terms from cross-coupling harmonic interactions.
+*/
 load "iovtk"
 load "PETSc-complex"
 include "settings.idp"
@@ -62,10 +72,11 @@ if (fileext2 == "hopf") {
   ub[].re = loadhopf(fileroot2, meshin, um2[], um3[], sym2, omega2, alpha2, beta2);
 }
 else if (fileext2 == "foho") {
-  complex[string] alpha1;
-  complex beta1, gamma1, gamma2;
-  complex[int] q1m, q1ma;
-  ub[].re = loadfoho(fileroot2, meshin, q1m, q1ma, um2[], um3[], sym2, omega2, alpha2, alpha1, beta2, beta1, gamma2, gamma1);
+  real[string] alphaN;
+  real beta22, beta23, gamma22, gamma23;
+  complex gamma12, gamma13;
+  real[int] q2m, q2ma;
+  ub[].re = loadfoho(fileroot2, meshin, um2[], um3[], q2m, q2ma, sym2, omega2, alpha2, alphaN, beta2, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if (fileext2 == "hoho") {
   int symN;
@@ -108,10 +119,11 @@ else if (fileext1 == "hoho" && fileext2 != "") {
   }
 }
 else if (fileext1 == "foho") {
-  complex[string] alpha2;
-  complex beta2, gamma1, gamma2;
-  complex[int] q2m, q2ma;
-  ub[].re = loadfoho(fileroot1, meshin, um[], uma[], q2m, q2ma, sym1, omega1, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+  real[string] alphaN;
+  real beta22, beta23, gamma22, gamma23;
+  complex gamma12, gamma13;
+  real[int] q2m, q2ma;
+  ub[].re = loadfoho(fileroot1, meshin, um[], uma[], q2m, q2ma, sym1, omega1, alpha1, alphaN, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if (fileext1 == "hopf") {
   ub[].re = loadhopf(fileroot1, meshin, um[], uma[], sym1, omega1, alpha1, beta1);
@@ -147,10 +159,13 @@ else if(basefileext == "hopf") {
 else if(basefileext == "foho") {
   int sym;
   real omega;
-  complex[string] alpha1, alpha2;
-  complex beta1, beta2, gamma1, gamma2;
-  complex[int] q1m, q1ma, q2m, q2ma;
-  ub[].re = loadfoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+  complex[string] alpha1;
+  complex beta1, gamma12, gamma13;
+  real[string] alpha2;
+  real beta22, beta23, gamma22, gamma23;
+  complex[int] q1m, q1ma;
+  real[int] q2m, q2ma;
+  ub[].re = loadfoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(basefileext == "hoho") {
   int sym1, sym2;
@@ -578,7 +593,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
     ik = 1i*real(sym1 - sym2);
     iomega = 1i*(omega1 - omega2);
-    if(sym1 != sym2) J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = -1);
     KSPSolve(J, tempP, qABs);
     //  C: harmonics generation due to quadratic nonlinear interactions
     ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
@@ -608,7 +623,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
     ik = 1i*real(sym1 + sym2);
     iomega = 1i*(omega1 + omega2);
-    if(sym1 != sym2) J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = -1);
     KSPSolve(J, tempP, qAB);
 
     ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
@@ -623,7 +638,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
     ik = 2i*real(sym2);
     iomega = 2i*omega2;
-    if(sym1 != sym2) J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = -1);
     KSPSolve(J, tempP, qBB);
     // 3rd-order
     // fundamental modifications due to parameter changes and quadratic interaction of fundamental with 2nd order base modification.
@@ -635,7 +650,6 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ik2 = 0.0;
     iomega = 1i*omega1;
     iomega2 = 0.0;
-    complex[string] alphaA;
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
         lambda1 = getlambda(paramnames[k]);
@@ -658,7 +672,6 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ik2 = 0.0;
     iomega = 1i*omega2;
     iomega2 = 0.0;
-    complex[string] alphaB;
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
         lambda1 = getlambda(paramnames[k]);

@@ -63,19 +63,16 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(um), defu(uma), defu(yb), defu(um2), defu(um3);
 if (count == 0){
-  if( fileext == "hopf"){
+  if(fileext == "fold"){
     ub[] = loadfold(fileroot, meshin, um[], uma[], alpha, beta);
   }
   else if(fileext == "foho") {
     int sym;
-    real omega;
-    complex[string] alpha1, alpha2;
-    complex beta1, beta2, gamma1, gamma2;
+    real omega, gamma22, gamma23, beta23;
+    complex[string] alpha1;
+    complex beta1, gamma12, gamma13;
     complex[int] q1m, q1ma;
-    XMh<complex> defu(umi), defu(umai);
-    ub[] = loadfoho(fileroot, meshin, q1m, q1ma, umi[], umai[], sym, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
-    um[] = umi[].re;
-    uma[] = umai[].re;
+    ub[] = loadfoho(fileroot, meshin, q1m, q1ma, um[], uma[], sym, omega, alpha1, alpha, beta1, beta, beta23, gamma12, gamma13, gamma22, gamma23);
   }
   savefold(filein, (savecount > 0 ? fileout : ""), meshin, alpha, beta, false, false);
 }
@@ -460,7 +457,7 @@ while (count < maxcount){
           updatelambda(paramnames[k], lambda1);
           temp1 = vR(0, XMh, tgv = -1);
           temp -= temp1;
-          temp /= -eps1;
+          temp /= eps1;
           alpha[paramnames[k]] = -J(uma[], temp);
         }
       }

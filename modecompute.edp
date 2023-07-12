@@ -55,20 +55,23 @@ else if(fileext == "fold") {
   ub[] = loadfold(fileroot, meshin, qm, qma, alpha, beta);
 }
 else if(fileext == "hopf") {
-  complex[int] qm, qma;
   int sym;
   real omega;
   complex[string] alpha;
   complex beta;
+  complex[int] qm, qma;
   ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega, alpha, beta);
 }
 else if(fileext == "foho") {
   int sym;
   real omega;
-  complex[string] alpha1, alpha2;
-  complex beta1, beta2, gamma1, gamma2;
-  complex[int] q1m, q1ma, q2m, q2ma;
-  ub[] = loadfoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+  complex[string] alpha1;
+  real[string] alpha2;
+  complex beta1, gamma12, gamma13;
+  real beta22, beta23, gamma22, gamma23;
+  complex[int] q1m, q1ma;
+  real[int] q2m, q2ma;
+  ub[] = loadfoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(fileext == "hoho") {
   int sym1, sym2;
@@ -95,15 +98,11 @@ include "eqns.idp"
 {
   ik = 1i*real(sym);
   {
+    M = vM(XMh, XMh, tgv = -10);
     matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -1);
-    matrix<complex> Mtemp = vM(XMh, XMh, tgv = -10);
-    if (adj) {
-      Jtemp = -Jtemp';
-      Mtemp = Mtemp';
-    }
+    if (adj) Jtemp = -Jtemp';
     else Jtemp = -Jtemp;
     J = Jtemp;
-    M = Mtemp;
   }
   int k = EPSSolve(J, M, vectors = vec, values = val,
                  sparams = " -st_type " + sttype
@@ -117,7 +116,7 @@ include "eqns.idp"
   if(fileout != ""){
     for (int ii = 0; ii < val.n; ++ii){
       um[] = vec[ii][];
-      complex[int] temp(XMh.ndof);
+      complex[int] temp;
       ChangeNumbering(J, um[], temp);
       ChangeNumbering(J, um[], temp, inverse = true);
       vec[ii][] = um[];

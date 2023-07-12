@@ -46,7 +46,7 @@ string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -s
 int sym;
 real omega;
 complex[string] alpha;
-complex beta, alpha0;
+complex beta;
 bool forcesave = false;
 
 // Load mesh, make FE basis
@@ -68,13 +68,14 @@ restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma), defu(yb), defu(um2), defu(um3);
 if (count == 0){
   if( fileext == "hopf"){
-    ub[].re = loadhopf(fileroot, meshin, um[], ualpha0ma[], sym, omega, alpha, beta);
+    ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym, omega, alpha, beta);
   }
   else if (fileext == "foho") {
-    complex[string] alpha2;
-    complex beta2, gamma1, gamma2;
-    complex[int] q2m, q2ma;
-    ub[].re = loadfoho(fileroot, meshin, um[], uma[], q2m, q2ma, sym, omega, alpha, alpha2, beta, beta2, gamma1, gamma2);
+    real[string] alpha2;
+    real beta22, beta23, gamma22, gamma23;
+    complex gamma12, gamma13;
+    real[int] q2m, q2ma;
+    ub[].re = loadfoho(fileroot, meshin, um[], uma[], q2m, q2ma, sym, omega, alpha, alpha2, beta, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
   }
   else if(fileext == "hoho") {
     int symN;
@@ -111,8 +112,8 @@ Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]], Jaa = [[Ja, JlPMa], [yqPMa',
 
 complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 3 : 0));
 int it, internalit, adaptflag;
-real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0;
-complex beta0;
+real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0, omega0;
+complex alpha0, beta0;
 // FUNCTIONS
   func complex[int] funcRa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
@@ -360,6 +361,7 @@ if(mpirank == 0) {
   yqP0 = yqP;
   yl10 = yl1;
   yw0 = yw;
+  omega0 = omega;
   alpha0 = alpha[paramnames[0]];
   beta0 = beta;
 }
@@ -668,6 +670,13 @@ while (count < maxcount){
       }
       forcesave = true;
     }
+    if (omega*omega0 < 0){
+      if(mpirank == 0) {
+        if(sym != 0) cout << "\tZero-frequency point detected." << endl;
+        else cout << "\tBogdanov-Takens bifurcation detected." << endl;
+      }
+      forcesave = true;
+    }
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
     savehopf(fileout + "_" + count + (forcesave ? "specialpt" : ""), fileout, meshout, sym, omega, alpha, beta, ((count % savecount == 0) || forcesave), true);
@@ -682,6 +691,7 @@ while (count < maxcount){
     yqP0 = yqP;
     yl10 = yl1;
     yw0 = yw;
+    omega0 = omega;
     alpha0 = alpha[paramnames[0]];
     beta0 = beta;
   }

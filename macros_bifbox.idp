@@ -90,11 +90,13 @@ macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
   for[i, v : restu] tempu[][v] = ub[][i];
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
   if(monitorflag) getmonitors(ubg);
-  if (mpirank == 0 && statsfile != "") {
-    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
+  if(mpirank == 0 && monitorflag) {
     if(paramnames[0] != "") cout << "\t" << listparams(paramnames, params);
     if(monitornames[0] != "") cout << ", " << listparams(monitornames, monitors);
     cout << "." << endl;
+  }
+  if (mpirank == 0 && statsfile != "") {
+    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
     string dummy = basefileout;
     {
       ofstream file(workdir + statsfile + ".cont", append);
@@ -115,13 +117,6 @@ macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
   }
   if (saveflag && mpirank == 0 && basefileout != ""){
     cout << "  Saving '" + basefileout + ".base' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    if (statsfile == "") {
-      if(paramnames[0] != "" || monitornames[0] != "") cout << "\t";
-      if(paramnames[0] != "") cout << listparams(paramnames, params);
-      if(paramnames[0] != "" && monitornames[0] != "") cout << ", ";
-      if(monitornames[0] != "") cout << listparams(monitornames, monitors);
-      if(paramnames[0] != "" || monitornames[0] != "") cout << "." << endl;
-    }
     {
       ofstream file(workdir + basefileout + ".base", binary);
       file.precision(17);
@@ -154,12 +149,15 @@ macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
 }//EOM
 
 macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, sym, saveflag){
+  if(mpirank == 0){
+    cout << "\tsym = " + sym + ", eval(s) = [" + evals(0);
+    for (int kk = 1; kk < evals.n; ++kk) cout << ", " + evals(kk);
+    cout << "]";
+    if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
+    cout << "." << endl;
+  }
   if(mpirank == 0 && evalsfile != "") {
         cout << "  Saving " + evals.n + " eigenvalues to '" + evalsfile + ".eval' in '" + workdir + "'." << endl;
-        cout << "\tsym = " + sym;
-        if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
-        if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
-        cout << "." << endl;
         for (int kk = 0; kk < evals.n; ++kk){
           ofstream file(workdir + evalsfile + ".eval", append);
           file.precision(17);
@@ -186,9 +184,6 @@ macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, sym, sa
       string modefileout0 = modefileout + ((ii > 0) ? ("_" + ii) : "");
       if (mpirank == 0 && modefileout != ""){
         cout << "  Saving '" + modefileout0 + ".mode' over '" + basefile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
-        cout << "\tsym = " + sym + ", eval = " + evals(ii);
-        if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
-        cout << "." << endl;
         {
           ofstream file(workdir + modefileout0 + ".mode", binary);
           file.precision(17);
@@ -227,14 +222,16 @@ macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, sym, sa
 }//EOM
 
 macro saverslv(rslvfileout, gainsfile, basefile, meshfile, fvecs, uvecs, gains, sym, omega, saveflag){
-  if(mpirank == 0 && gainsfile != "") {
-    cout << "  Saving " + gains.n + " optimal gain(s) to '" + gainsfile + ".gain' in '" + workdir + "'." << endl;
+  if(mpirank == 0){
     cout << "\tsym = " + sym + ", omega = " + omega + ", gain(s) = [" + gains(0);
     for (int kk = 1; kk < gains.n; ++kk) cout << ", " + gains(kk);
     cout << "]";
     if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
     if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
     cout << "." << endl;
+  }
+  if(mpirank == 0 && gainsfile != "") {
+    cout << "  Saving " + gains.n + " optimal gain(s) to '" + gainsfile + ".gain' in '" + workdir + "'." << endl;
     for (int kk = 0; kk < gains.n; ++kk){
       ofstream file(workdir + gainsfile + ".gain", append);
       file.precision(17);
@@ -265,9 +262,6 @@ macro saverslv(rslvfileout, gainsfile, basefile, meshfile, fvecs, uvecs, gains, 
       string fileout = rslvfileout + ((ii > 0) ? ("_" + ii) : "");
       if (mpirank == 0 && rslvfileout != ""){
         cout << "  Saving '" + fileout + ".rslv' over '" + basefile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
-        cout << "\tsym = " + sym + ", omega = " + omega + ", gain = " + gains(ii);
-        if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
-        cout << "." << endl;
         {
           ofstream file(workdir + fileout + ".rslv", binary);
           file.precision(17);
@@ -326,8 +320,7 @@ macro savefold(foldfileout, statsfile, meshfile, alpha, beta, saveflag, monitorf
   for[i, v : restu] tempu[][v] = uma[][i];
   mpiAllReduce(tempu[], umag[], mpiCommWorld, mpiSUM);
   if(monitorflag) getmonitors(ubg);
-  if (mpirank == 0 && statsfile != "") {
-    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
+  if(mpirank == 0 && monitorflag){
     cout << "\t";
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
@@ -338,6 +331,9 @@ macro savefold(foldfileout, statsfile, meshfile, alpha, beta, saveflag, monitorf
     if(paramnames[0] != "") cout << ", " << listparams(paramnames, params);
     if(monitornames[0] != "") cout << ", " << listparams(monitornames, monitors);
     cout << "." << endl;
+  }
+  if (mpirank == 0 && statsfile != "") {
+    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
     string dummy = foldfileout;
     {
       ofstream file(workdir + statsfile + ".cont", append);
@@ -364,18 +360,6 @@ macro savefold(foldfileout, statsfile, meshfile, alpha, beta, saveflag, monitorf
   }
   if (saveflag && mpirank == 0 && foldfileout != ""){
     cout << "  Saving '" + foldfileout + ".fold' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    if (statsfile == "") {
-      cout << "\t";
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          cout << "alpha[" + paramnames[k] + "] = " + alpha[paramnames[k]] + ", ";
-        }
-      }
-      cout << "beta = " + (beta);
-      if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
-      if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
-      cout << "." << endl;
-    }
     {
       ofstream file(workdir + foldfileout + ".fold", binary);
       file.precision(17);
@@ -431,8 +415,7 @@ macro savehopf(hopffileout, statsfile, meshfile, sym, omega, alpha, beta, savefl
   for[i, v : restu] cplxu[][v] = uma[][i];
   mpiAllReduce(cplxu[], umag[], mpiCommWorld, mpiSUM);
   if(monitorflag) getmonitors(ubg);
-  if(mpirank == 0 && statsfile != ""){
-    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
+  if(mpirank == 0 && monitorflag){
     cout << "\tsym = " + sym + ", omega = " + omega + ", ";
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
@@ -443,6 +426,9 @@ macro savehopf(hopffileout, statsfile, meshfile, sym, omega, alpha, beta, savefl
     if(paramnames[0] != "" ) cout << ", " << listparams(paramnames, params);
     if(monitornames[0] != "") cout << ", " << listparams(monitornames, monitors);
     cout << "." << endl;
+  }
+  if(mpirank == 0 && statsfile != ""){
+    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
     string dummy = hopffileout;
     {
       ofstream file(workdir + statsfile + ".cont", append);
@@ -469,18 +455,6 @@ macro savehopf(hopffileout, statsfile, meshfile, sym, omega, alpha, beta, savefl
   }
   if(saveflag && mpirank == 0 && hopffileout != ""){
     cout << "  Saving '" + hopffileout + ".hopf' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    if (statsfile == "") {
-      cout << "\tsym = " + sym + ", omega = " + omega;
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          cout << ", alpha[" + paramnames[k] + "] = " + alpha[paramnames[k]];
-        }
-      }
-      cout << ", beta = " + (beta);
-      if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
-      if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
-      cout << "." << endl;
-    }
     {
       ofstream file(workdir + hopffileout + ".hopf", binary);
       file.precision(17);
@@ -541,13 +515,15 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
   XMhg defu(tempu), defu(ubg);
   for[i, v : restu] tempu[][v] = ub[][i];
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-  if(monitorflag) etmonitors(ubg);
-  if(mpirank == 0 && statsfile != "") {
-    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
+  if(monitorflag) getmonitors(ubg);
+  if(mpirank == 0 && monitorflag){
     cout << "\ttime = " + time;
     if(paramnames[0] != "") cout << ", " << listparams(paramnames, params);
     if(monitornames[0] != "") cout << ", " << listparams(monitornames, monitors);
     cout << "." << endl;
+  }
+  if(mpirank == 0 && statsfile != "") {
+    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
     string dummy = tdnsfileout;
     {
       ofstream file(workdir + statsfile + ".cont", append);
@@ -568,12 +544,6 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
   }
   if(saveflag && mpirank == 0 && tdnsfileout != ""){
     cout << "  Saving '" + tdnsfileout + ".tdns' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    if (statsfile == "") {
-      cout << "\ttime = " << time;
-      if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
-      if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
-      cout << "." << endl;
-    }
     {
       ofstream file(workdir + tdnsfileout + ".tdns", binary);
       file.precision(17);
@@ -621,18 +591,20 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
   for[i, v : restu] cplxu[][v] = um3[][i];
   mpiAllReduce(cplxu[], u2mag[], mpiCommWorld, mpiSUM);
   if(monitorflag) getmonitors(ubg);
-  if(mpirank == 0 && statsfile != ""){
-    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
-    cout << "\tsym = [" + sym1 + ", " + sym2 + "], omega = [" + omega1 + ", " + omega2;
+  if(mpirank == 0 && monitorflag){
+    cout << "\tsym = [" + sym1 + "; " + sym2 + "], omega = [" + omega1 + "; " + omega2;
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
-        cout << "], alpha[" + paramnames[k] + "] = [" + alpha1[paramnames[k]] + ", " + alpha2[paramnames[k]];
+        cout << "], alpha[" + paramnames[k] + "] = [" + alpha1[paramnames[k]] + "; " + alpha2[paramnames[k]];
       }
     }
-    cout << "], beta = [" + beta1 + ", " + beta2 << "], gamma = [" + gamma1 + ", " + gamma2 + "]";
+    cout << "], beta = [" + beta1 + "; " + beta2 << "], gamma = [" + gamma1 + "; " + gamma2 + "]";
     if(paramnames[0] != "" ) cout << ", " << listparams(paramnames, params);
     if(monitornames[0] != "") cout << ", " << listparams(monitornames, monitors);
     cout << "." << endl;
+  }
+  if(mpirank == 0 && statsfile != ""){
+    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
     string dummy = hohofileout;
     {
       ofstream file(workdir + statsfile + ".cont", append);
@@ -659,18 +631,6 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
   }
   if(saveflag && mpirank == 0 && hohofileout != ""){
     cout << "  Saving '" + hohofileout + ".hoho' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    if (statsfile == "") {
-      cout << "\tsym = [" + sym1 + ", " + sym2 + "], omega = [" + omega1 + ", " + omega2 + "], ";
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          cout << "alpha[" + paramnames[k] + "] = [" + alpha1[paramnames[k]] + ", " + alpha2[paramnames[k]] + "], ";
-        }
-      }
-      cout << "beta = [" + beta1 + ", " + beta2 << "], gamma = [" + gamma1 + ", " + gamma2 + "]";
-      if(paramnames[0] != "" ) cout << ", " << listparams(paramnames, params);
-      if(monitornames[0] != "") cout << ", " << listparams(monitornames, monitors);
-      cout << "." << endl;
-    }
     {
       ofstream file(workdir + hohofileout + ".hoho", binary);
       file.precision(17);
@@ -744,7 +704,7 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
   }
 }//EOM
 
-macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2, saveflag, monitorflag){
+macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23, saveflag, monitorflag){
   XMhg defu(tempu), defu(ubg), defu(u2mg), defu(u2mag);
   XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag);
   for[i, v : restu] tempu[][v] = real(ub[][i]);
@@ -758,18 +718,20 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
   for[i, v : restu] tempu[][v] = real(um3[][i]);
   mpiAllReduce(tempu[], u2mag[], mpiCommWorld, mpiSUM);
   if(monitorflag) getmonitors(ubg);
-  if(mpirank == 0 && statsfile != ""){
-    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
+  if(mpirank == 0 && monitorflag){
     cout << "\tsym = " + sym + ", omega = " + omega;
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
-        cout << ", alpha[" + paramnames[k] + "] = [" + alpha1[paramnames[k]] + ", " + alpha2[paramnames[k]];
+        cout << ", alpha[" + paramnames[k] + "] = [" + alpha1[paramnames[k]] + "; " + alpha2[paramnames[k]] + "]";
       }
     }
-    cout << "], beta = [" + beta1 + ", " + beta2 << "], gamma = [" + gamma1 + ", " + gamma2 + "]";
+    cout << ", beta = [" + beta1 + "; " + beta22 + ", " + beta23 << "], gamma = [" + gamma12 + ", " + gamma13 + "; " + gamma22 + ", " + gamma23 + "]";
     if(paramnames[0] != "" ) cout << ", " << listparams(paramnames, params);
     if(monitornames[0] != "") cout << ", " << listparams(monitornames, monitors);
     cout << "." << endl;
+  }
+  if(mpirank == 0 && statsfile != ""){
+    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
     string dummy = fohofileout;
     {
       ofstream file(workdir + statsfile + ".cont", append);
@@ -780,7 +742,7 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
           file << "\t" << alpha1[paramnames[k]] << "\t" << alpha2[paramnames[k]];
         }
       }
-      file << "\t" << beta1 << "\t" << beta2 << "\t" << gamma1 << "\t" << gamma2;
+      file << "\t" << beta1 << "\t" << beta22 << "\t" << beta23 << "\t" << gamma12 << "\t" << gamma13 << "\t" << gamma22 << "\t" << gamma23;
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
           file << "\t" << params[paramnames[k]];
@@ -796,18 +758,6 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
   }
   if(saveflag && mpirank == 0 && fohofileout != ""){
     cout << "  Saving '" + fohofileout + ".foho' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    if (statsfile == "") {
-      cout << "\tsym = " + sym + ", omega = " + omega + ", ";
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          cout << "alpha[" + paramnames[k] + "] = [" + alpha1[paramnames[k]] + ", " + alpha2[paramnames[k]] + "], ";
-        }
-      }
-      cout << "beta = [" + beta1 + ", " + beta2 << "], gamma = [" + gamma1 + ", " + gamma2 + "]";
-      if(paramnames[0] != "" ) cout << ", " << listparams(paramnames, params);
-      if(monitornames[0] != "") cout << ", " << listparams(monitornames, monitors);
-      cout << "." << endl;
-    }
     {
       ofstream file(workdir + fohofileout + ".foho", binary);
       file.precision(17);
@@ -819,8 +769,8 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
           file << "alpha[" + paramnames[k] + "]\t" << alpha1[paramnames[k]] << "\t" << alpha2[paramnames[k]] << endl;
         }
       }
-      file << "beta\t" << beta1 << "\t" << beta2 << endl;
-      file << "gamma\t" << gamma1 << "\t" << gamma2 << endl;
+      file << "beta\t" << beta1 << "\t" << beta22 << "\t" << beta23 << endl;
+      file << "gamma\t" << gamma12 << "\t" << gamma13 << "\t" << gamma22 << "\t" << gamma23 << endl;
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
           file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
@@ -1196,13 +1146,13 @@ func real[int] loadhoho(string inputfilename, string meshfilename, complex[int] 
         }
       }
       if(mpirank == 0) {
-        cout << "\tsym = [" + sym1 + ", " + sym2 + "], omega = [" + omega1 + ", " + omega2 + "]";
+        cout << "\tsym = [" + sym1 + "; " + sym2 + "], omega = [" + omega1 + "; " + omega2;
         if(paramnames[0] != ""){
           for (int k = 0; k < paramnames.n; ++k){
-            cout << ", alpha[" + paramnames[k] + "] = [" + alpha1[paramnames[k]] + ", " + alpha2[paramnames[k]] + "]";
+            cout << "], alpha[" + paramnames[k] + "] = [" + alpha1[paramnames[k]] + "; " + alpha2[paramnames[k]];
           }
         }
-        cout << ", beta = [" + beta1 + ", " + beta2 + "], gamma = [" + gamma1 + ", " + gamma2 + "]";
+        cout << "], beta = [" + beta1 + "; " + beta2 + "], gamma = [" + gamma1 + "; " + gamma2 + "]";
         if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
         if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
         cout << "." << endl;
@@ -1240,8 +1190,8 @@ func real[int] loadhoho(string inputfilename, string meshfilename, complex[int] 
       return qlocal;
     }
 
-func real[int] loadfoho(string inputfilename, string meshfilename, complex[int] & q1mlocal, complex[int] & q1malocal, complex[int] & q2mlocal, complex[int] & q2malocal,
-                        int & sym, real & omega, complex[string] & alpha1, complex[string] & alpha2, complex & beta1, complex & beta2, complex & gamma1, complex & gamma2) {
+func real[int] loadfoho(string inputfilename, string meshfilename, complex[int] & q1mlocal, complex[int] & q1malocal, real[int] & q2mlocal, real[int] & q2malocal,
+                        int & sym, real & omega, complex[string] & alpha1, real[string] & alpha2, complex & beta1, real & beta22, real & beta23, complex & gamma12, complex & gamma13, real & gamma22, real & gamma23) {
       XMhg defu(ubg), defu(u2mg), defu(u2mag);
       XMhg<complex> defu(u1mg), defu(u1mag);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".foho' on '" + meshfilename + "' from '" + workdir + "'." << endl;
@@ -1253,8 +1203,8 @@ func real[int] loadfoho(string inputfilename, string meshfilename, complex[int] 
           file >> dummy >> alpha1[paramnames[k]] >> alpha2[paramnames[k]];
         }
       }
-      file >> dummy >> beta1 >> beta2;
-      file >> dummy >> gamma1 >> gamma2;
+      file >> dummy >> beta1 >> beta22 >> beta23;
+      file >> dummy >> gamma12 >> gamma13 >> gamma22 >> gamma23;
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
           file >> paramnames[k] >> params[paramnames[k]];
@@ -1269,10 +1219,10 @@ func real[int] loadfoho(string inputfilename, string meshfilename, complex[int] 
         cout << "\tsym = " + sym + ", omega = " + omega;
         if(paramnames[0] != ""){
           for (int k = 0; k < paramnames.n; ++k){
-            cout << ", alpha[" + paramnames[k] + "] = [" + alpha1[paramnames[k]] + ", " + alpha2[paramnames[k]] + "]";
+            cout << ", alpha[" + paramnames[k] + "] = [" + alpha1[paramnames[k]] + "; " + alpha2[paramnames[k]] + "]";
           }
         }
-        cout << ", beta = [" + beta1 + ", " + beta2 + "], gamma = [" + gamma1 + ", " + gamma2 + "]";
+        cout << ", beta = [" + beta1 + "; " + beta22 + ", " + beta23 + "], gamma = [" + gamma12 + ", " + gamma13 + "; " + gamma22 + ", " + gamma23 + "]";
         if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
         if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
         cout << "." << endl;
@@ -1305,8 +1255,8 @@ func real[int] loadfoho(string inputfilename, string meshfilename, complex[int] 
       real[int] qlocal = ubg[](restu);
       q1mlocal = u1mg[](restu);
       q1malocal = u1mag[](restu);
-      q2mlocal.re = u2mg[](restu);
-      q2malocal.re = u2mag[](restu);
+      q2mlocal = u2mg[](restu);
+      q2malocal = u2mag[](restu);
       return qlocal;
     }
 

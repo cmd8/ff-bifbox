@@ -19,6 +19,15 @@
 // NOTE: This file should not be changed unless you know what you're doing.
 //
 /*
+ This script computes the normal form at a non-degenerate Hopf point.
+ The normal form is written for the complex amplitude Z = A*exp(1i*omega*t) as:
+    dZ/dt = Z*( alpha*dlambda + 1i*omega + beta*|Z|^2 )
+ where:
+    alpha is the coefficient for the term from parameter changes,
+    beta is the coefficient for the term from harmonic interactions.
+ Using this convention, the bifurcation is supercritical for real(beta) < 0,
+ and subcritical for real(beta) > 0.
+
 RESIDUAL EVALUATION IN MINIMALLY AUGMENTED FORMULATION
  We can directly compute the residual using the varf vR().
  To build Ra, we must additionally compute the Hopf residual augmentation:
@@ -115,7 +124,7 @@ real eps = getARGV("-eps", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
-int sym;
+int sym, sym1;
 real omega;
 complex[string] alpha;
 complex beta;
@@ -135,13 +144,14 @@ buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
 if (fileext == "hopf") {
-  ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym, omega, alpha, beta);
+  ub[].re = loadhopf(fileroot, meshin, um[], uma[], sym1, omega, alpha, beta);
 }
 else if (fileext == "foho") {
-  complex[string] alpha2;
-  complex beta2, gamma1, gamma2;
-  complex[int] q2m, q2ma;
-  ub[].re = loadfoho(fileroot, meshin, um[], uma[], q2m, q2ma, sym, omega, alpha, alpha2, beta, beta2, gamma1, gamma2);
+  real[string] alpha2;
+  real beta22, beta23, gamma22, gamma23;
+  complex gamma12, gamma13;
+  real[int] q2m, q2ma;
+  ub[].re = loadfoho(fileroot, meshin, um[], uma[], q2m, q2ma, sym1, omega, alpha, alpha2, beta, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(fileext == "hoho") {
   int symN;
@@ -150,21 +160,21 @@ else if(fileext == "hoho") {
   complex betaN, gamma1, gamma2;
   complex[int] qNm, qNma;
   if(hohoselect == 1){
-    ub[].re = loadhoho(fileroot, meshin, um[], uma[], qNm, qNma, sym, symN, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2);
+    ub[].re = loadhoho(fileroot, meshin, um[], uma[], qNm, qNma, sym1, symN, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2);
   }
   else if(hohoselect == 2){
-    ub[].re = loadhoho(fileroot, meshin, qNm, qNma, um[], uma[], symN, sym, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2);
+    ub[].re = loadhoho(fileroot, meshin, qNm, qNma, um[], uma[], symN, sym1, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2);
   }
 }
 else if (fileext == "mode") {
   complex eigenvalue;
-  um[] = loadmode(fileroot, meshin, sym, eigenvalue);
+  um[] = loadmode(fileroot, meshin, sym1, eigenvalue);
   omega = imag(eigenvalue);
 }
 else if (fileext == "rslv") {
   real gain;
   complex[int] fm;
-  um[] = loadrslv(fileroot, meshin, fm, sym, omega, gain);
+  um[] = loadrslv(fileroot, meshin, fm, sym1, omega, gain);
 }
 else assert(false); // invalid input filetype
 if (basefileext == "base") {
@@ -187,10 +197,13 @@ else if(basefileext == "hopf") {
 else if(basefileext == "foho") {
   int sym;
   real omega;
-  complex[string] alpha1, alpha2;
-  complex beta1, beta2, gamma1, gamma2;
-  complex[int] q1m, q1ma, q2m, q2ma;
-  ub[].re = loadfoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+  complex[string] alpha1;
+  complex beta1, gamma12, gamma13;
+  real[string] alpha2;
+  real beta22, beta23, gamma22, gamma23;
+  complex[int] q1m, q1ma;
+  real[int] q2m, q2ma;
+  ub[].re = loadfoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(basefileext == "hoho") {
   int sym1, sym2;
@@ -279,6 +292,7 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       updatelambda(param, lambda);
       complex[int] Ra, R = vR(0, XMh, tgv = -1);
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
+      sym = sym1;
       iomega = 1i*omega;
       ik = 1i*real(sym);
       J = vJ(XMh, XMh, tgv = -1);
@@ -307,8 +321,7 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       broadcast(processor(0), omega);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      int mm = sym;
-      ik = 1i*real(sym);
+      ik = 1i*real(sym1);
       iomega = 1i*omega;
       updatelambda(param, lambda + eps);
       complex[int] Jl = vR(0, XMh, tgv = -1);
@@ -326,7 +339,7 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       sym = 0;
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
-      sym = mm;
+      sym = sym1;
       MatMultHermitianTranspose(H, qma, temp1); // compute (dL/dq*w)'*v
       if(!zerofreq) temp2.re = -temp1.im;
       temp1.im = 0.0;
@@ -344,7 +357,7 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       iomega = 0.0;
       sym = 0;
       J = vJ(XMh, XMh, tgv = -1);
-      sym = mm;
+      sym = sym1;
       return 0;
   }
 
@@ -360,6 +373,9 @@ if(mpirank == 0) {
   qa(qa.n-1) = omega;
 }
 {
+  sym = sym1;
+  ik = 1i*real(sym);
+  iomega = 1i*omega;
   complex[int] Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, um[], qm);
   ChangeNumbering(J, um[], qm, inverse = true);
@@ -368,8 +384,6 @@ if(mpirank == 0) {
   ChangeNumbering(J, Mq, qP);
   if (fileext == "hopf" || fileext == "hoho" || fileext == "foho") um[] = uma[];
   else {
-    ik = 1i*real(sym);
-    iomega = 1i*omega;
     J = vJ(XMh, XMh, tgv = -1);
     KSPSolveHermitianTranspose(J, qP, qma);
     ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
@@ -394,6 +408,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   broadcast(processor(0), omega);
   updatelambda(param, lambda);
   ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+  sym = sym1;
   complex[int] Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, um[], qm, inverse = true);
   ChangeNumbering(J, uma[], qma, inverse = true);
@@ -405,7 +420,6 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   if (normalform){
     complex[int] qAAs(J.n), qAA(J.n), tempP(J.n), temp(um[].n), temp1(um[].n);
     complex[int,int] qDa(paramnames.n, J.n);
-    int mm = sym;
     // 2nd-order
     //  A: base modification due to parameter changes
     ik = 0.0;
@@ -429,10 +443,10 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       }
     }
     //  B: base modification due to quadratic nonlinear interaction
-    ik = 1i*real(mm);
-    ik2 = -ik;
+    ik = 1i*real(sym1);
+    ik2 = -1i*real(sym1);
     iomega = 1i*omega;
-    iomega2 = -iomega;
+    iomega2 = -1i*omega;
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     um2[] = conj(um[]);
     temp = vH(0, XMh, tgv = -10);
@@ -441,20 +455,22 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
     KSPSolve(J, tempP, qAAs);
     //  C: harmonic generation due to quadratic nonlinear interaction
-    ik = 1i*real(mm); ik2 = ik;
-    iomega = 1i*omega; iomega2 = iomega;
+    ik = 1i*real(sym1);
+    ik2 = 1i*real(sym1);
+    iomega = 1i*omega;
+    iomega2 = 1i*omega;
     um2[] = um[];
-    sym = 2*mm;
+    sym = 2*sym1;
     temp = vH(0, XMh, tgv = -10);
     temp *= -0.5; // -1.0/2.0
     ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
-    ik = 2i*real(mm);
+    ik = 2i*real(sym1);
     iomega = 2i*omega;
     J = vJ(XMh, XMh, tgv = -1);
     KSPSolve(J, tempP, qAA);
     // 3rd-order
     //  A: fundamental modification due to parameter change and quadratic interaction of fundamental with 2nd order modification A.
-    sym = mm;
+    sym = sym1;
     ik = 1i*real(sym);
     ik2 = 0.0;
     iomega = 1i*omega;
