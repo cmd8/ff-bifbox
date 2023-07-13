@@ -96,10 +96,10 @@ macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
     cout << "." << endl;
   }
   if (mpirank == 0 && statsfile != "") {
-    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
+    cout << "  Saving solution stats to '" + statsfile + ".base.cont' in '" + workdir + "'." << endl;
     string dummy = basefileout;
     {
-      ofstream file(workdir + statsfile + ".cont", append);
+      ofstream file(workdir + statsfile + ".base.cont", append);
       file.precision(17);
       file << basefileout + ((dummy.rfind(".") > 0) ? "" : ".base") << "\t" << meshfile;
       if(paramnames[0] != ""){
@@ -333,10 +333,10 @@ macro savefold(foldfileout, statsfile, meshfile, alpha, beta, saveflag, monitorf
     cout << "." << endl;
   }
   if (mpirank == 0 && statsfile != "") {
-    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
+    cout << "  Saving solution stats to '" + statsfile + ".fold.cont' in '" + workdir + "'." << endl;
     string dummy = foldfileout;
     {
-      ofstream file(workdir + statsfile + ".cont", append);
+      ofstream file(workdir + statsfile + ".fold.cont", append);
       file.precision(17);
       file << foldfileout + ((dummy.rfind(".") > 0) ? "" : ".fold") << "\t" << meshfile;
       if(paramnames[0] != ""){
@@ -428,10 +428,10 @@ macro savehopf(hopffileout, statsfile, meshfile, sym, omega, alpha, beta, savefl
     cout << "." << endl;
   }
   if(mpirank == 0 && statsfile != ""){
-    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
+    cout << "  Saving solution stats to '" + statsfile + ".hopf.cont' in '" + workdir + "'." << endl;
     string dummy = hopffileout;
     {
-      ofstream file(workdir + statsfile + ".cont", append);
+      ofstream file(workdir + statsfile + ".hopf.cont", append);
       file.precision(17);
       file << hopffileout + ((dummy.rfind(".") > 0) ? "" : ".hopf") << "\t" << meshfile << "\t" << sym << "\t" << omega;
       if(paramnames[0] != ""){
@@ -523,10 +523,10 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
     cout << "." << endl;
   }
   if(mpirank == 0 && statsfile != "") {
-    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
+    cout << "  Saving solution stats to '" + statsfile + ".tdns.cont' in '" + workdir + "'." << endl;
     string dummy = tdnsfileout;
     {
-      ofstream file(workdir + statsfile + ".cont", append);
+      ofstream file(workdir + statsfile + ".tdns.cont", append);
       file.precision(17);
       file << tdnsfileout + ((dummy.rfind(".") > 0) ? "" : ".tdns") << "\t" << meshfile << "\t" << ICfile << "\t" << time;
       if(paramnames[0] != ""){
@@ -604,10 +604,10 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
     cout << "." << endl;
   }
   if(mpirank == 0 && statsfile != ""){
-    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
+    cout << "  Saving solution stats to '" + statsfile + ".hoho.cont' in '" + workdir + "'." << endl;
     string dummy = hohofileout;
     {
-      ofstream file(workdir + statsfile + ".cont", append);
+      ofstream file(workdir + statsfile + ".hoho.cont", append);
       file.precision(17);
       file << hohofileout + ((dummy.rfind(".") > 0) ? "" : ".hoho") << "\t" << meshfile << "\t" << sym1 << "\t" << sym2 << "\t" << omega1 << "\t" << omega2;
       if(paramnames[0] != ""){
@@ -731,10 +731,10 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
     cout << "." << endl;
   }
   if(mpirank == 0 && statsfile != ""){
-    cout << "  Saving solution stats to '" + statsfile + ".cont' in '" + workdir + "'." << endl;
+    cout << "  Saving solution stats to '" + statsfile + ".foho.cont' in '" + workdir + "'." << endl;
     string dummy = fohofileout;
     {
-      ofstream file(workdir + statsfile + ".cont", append);
+      ofstream file(workdir + statsfile + ".foho.cont", append);
       file.precision(17);
       file << fohofileout + ((dummy.rfind(".") > 0) ? "" : ".hoho") << "\t" << meshfile << "\t" << sym << "\t" << omega;
       if(paramnames[0] != ""){
