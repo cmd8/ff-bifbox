@@ -5,10 +5,10 @@
 //
 // EXAMPLE USAGE:
 //  Initialize with fold from file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -param1 <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fo <FILEOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -param <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fo <FILEOUT>
 //
 //  Initialize with fold from file, adapt mesh/solution
-// mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -param1 <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -param <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
@@ -29,7 +29,7 @@ int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
 real h0 = getARGV("-h0", 1.0);
-string param1 = getARGV("-param1", "");
+string param = getARGV("-param", "");
 string param2 = getARGV("-param2", "");
 string adaptto = getARGV("-adaptto", "b");
 real fmax = getARGV("-fmax", 2.0);
@@ -37,7 +37,7 @@ real kappamax = getARGV("-kmax", 1.0);
 real deltamax = getARGV("-dmax", 4.0);
 real anglemax = getARGV("-amax", 30.)*pi/180.0;
 int monotone = getARGV("-mono", 0);
-real eps1 = getARGV("-eps1", 1e-7);
+real eps = getARGV("-eps", 1e-7);
 real eps2 = getARGV("-eps2", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
@@ -95,7 +95,7 @@ if (count == 0){
 else {
   ub[].re = loadhopf(fileroot + "_" + count, meshin, um[], uma[], sym, omega, alpha, beta);
 }
-real lambda1 = getlambda(param1);
+real lambda1 = getlambda(param);
 real lambda2 = getlambda(param2);
 // Create distributed Mat
 Mat<complex> J;
@@ -125,7 +125,7 @@ complex alpha0, beta0;
       broadcast(processor(0), lambda1);
       broadcast(processor(0), omega);
       broadcast(processor(0), lambda2);
-      updatelambda(param1, lambda1);
+      updatelambda(param, lambda1);
       updatelambda(param2, lambda2);
       complex[int] Ra, R = vR(0, XMh, tgv = -1);
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
@@ -155,7 +155,7 @@ complex alpha0, beta0;
         maxdelta = 0.0;
         cosalpha = 0.0;
         delta = abs(h0);
-        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
+        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
       }
       else {
         real dlambda1, domega, dlambda2;
@@ -175,7 +175,7 @@ complex alpha0, beta0;
         cosalpha = (real(J(R, yb[])) + yl10*yl1 + yw0*yw + 1.0)/sqrt((real(J(R, R)) + yl10^2 + yw0^2 + 1.0)*(real(J(yb[], yb[])) + yl1^2 + yw^2 + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
-        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(cosalpha)*acos(abs(cosalpha))*180./pi) << ",\t" + param1 + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
+        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(cosalpha)*acos(abs(cosalpha))*180./pi) << ",\t" + param + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
       }
       f = max(acos(abs(cosalpha))/anglemax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
       if (it > 0 && !adaptflag && (f > fmax || it-1 >= snesmaxit || res*(monotone!=0) > resp)) Ra(0) = NaN();
@@ -203,11 +203,11 @@ complex alpha0, beta0;
       int mm = sym;
       ik = 1i*real(sym);
       iomega = 1i*omega;
-      updatelambda(param1, lambda1 + eps1);
+      updatelambda(param, lambda1 + eps);
       updatelambda(param2, lambda2);
       complex[int] Jl1 = vR(0, XMh, tgv = -1);
       complex[int] Hl1 = vJ(0, XMh, tgv = -10);
-      updatelambda(param1, lambda1);
+      updatelambda(param, lambda1);
       updatelambda(param2, lambda2 + eps2);
       complex[int] Jl2 = vR(0, XMh, tgv = -1);
       complex[int] Hl2 = vJ(0, XMh, tgv = -10);
@@ -215,12 +215,12 @@ complex alpha0, beta0;
       complex[int] a0 = vR(0, XMh, tgv = -1);
       Jl1 -= a0;
       Jl2 -= a0;
-      Jl1 /= eps1;
+      Jl1 /= eps;
       Jl2 /= eps2;
       complex[int] temp1(J.n), temp2(J.n), bm = vJ(0, XMh, tgv = -10);
       Hl1 -= bm;
       Hl2 -= bm;
-      Hl1 /= eps1;
+      Hl1 /= eps;
       Hl2 /= eps2;
       ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
       temp1.im = 0.0;
@@ -289,11 +289,11 @@ if(mpirank == 0) {
   int mm = sym;
   ik = 1i*real(sym);
   iomega = 1i*omega;
-  updatelambda(param1, lambda1 + eps1);
+  updatelambda(param, lambda1 + eps);
   updatelambda(param2, lambda2);
   complex[int] Jl1 = vR(0, XMh, tgv = -1);
   complex[int] Hl1 = vJ(0, XMh, tgv = -10);
-  updatelambda(param1, lambda1);
+  updatelambda(param, lambda1);
   updatelambda(param2, lambda2 + eps2);
   complex[int] Jl2 = vR(0, XMh, tgv = -1);
   complex[int] Hl2 = vJ(0, XMh, tgv = -10);
@@ -301,12 +301,12 @@ if(mpirank == 0) {
   complex[int] a0 = vR(0, XMh, tgv = -1);
   Jl1 -= a0;
   Jl2 -= a0;
-  Jl1 /= eps1;
+  Jl1 /= eps;
   Jl2 /= eps2;
   complex[int] temp1(J.n), temp2(J.n), bm = vJ(0, XMh, tgv = -10);
   Hl1 -= bm;
   Hl2 -= bm;
-  Hl1 /= eps1;
+  Hl1 /= eps;
   Hl2 /= eps2;
   ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
   temp1.im = 0.0;
@@ -381,7 +381,7 @@ while (count < maxcount){
   broadcast(processor(0), lambda1);
   broadcast(processor(0), omega);
   broadcast(processor(0), lambda2);
-  updatelambda(param1, lambda1);
+  updatelambda(param, lambda1);
   updatelambda(param2, lambda2);
   // CORRECTOR LOOP
   int ret;
@@ -412,7 +412,7 @@ while (count < maxcount){
       broadcast(processor(0), lambda1);
       broadcast(processor(0), omega);
       broadcast(processor(0), lambda2);
-      updatelambda(param1, lambda1);
+      updatelambda(param, lambda1);
       updatelambda(param2, lambda2);
       ChangeNumbering(J, um[], qm, inverse = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
@@ -525,7 +525,7 @@ while (count < maxcount){
     broadcast(processor(0), lambda1);
     broadcast(processor(0), omega);
     broadcast(processor(0), lambda2);
-    updatelambda(param1, lambda1);
+    updatelambda(param, lambda1);
     updatelambda(param2, lambda2);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     complex[int] Mq = vM(0, XMh, tgv = -10);
@@ -551,12 +551,12 @@ while (count < maxcount){
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
           lambda1 = getlambda(paramnames[k]);
-          updatelambda(paramnames[k], lambda1 + eps1);
+          updatelambda(paramnames[k], lambda1 + eps);
           temp = vR(0, XMh, tgv = -1);
           updatelambda(paramnames[k], lambda1);
           temp1 = vR(0, XMh, tgv = -1);
           temp -= temp1;
-          temp /= -eps1;
+          temp /= -eps;
           ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
           KSPSolve(J, tempP, qAAs);
           qDa(k, :) = qAAs;
@@ -596,12 +596,12 @@ while (count < maxcount){
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
           lambda1 = getlambda(paramnames[k]);
-          updatelambda(paramnames[k], lambda1 + eps1);
+          updatelambda(paramnames[k], lambda1 + eps);
           temp = vJ(0, XMh, tgv = -10);
           updatelambda(paramnames[k], lambda1);
           temp1 = vJ(0, XMh, tgv = -10);
           temp -= temp1;
-          temp /= eps1;
+          temp /= eps;
           ChangeNumbering(J, um2[], qDa(k, :), inverse = true, exchange = true); // FreeFEM to PETSc
           temp += vH(0, XMh, tgv = -10); // 2.0/2.0
           alpha[paramnames[k]] = -J(uma[], temp);

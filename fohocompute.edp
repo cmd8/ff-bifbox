@@ -5,10 +5,10 @@
 //
 // EXAMPLE USAGE:
 //  Initialize with hopf file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 fohocompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fo <FILEOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 fohocompute.edp -param <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fo <FILEOUT>
 //
 //  Initialize with hopf and fold files, adapt mesh to solution
-// mpirun -n 4 FreeFem++-mpi -v 0 fohocompute.edp -param1 <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fi2 <FILEIN2> -fo <FILEOUT> -mo <MESHOUT>
+// mpirun -n 4 FreeFem++-mpi -v 0 fohocompute.edp -param <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fi2 <FILEIN2> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
@@ -38,10 +38,10 @@ bool normalform = getARGV("-nf", 1);
 bool wnlsave = getARGV("-wnl", 0);
 int hohoselect = getARGV("-hoho", 1);
 bool zerofreq = getARGV("-zero", 0);
-string param1 = getARGV("-param1", "");
+string param = getARGV("-param", "");
 string param2 = getARGV("-param2", "");
 string adaptto = getARGV("-adaptto", "b");
-real eps1 = getARGV("-eps1", 1e-7);
+real eps = getARGV("-eps", 1e-7);
 real eps2 = getARGV("-eps2", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
@@ -158,7 +158,7 @@ else if(basefileext == "tdns") {
   real time;
   ub[].re = loadtdns(basefileroot, meshin, time);
 }
-real lambda1 = getlambda(param1);
+real lambda1 = getlambda(param);
 real lambda2 = getlambda(param2);
 // Create distributed Mat
 Mat<complex> J;
@@ -245,7 +245,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       broadcast(processor(0), lambda1);
       broadcast(processor(0), omega);
       broadcast(processor(0), lambda2);
-      updatelambda(param1, lambda1);
+      updatelambda(param, lambda1);
       updatelambda(param2, lambda2);
       complex[int] Ra, R = vR(0, XMh, tgv = -1);
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
@@ -294,7 +294,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       broadcast(processor(0), lambda2);
       ChangeNumbering(J, uma[], q1ma, inverse = true);
       ChangeNumbering(J, um3[], q2ma, inverse = true);
-      updatelambda(param1, lambda1 + eps1);
+      updatelambda(param, lambda1 + eps);
       updatelambda(param2, lambda2);
       complex[int] Jl1 = vR(0, XMh, tgv = -1);
       sym = sym1;
@@ -307,7 +307,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       iomega = 0.0;
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
       complex[int] Kl1 = vJ(0, XMh, tgv = -10);
-      updatelambda(param1, lambda1);
+      updatelambda(param, lambda1);
       updatelambda(param2, lambda2 + eps2);
       complex[int] Jl2 = vR(0, XMh, tgv = -1);
       sym = sym1;
@@ -324,7 +324,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       complex[int] temp1(J.n), temp2(J.n), temp3(J.n), a0 = vR(0, XMh, tgv = -1);
       Jl1 -= a0;
       Jl2 -= a0;
-      Jl1 /= eps1;
+      Jl1 /= eps;
       Jl2 /= eps2;
       sym = sym1;
       ik = 1i*real(sym1);
@@ -333,7 +333,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       a0 = vJ(0, XMh, tgv = -10);
       Hl1 -= a0;
       Hl2 -= a0;
-      Hl1 /= eps1;
+      Hl1 /= eps;
       Hl2 /= eps2;
       sym = 0;
       ik = 0.0;
@@ -342,7 +342,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       a0 = vJ(0, XMh, tgv = -10);
       Kl1 -= a0;
       Kl2 -= a0;
-      Kl1 /= eps1;
+      Kl1 /= eps;
       Kl2 /= eps2;
       ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
       ChangeNumbering(J, Jl2, temp3); // FreeFEM to PETSc
@@ -424,12 +424,12 @@ if(mpirank == 0) {
   ik = 0.0;
   iomega = 0.0;
   if (fileext2 != "fold" && fileext2 != "foho"){
-    updatelambda(param1, lambda1 + eps1);
+    updatelambda(param, lambda1 + eps);
     complex[int] Jl = vR(0, XMh, tgv = -1);
-    updatelambda(param1, lambda1);
+    updatelambda(param, lambda1);
     complex[int] a0 = vR(0, XMh, tgv = -1);
     Jl -= a0;
-    Jl /= eps1;
+    Jl /= eps;
     J = vJ(XMh, XMh, tgv = -1);
     um[] = J^-1*Jl;
   }
@@ -464,7 +464,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   broadcast(processor(0), lambda1);
   broadcast(processor(0), omega);
   broadcast(processor(0), lambda2);
-  updatelambda(param1, lambda1);
+  updatelambda(param, lambda1);
   updatelambda(param2, lambda2);
   ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
   complex[int] Mq = vM(0, XMh, tgv = -10);
@@ -513,12 +513,12 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
         lambda1 = getlambda(paramnames[k]);
-        updatelambda(paramnames[k], lambda1 + eps1);
+        updatelambda(paramnames[k], lambda1 + eps);
         temp = vR(0, XMh, tgv = -1);
         updatelambda(paramnames[k], lambda1);
         temp1 = vR(0, XMh, tgv = -1);
         temp -= temp1;
-        temp /= -eps1;
+        temp /= -eps;
         complex[int] tempPa, sol;
         ChangeNumbering(J, temp, tempPa); // FreeFEM to PETSc
         if(mpirank == 0) {
@@ -637,12 +637,12 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
         lambda1 = getlambda(paramnames[k]);
-        updatelambda(paramnames[k], lambda1 + eps1);
+        updatelambda(paramnames[k], lambda1 + eps);
         temp = vJ(0, XMh, tgv = -10);
         updatelambda(paramnames[k], lambda1);
         temp1 = vJ(0, XMh, tgv = -10);
         temp -= temp1;
-        temp /= eps1;
+        temp /= eps;
         ChangeNumbering(J, um2[], qDa(k, :), inverse = true, exchange = true); // FreeFEM to PETSc
         temp += vH(0, XMh, tgv = -10); // 2.0/2.0
         alpha1[paramnames[k]] = -J(uma[], temp);
