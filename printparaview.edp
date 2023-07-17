@@ -212,8 +212,8 @@ if (mpirank==0){
     real omega1, omega2;
     int sym1, sym2;
     complex[string] alpha1, alpha2;
-    complex beta1, beta2, gamma1, gamma2;
-    ub[] = loadhoho(fileroot, meshin, u1m[], u1ma[], u2m[], u2ma[], sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2);
+    complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
+    ub[] = loadhoho(fileroot, meshin, u1m[], u1ma[], u2m[], u2ma[], sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
     cout << "  Saving '" + fileout + "_hoho_[base,dirmode1,adjmode1,dirmode2,adjmode2].vtu' in '" + workdir + "'." << endl;
     if (paraviewflag > 1){
       meshN Thgs = trunc(Thg, 1, split = paraviewflag);

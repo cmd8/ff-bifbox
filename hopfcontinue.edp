@@ -81,13 +81,13 @@ if (count == 0){
     int symN;
     real omegaN;
     complex[string] alphaN;
-    complex betaN, gamma1, gamma2;
+    complex betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
     complex[int] qNm, qNma;
     if(hohoselect == 1){
-      ub[].re = loadhoho(fileroot, meshin, um[], uma[], qNm, qNma, sym, symN, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2);
+      ub[].re = loadhoho(fileroot, meshin, um[], uma[], qNm, qNma, sym, symN, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
     }
     else if(hohoselect == 2){
-      ub[].re = loadhoho(fileroot, meshin, qNm, qNma, um[], uma[], symN, sym, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2);
+      ub[].re = loadhoho(fileroot, meshin, qNm, qNma, um[], uma[], symN, sym, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
     }
   }
   savehopf(filein, (savecount > 0 ? fileout : ""), meshin, sym, omega, alpha, beta, false, false);
