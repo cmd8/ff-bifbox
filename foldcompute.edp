@@ -225,19 +225,16 @@ if (fileext != "fold" && fileext != "foho"){
   Jl /= eps;
   J = vJ(XMh, XMh, tgv = -1);
   um[] = J^-1*Jl;
+  uma[] = J'^-1*Jl;
 }
 {
   real[int] Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, um[], qm);
   ChangeNumbering(J, um[], qm, inverse = true);
-  real Mnorm = sqrt(real(J(um[], Mq)));
+  real Mnorm = sqrt(J(um[], Mq));
   Mq /= Mnorm;
   ChangeNumbering(J, Mq, qP);
-  if (fileext == "fold" || fileext == "foho") um[] = uma[];
-  else {
-    KSPSolveTranspose(J, qP, qma);
-    ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-  }
+  um[] = uma[];
   Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, um[], qm, inverse = true);
   Mq *= (Mnorm/J(um[], Mq)); // so that <uma[],M*um[]> = 1

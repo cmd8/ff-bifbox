@@ -432,6 +432,7 @@ if(mpirank == 0) {
     Jl /= eps;
     J = vJ(XMh, XMh, tgv = -1);
     um[] = J^-1*Jl;
+    um3[] = J'^-1*Jl;
   }
   Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, um[], q2m);
@@ -439,11 +440,7 @@ if(mpirank == 0) {
   Mnorm = sqrt(real(J(um2[], Mq)));
   Mq /= Mnorm;
   ChangeNumbering(J, Mq, q2P);
-  if (fileext2 == "fold" || fileext2 == "foho") um[] = um3[];
-  else {
-    KSPSolveTranspose(J, q2P, q2ma);
-    ChangeNumbering(J, um[], q2ma, inverse = true, exchange = true);
-  }
+  um[] = um3[];
   Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, um2[], q2m, inverse = true);
   Mq *= real(Mnorm/J(um2[], Mq)); // so that <uma[],M*um[]> = 1
