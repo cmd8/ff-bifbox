@@ -161,7 +161,7 @@ macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, sym, sa
         for (int kk = 0; kk < evals.n; ++kk){
           ofstream file(workdir + evalsfile + ".eval", append);
           file.precision(17);
-          file << basefile << "\t" << meshfile << "\t" << sym << "\t" << evals(kk) << endl;
+          file << basefile << "\t" << meshfile << "\t" << sym << "\t" << evals(kk);
           if(paramnames[0] != ""){
             for (int k = 0; k < paramnames.n; ++k){
               file << "\t" << params[paramnames[k]];

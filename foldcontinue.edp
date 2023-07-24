@@ -279,12 +279,8 @@ if(mpirank == 0) {
     yqP.resize(yqP.n-1);
   }
   broadcast(processor(0), yl1);
-  ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-  a0 = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, a0, qP);
-  ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-  a0 = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, a0, pP);
+  qP = qm;
+  pP = qma;
   yqP0 = yqP;
   yl10 = yl1;
   beta0 = beta;
@@ -400,14 +396,9 @@ while (count < maxcount){
       qma.resize(J.n);
       ChangeNumbering(J, uma[], qma);
       qP.resize(J.n);
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true);
-      ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-      real[int] Mq = vM(0, XMh, tgv = -10);
-      ChangeNumbering(J, Mq, qP);
+      qP = qm;
       pP.resize(J.n);
-      ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-      Mq = vM(0, XMh, tgv = -10);
-      ChangeNumbering(J, Mq, pP);
+      pP = qma;
       yqP.resize(J.n);
       ChangeNumbering(J, yb[], yqP);
       yqP0.resize(J.n);
@@ -481,13 +472,8 @@ while (count < maxcount){
     ChangeNumbering(J, um[], qm, inverse = true);
     savefold(fileout + "_" + count + (forcesave ? "specialpt" : ""), fileout, meshout, alpha, beta, ((count % savecount == 0) || forcesave), true);
     forcesave = false;
-    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true);
-    ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-    Mq = vM(0, XMh, tgv = -10);
-    ChangeNumbering(J, Mq, qP);
-    ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-    Mq = vM(0, XMh, tgv = -10);
-    ChangeNumbering(J, Mq, pP);
+    qP = qm;
+    pP = qma;
     yqP0 = yqP;
     yl10 = yl1;
     beta0 = beta;

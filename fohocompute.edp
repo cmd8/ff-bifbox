@@ -431,20 +431,11 @@ if(mpirank == 0) {
     Jl -= a0;
     Jl /= eps;
     J = vJ(XMh, XMh, tgv = -1);
-    um[] = J^-1*Jl;
+    um2[] = J^-1*Jl;
     um3[] = J'^-1*Jl;
   }
-  Mq = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, um[], q2m);
-  ChangeNumbering(J, um2[], q2m, inverse = true);
-  Mnorm = sqrt(real(J(um2[], Mq)));
-  Mq /= Mnorm;
-  ChangeNumbering(J, Mq, q2P);
-  um[] = um3[];
-  Mq = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, um2[], q2m, inverse = true);
-  Mq *= real(Mnorm/J(um2[], Mq)); // so that <uma[],M*um[]> = 1
-  ChangeNumbering(J, Mq, p2P);
+  ChangeNumbering(J, um2[], q2P);
+  ChangeNumbering(J, um3[], p2P);
 }
 // solve nonlinear problem with SNES
 int ret;
