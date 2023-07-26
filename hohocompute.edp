@@ -52,7 +52,6 @@ int sym, sym1, sym2;
 real omega, omega1, omega2;
 complex[string] alpha1, alpha2;
 complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
-
 // Load mesh, make FE basis
 string fileroot1, fileroot2, meshroot, basefileroot;
 string fileext1 = parsefilename(filein, fileroot1); //extract file name and extension
@@ -574,9 +573,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
     um2[] = conj(um[]);
     ik = 1i*real(sym1);
-    ik2 = -ik;
+    ik2 = -1i*real(sym1);
     iomega = 1i*omega1;
-    iomega2 = -iomega;
+    iomega2 = -1i*omega1;
     temp = vH(0, XMh, tgv = -10);
     temp.re *= -1.0; // -2.0/2.0
     temp.im = 0.0;
@@ -586,9 +585,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
     um2[] = conj(um[]);
     ik = 1i*real(sym2);
-    ik2 = -ik;
+    ik2 = -1i*real(sym2);
     iomega = 1i*omega2;
-    iomega2 = -iomega;
+    iomega2 = -1i*omega2;
     temp = vH(0, XMh, tgv = -10);
     temp.re *= -1.0; // -2.0/2.0
     temp.im = 0.0;
@@ -614,9 +613,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
     um2[] = um[];
     ik = 1i*real(sym1);
-    ik2 = ik;
+    ik2 = 1i*real(sym1);
     iomega = 1i*omega1;
-    iomega2 = iomega;
+    iomega2 = 1i*omega1;
     sym = 2*sym1;
     temp = vH(0, XMh, tgv = -10);
     temp *= -0.5; // -1.0/2.0
@@ -644,9 +643,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
     um2[] = um[];
     ik = 1i*real(sym2);
-    ik2 = ik;
+    ik2 = 1i*real(sym2);
     iomega = 1i*omega2;
-    iomega2 = iomega;
+    iomega2 = 1i*omega2;
     sym = 2*sym2;
     temp = vH(0, XMh, tgv = -10);
     temp *= -0.5; // -1.0/2.0
