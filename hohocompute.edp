@@ -538,6 +538,14 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     Mat<complex> Ja = [[J, qPM], [pPM', 0]]; // make dummy Jacobian
     set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
     set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+    if (res1x == 2){
+      omega2 = (2.0*omega2 + omega1)/4.0;
+      omega1 = 2.0*omega2;
+    }
+    else if (res1x == 3){
+      omega2 = (3.0*omega2 + omega1)/6.0;
+      omega1 = 3.0*omega2;
+    }
     // 2nd-order
     //  A: base modifications due to parameter changes
     ik = 0.0;
@@ -602,6 +610,10 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     if (res1x != 2) KSPSolve(J, tempP, qABs);
     else {
       complex[int] tempPa = tempP, sol;
+      if(mpirank == 0) {
+        tempPa.resize(tempPa.n+1);
+        tempPa(tempPa.n-1) = 0.0;
+      }
       ChangeNumbering(J, um[], q2ma, inverse = true, exchange = true);
       temp = vM(0, XMh, tgv = -10);
       ChangeNumbering(J, temp, tempP);
@@ -612,10 +624,6 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       ChangeNumbering(J, temp, tempP);
       tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
-      if(mpirank == 0) {
-        tempPa.resize(tempPa.n+1);
-        tempPa(J.n) = 0.0;
-      }
       KSPSolve(Ja, tempPa, sol);
       qABs = sol(0:sol.n - (mpirank == 0 ? 2 : 1));
       if(mpirank == 0) gamma22 = sol(sol.n-1);
@@ -668,6 +676,10 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     if (res1x != 2) KSPSolve(J, tempP, qBB);
     else {
       complex[int] tempPa = tempP, sol;
+      if(mpirank == 0) {
+        tempPa.resize(tempPa.n+1);
+        tempPa(tempPa.n-1) = 0.0;
+      }
       ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);
       temp = vM(0, XMh, tgv = -10);
       ChangeNumbering(J, temp, tempP);
@@ -678,10 +690,6 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       ChangeNumbering(J, temp, tempP);
       tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
-      if(mpirank == 0) {
-        tempPa.resize(tempPa.n+1);
-        tempPa(J.n) = 0.0;
-      }
       KSPSolve(Ja, tempPa, sol);
       qBB = sol(0:sol.n - (mpirank == 0 ? 2 : 1));
       if(mpirank == 0) gamma12 = sol(sol.n-1);
