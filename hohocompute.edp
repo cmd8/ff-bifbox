@@ -919,7 +919,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       um2[] = conj(um2[]);
       um3[] = um2[];
       ChangeNumbering(J, uma[], q2ma, inverse = true);
-      sym = sym2;
+      sym = sym1 - 2*sym2;
       ik = 1i*real(sym1);
       ik2 = -1i*real(sym2);
       ik3 = -1i*real(sym2);
