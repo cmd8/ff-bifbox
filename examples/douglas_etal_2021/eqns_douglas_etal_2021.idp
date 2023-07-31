@@ -42,7 +42,7 @@
     )
     + int1d(Th, BCopen)(
       y*ndotu(v)*ubpc - 0.5*vdotu(v, ub)*min(0.0, real(ndotu(ub)))
-      + vpc*(y*tdotgrads(ubpc) - ubz^2)
+      + vpc*(y*tdotgrads(ubpc) - ubz^2*N.x)
     )
     + BoundaryConditions(dum, ub);
 
@@ -56,7 +56,7 @@
     )
     + int1d(Th, BCopen)(
       y*ndotu(v)*dumpc - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, dum)*ndotu(ub) + vdotu(v, ub)*ndotu(dum))
-      + vpc*(y*tdotgrads(dumpc) - 2.0*ubz*dumz)
+      + vpc*(y*tdotgrads(dumpc) - 2.0*ubz*dumz*N.x)
     )
     + int2d(Th)(
       iomega*vdotu(v, um)
@@ -65,7 +65,7 @@
     )
     + int1d(Th, BCopen)(
       y*ndotu(v)*umpc - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(ub) + vdotu(v, ub)*ndotu(um))
-      + vpc*(y*tdotgrads(umpc) - 2.0*ubz*umz)
+      + vpc*(y*tdotgrads(umpc) - 2.0*ubz*umz*N.x)
     )
     + HomBoundaryConditions(sym, dum);
 
@@ -92,14 +92,14 @@
     )
     + int1d(Th, BCopen)(
       -0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(um2) + vdotu(v, um2)*ndotu(um))
-      - 2.0*vpc*um2z*umz
+      - 2.0*vpc*um2z*umz*N.x
     )
     + int2d(Th)(
       ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um)
     )
     + int1d(Th, BCopen)(
       -0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(dum) + vdotu(v, dum)*ndotu(um))
-      - 2.0*vpc*dumz*umz
+      - 2.0*vpc*dumz*umz*N.x
     )
     + HomBoundaryConditions(sym, dum);
 
