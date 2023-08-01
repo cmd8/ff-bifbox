@@ -51,12 +51,12 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi swirljet.msh -f
 
 2. Continue base state along the parameter 1/Re with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi swirljet.base -fo swirljet -param 1/Re -h0 -1 -scount 2 -maxcount 10 -mo swirljet -thetamax 1
+mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi swirljet.base -fo swirljet -param 1/Re -h0 -50 -scount 2 -maxcount 8 -mo swirljet -thetamax 1
 ```
 
 3. Compute base state at Re = 100 with guess from 1/Re continuation
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi swirljet_10.base -fo swirljet100 -1/Re 0.01
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi swirljet_8.base -fo swirljet100 -1/Re 0.01
 ```
 
 4. Continue base state at Re = 100 along the parameter S with adaptive remeshing
