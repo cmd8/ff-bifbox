@@ -23,14 +23,14 @@
                             + ((ij)*v*(ik)*u + ((ij)*v#y - v#z)*((ik)*u#y - u#z) + ((ij)*v#z + v#y)*((ik)*u#z + u#y))/(y + 1.0e-12*(y == 0)) ) // EOM
 // Boundary conditions
   macro BoundaryConditions(u, U)
-    on(BCinflow, u = U - (2.0 - 8.0*y^2), u#z = U#z - 2.0*params["S"]*y)
-    + on(BCwall, u = U, u#y = U#y, u#z = U#z, u#pc = U#pc)
-    + on(BCpipe, u = U, u#y = U#y, u#z = U#z - params["S"], u#pc = U#pc)
+    on(BCinflow, u = U - (2.0 - 8.0*y^2), u#z = U#z - 2.0*params["S"]*y, u#po = U#po)
+    + on(BCwall, u = U, u#y = U#y, u#z = U#z, u#po = U#po)
+    + on(BCpipe, u = U, u#y = U#y, u#z = U#z - params["S"], u#po = U#po)
     + on(BCaxis, u#y = U#y, u#z = U#z)
   // EOM
   macro HomBoundaryConditions(sym, u)
-    on(BCinflow, u = 0, u#z = 0)
-    + on(BCwall, BCpipe, u = 0, u#y = 0, u#z = 0, u#pc = 0)
+    on(BCinflow, u = 0, u#z = 0, u#po = 0)
+    + on(BCwall, BCpipe, u = 0, u#y = 0, u#z = 0, u#po = 0)
     + on((abs(sym) != 1)*BCaxis, u#y = 0, u#z = 0)
     + on((abs(sym) >  0)*BCaxis, u = 0)
   // EOM
@@ -41,8 +41,8 @@
       - vp*divu(0, ub)
     )
     + int1d(Th, BCopen)(
-      y*ndotu(v)*ubpc - 0.5*vdotu(v, ub)*min(0.0, real(ndotu(ub)))
-      + vpc*(y*tdotgrads(ubpc) - ubz^2*N.x)
+      y*ndotu(v)*ubpo - 0.5*vdotu(v, ub)*min(0.0, real(ndotu(ub)))
+      + vpo*(y*tdotgrads(ubpo) - ubz^2*N.x)
     )
     + BoundaryConditions(dum, ub);
 
@@ -52,11 +52,11 @@
       iomega*vdotu(v, dum)
       + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum) - divu(-ik, v)*dump + visc(-ik, v , ik, dum )*params["1/Re"]
       - vp*divu(ik, dum)
-      + 1e-10*vpc*dumpc
+      + 1e-10*vpo*dumpo
     )
     + int1d(Th, BCopen)(
-      y*ndotu(v)*dumpc - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, dum)*ndotu(ub) + vdotu(v, ub)*ndotu(dum))
-      + vpc*(y*tdotgrads(dumpc) - 2.0*ubz*dumz*N.x)
+      y*ndotu(v)*dumpo*(sym == 0) - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, dum)*ndotu(ub) + vdotu(v, ub)*ndotu(dum))
+      + vpo*(y*tdotgrads(dumpo) - 2.0*ubz*dumz*N.x)*(sym == 0)
     )
     + int2d(Th)(
       iomega*vdotu(v, um)
@@ -64,8 +64,8 @@
       - vp*divu(ik, um)
     )
     + int1d(Th, BCopen)(
-      y*ndotu(v)*umpc - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(ub) + vdotu(v, ub)*ndotu(um))
-      + vpc*(y*tdotgrads(umpc) - 2.0*ubz*umz*N.x)
+      y*ndotu(v)*umpo*(sym == 0) - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(ub) + vdotu(v, ub)*ndotu(um))
+      + vpo*(y*tdotgrads(umpo) - 2.0*ubz*umz*N.x)*(sym == 0)
     )
     + HomBoundaryConditions(sym, dum);
 
@@ -92,14 +92,14 @@
     )
     + int1d(Th, BCopen)(
       -0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(um2) + vdotu(v, um2)*ndotu(um))
-      - 2.0*vpc*um2z*umz*N.x
+      - 2.0*vpo*um2z*umz*N.x*(sym == 0)
     )
     + int2d(Th)(
       ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um)
     )
     + int1d(Th, BCopen)(
       -0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(dum) + vdotu(v, dum)*ndotu(um))
-      - 2.0*vpc*dumz*umz*N.x
+      - 2.0*vpo*dumz*umz*N.x*(sym == 0)
     )
     + HomBoundaryConditions(sym, dum);
 

@@ -12,7 +12,7 @@
   string[int] paramnames = ["1/Re", "S"]; // set parameter names
   string[int] monitornames = ["minux(x,0)"]; // set monitor names
 // Define state vector and FE space
-  macro defu(u)[u, u#y, u#z, u#p, u#pc]//EOM
+  macro defu(u)[u, u#y, u#z, u#p, u#po]//EOM
   macro initu(i)[i, i, i, i, i]//EOM
   func Pk = [P2, P2, P2, P1, P1];
 // Define forcing vector and FE space (for resolvent analysis)
