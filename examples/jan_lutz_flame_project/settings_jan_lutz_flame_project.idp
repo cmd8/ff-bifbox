@@ -1,0 +1,60 @@
+//
+// settings_jan_lutz_flame_project.idp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// Set dimension macro for 'macro_ddm.idp' (2)
+  macro dimension()2//EOM NOTE: only 2 for now
+// Load hpddm macros
+  include "macro_ddm.idp"
+  verbosity = getARGV("-v",0);
+// Define parameter and monitor names
+  string[int] paramnames = ["Re", "Pe", "Le", "dT", "Ze", "Da", "Ma", "ga", "a", "d"]; // set parameter names
+  string[int] monitornames = ["xqmax", "uxmin"]; // set monitor names
+// Define state vector and FE space
+  macro defu(u)[u, u#y, u#T, u#Y, u#R]//EOM
+  macro initu(i)[i, i, i, i, i]//EOM
+  func Pk = [P2, P2, P2, P2, P1];
+// Define forcing vector and FE space (for resolvent analysis)
+  macro deff(f)[f, f#y]//EOM
+  macro initf(i)[i, i]//EOM
+  func Pkf = [P2, P2];
+// Define quantities for mesh adaptation and plotting in Paraview
+  macro adaptu(u)[u, u#y], u#T, u#Y, u#R//EOM
+  macro adaptf(f)[f, f#y]//EOM
+// Name and order for real Paraview outputs
+  string ParaviewDataName = "velocity temperature species density";
+  string ParaviewDataNamef = "momentum";
+  int[int] ParaviewOrder = [1, 1, 1, 1];
+  int[int] ParaviewOrderf = [1];
+// Name and order for complex Paraview outputs
+  string ParaviewDataNamec = "velocity_r temperature_r species_r density_r velocity_i temperature_i species_i density_i";
+  string ParaviewDataNamefc = "momentum_r momentum_i";
+  int[int] ParaviewOrderc = [ParaviewOrder, ParaviewOrder];
+  int[int] ParaviewOrderfc = [ParaviewOrderf, ParaviewOrderf];
+  // Initial conditions (if no file)
+  macro InitialConditions()[tanh(params["d"]*(1.0 - y)), 0, 1, 1, 1]//EOM
+// Boundary labels
+  int BCnull = 0;
+  int BCaxis = 1;
+  int BCopen = 2;
+  int BCinflow = 3;
+  int BCwall = 4;
+  int BCslip = 5;
+// Define solution monitors to extract: here x and y forces on BCwall
+  macro getmonitors(u){
+      fespace Xh1(Thg, P2);
+      Xh1 RR = u#Y/(u#T + (u#T == 0.0))*exp(-params["Ze"]/params["dT"]*(1.0 + params["dT"])*(1.0 + params["dT"] - u#T)/(u#T + (u#T == 0.0))), Xpoints = x;
+      Xh1 UX = u;
+      varf Onaxis(RR, VX) = int2d(Th)(0*RR*VX) + on(BCaxis, RR = 1);
+      real[int] onaxis = Onaxis(0, Xh1, tgv = 1);
+      int[int] indices(onaxis.sum);
+      for(int i=0, j=0; i<Xh1.ndof; ++i) if(onaxis[i]) {indices[j] = i; ++j;}
+      real[int] RRonaxis(indices.n);
+      for(int i=0; i<indices.n; ++i) RRonaxis[i] = RR[][indices[i]];
+      real xqmax = RRonaxis.max;
+      for(int i=0; i<indices.n; ++i) if(abs(RRonaxis[i] - xqmax) < 1e-12) {xqmax = Xpoints[][indices[i]]; break;}
+      monitors["xqmax"] = xqmax;
+      monitors["uxmin"] = UX[].min;
+  }
+  // EOM
