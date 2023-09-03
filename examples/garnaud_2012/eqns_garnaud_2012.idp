@@ -13,7 +13,7 @@
 
   macro ugradu(v, U, ik, u) ( y*(v  *(U*dx(u  ) + U#y*dy(u  ) ) + v#y*(U*dx(u#y) + U#y*dy(u#y) )) ) // velocity advection term
 
-  macro visc(ij, v, ik, u) ( y*(dx(v  )*dx(u  ) + dy(v  )*dy(u  ) + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y)) + v#y*u#y/(y + 1.0e-12*(y == 0)) ) // EOM
+  macro visc(ij, v, ik, u) ( y*(dx(v  )*dx(u  ) + dy(v  )*dy(u  ) + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y)) + v#y*u#y/y ) // EOM
 // Boundary conditions
   macro BoundaryConditions(u, U)
     on(BCwall, u = U, u#y = U#y)

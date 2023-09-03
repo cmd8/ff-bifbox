@@ -20,7 +20,7 @@
                              + v#z*(y*(U*dx(u#z) + U#y*dy(u#z)) + U#z*((ik)*u#z + u#y)) ) // scaled convection term
 
   macro visc(ij, v, ik, u) ( y*(dx(v)*dx(u) + dy(v)*dy(u) + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y) + dx(v#z)*dx(u#z) + dy(v#z)*dy(u#z))
-                            + ((ij)*v*(ik)*u + ((ij)*v#y - v#z)*((ik)*u#y - u#z) + ((ij)*v#z + v#y)*((ik)*u#z + u#y))/(y + 1.0e-12*(y == 0)) ) // EOM
+                            + ((ij)*v*(ik)*u + ((ij)*v#y - v#z)*((ik)*u#y - u#z) + ((ij)*v#z + v#y)*((ik)*u#z + u#y))/y ) // EOM
 // Boundary conditions
   macro BoundaryConditions(u, U)
     on(BCinflow, u = U - (2.0 - 8.0*y^2), u#z = U#z - 2.0*params["S"]*y, u#po = U#po)

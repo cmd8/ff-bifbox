@@ -56,7 +56,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi swirljet.base 
 
 3. Compute base state at Re = 100 with guess from 1/Re continuation
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi swirljet_8.base -fo swirljet100 -1/Re 0.01
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi swirljet_4.base -fo swirljet100 -1/Re 0.01
 ```
 
 4. Continue base state at Re = 100 along the parameter S with adaptive remeshing
@@ -85,7 +85,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 foldcontinue.edp -dir $workdir -fi swirljet100_B.
 ### Unsteady 3D dynamics
 8. Compute base state at Re = 133, S = 1.8 with guess from Re = 100 continuation along S
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi swirljet_10.base -fo swirljet1p8 -1/Re 0.0075 -S 1.8
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi swirljet100_10.base -fo swirljet1p8 -1/Re 0.0075 -S 1.8
 ```
 
 9. Compute leading |m| = 1 and |m| = 2 eigenvalues
