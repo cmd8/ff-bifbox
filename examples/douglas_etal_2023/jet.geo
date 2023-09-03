@@ -3,8 +3,7 @@
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
-// This file can be used with Gmsh to create a mesh for the laminar jet as in
-// [Xavier Garnaud, Ecole Polytechnique PhD Thesis, (2012)].
+// This file can be used with Gmsh to create a mesh for the laminar jet.
 //
 
 n0 = 32;

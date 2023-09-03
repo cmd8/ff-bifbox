@@ -3,8 +3,7 @@
 // Chris Douglas
 // chris.douglas@ladhyx.polytechnique.fr
 //
-// This file can be used with FreeFEM to create a mesh for the laminar jet as in
-// [Xavier Garnaud, Ecole Polytechnique PhD Thesis, (2012)].
+// This file can be used with FreeFEM to create a mesh for the laminar jet.
 //
 
 assert(mpisize == 1); // Must be run with 1 processor
