@@ -7,8 +7,6 @@
 string KSPparams = "";
 string EPSparams = " -eps_pos_gen_non_hermitian ";
 // term macros ------------------------------------------------------
-  macro ndotu(u) (N.x*u + N.y*u#y) //EOM
-
   macro ndotgrads(s) ( y*( N.x*dx(s) + N.y*dy(s))) // EOM
 
   macro gdotf(f, g) ( y*g*f )//EOM
