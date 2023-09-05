@@ -1,0 +1,41 @@
+//
+// cylinder.edp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// This file can be used with FreeFEM to create a mesh for the cylinder.
+//
+
+assert(mpisize == 1); // Must be run with 1 processor
+include "settings_pralits_etal_2010.idp"
+real n0 = 50;
+real n1 = 1.0;
+real xmin = -25.0;
+real xmax = 48.0;
+real rmax = 25.0;
+real rcyl = 0.5;
+
+string meshout = getARGV("-mo", "cylinder.msh"); // mesh filename
+if(meshout.rfind(".msh") < 0) meshout = meshout + ".msh"; // add extension if not provided
+
+// Define borders
+//  o------------------4----------------------o
+//  |                                         |
+//  |                                         |
+//  |           ╭--5--╮                       |
+//  1           |  0  |                       3
+//  |           ╰-----╯                       |
+//  |                                         |
+//  |                                         |
+//  o------------------2----------------------o
+border C01(t=0, 1){x=xmin; y=rmax*(1-2*t); label=BCinflow;}
+border C02(t=0, 1){x=xmin + (xmax-xmin)*t; y=-rmax; label=BCslip;}
+border C03(t=0, 1){x=xmax; y=rmax*(2*t-1); label=BCopen;}
+border C04(t=0, 1){x=xmax + (xmin-xmax)*t; y=rmax; label=BCslip;}
+border C05(t=0, 1){x=-rcyl*cos(2*pi*t); y=rcyl*sin(2*pi*t); label=BCwall;}
+// Assemble mesh
+mesh Thg = buildmesh(C01(n1*rmax) + C02(n1*(xmax-xmin)) + C03(n1*(xmax-xmin)) + C04(n1*(xmax-xmin)) + C05(n0*2*pi*rcyl));
+int[int] meshlabels = labels(Thg);
+cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
+cout << "  Saving mesh '" + meshout + "'." << endl;
+savemesh(Thg, meshout);

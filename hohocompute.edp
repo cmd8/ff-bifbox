@@ -513,6 +513,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   updatelambda(param, lambda1);
   updatelambda(param2, lambda2);
   ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
+  sym = sym1;
   complex[int] Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, um[], q1m, inverse = true);
   ChangeNumbering(J, uma[], q1ma, inverse = true);
@@ -522,6 +523,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, um[], q1m);
   ChangeNumbering(J, uma[], q1ma);
   ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
+  sym = sym2;
   Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, um2[], q2m, inverse = true);
   ChangeNumbering(J, um3[], q2ma, inverse = true);

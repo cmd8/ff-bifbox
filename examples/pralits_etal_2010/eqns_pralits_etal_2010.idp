@@ -1,0 +1,77 @@
+//
+// eqns_sipp_lebedev_2007.idp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// Define KSP parameters
+  string KSPparams = "";
+  string EPSparams = " -eps_pos_gen_non_hermitian ";
+// term macros ------------------------------------------------------
+  macro vdotu(v, u) ( v*u + v#y*u#y) // velocity inner product
+
+  macro divu(u) ( dx(u) + dy(u#y)) // velocity divergence
+
+  macro ugradu(v, U, u) ( v*(U*dx(u) + U#y*dy(u)) + v#y*(U*dx(u#y) + U#y*dy(u#y)) ) // velocity advection term
+
+  macro visc(v, u)  (  dx(v)*dx(u) + dy(v)*dy(u) + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y) ) // viscous term
+// Boundary conditions
+  macro BoundaryConditions(u, U)
+    on(BCwall, u = U - params["alpha"]*N.y, u#y = U#y + params["alpha"]*N.x)
+    + on(BCslip, u#y = U#y)
+    + on(BCinflow, u = U - 1., u#y = U#y)
+  // EOM
+  macro HomBoundaryConditions(u)
+    on(BCinflow, BCwall, u = 0, u#y = 0)
+    + on(BCslip, u#y = 0)
+  // EOM
+// RESIDUAL OPERATOR
+  varf vR(defu(dum), defu(v))
+    = int2d(Th)(
+      ugradu(v, ub, ub) - divu(v)*ubp + visc(v, ub)*params["1/Re"]
+      - vp*divu(ub)
+    )
+    + BoundaryConditions(dum, ub);
+
+// JACOBIAN OPERATOR
+  varf vJ(defu(dum), defu(v))
+    = int2d(Th)(
+      iomega*vdotu(v, dum)
+      + ugradu(v, dum, ub) + ugradu(v, ub, dum) - divu(v)*dump + visc(v, dum)*params["1/Re"]
+      - vp*divu(dum)
+    )
+    + int2d(Th)(
+      iomega*vdotu(v, um)
+      + ugradu(v, um, ub) + ugradu(v, ub, um) - divu(v)*ump + visc(v, um)*params["1/Re"]
+      - vp*divu(um)
+    )
+    + HomBoundaryConditions(dum);
+
+// MASS OPERATOR
+  varf vM(defu(dum), defu(v))
+    = int2d(Th)( vdotu(v, dum) )
+    + int2d(Th)( vdotu(v, um) )
+    + HomBoundaryConditions(dum);
+
+// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+  varf vMq(defu(dum), defu(v))
+    = int2d(Th)( vdotu(v, dum) );
+
+  varf vMf(deff(fm), deff(v))
+    = int2d(Th)( vdotu(v, fm) );
+
+  varf vP(deff(fm), defu(v))
+    = int2d(Th)( vdotu(v, fm) );
+
+// HESSIAN OPERATOR
+  varf vH(defu(dum), defu(v))
+    = int2d(Th)(
+      ugradu(v, um, um2) + ugradu(v, um2, um)
+    )
+    + int2d(Th)(
+      ugradu(v, um, dum) + ugradu(v, dum, um)
+    )
+    + HomBoundaryConditions(dum);
+
+// TRESSIAN OPERATOR
+  varf vT(defu(dum), defu(v))
+    = HomBoundaryConditions(dum);
