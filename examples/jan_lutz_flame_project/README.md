@@ -13,7 +13,7 @@ export workdir=examples/jan_lutz_flame_project
 ```
 3. Create symbolic links for governing equations and solver settings.
 ```
-ln -sf $workdir/eqns_jan_lutz_flame_projectidp eqns.idp
+ln -sf $workdir/eqns_jan_lutz_flame_project.idp eqns.idp
 ln -sf $workdir/settings_jan_lutz_flame_project.idp settings.idp
 ```
 
