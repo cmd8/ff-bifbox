@@ -7,7 +7,7 @@
 //
 
 assert(mpisize == 1); // Must be run with 1 processor
-include "settings_fani_etal_2018.idp"
+include "settings.idp"
 real n0 = 25;
 real n1 = 2.5;
 real n2 = 0.25;

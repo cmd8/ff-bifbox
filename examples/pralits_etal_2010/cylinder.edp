@@ -7,7 +7,7 @@
 //
 
 assert(mpisize == 1); // Must be run with 1 processor
-include "settings_pralits_etal_2010.idp"
+include "settings.idp"
 real n0 = 50;
 real n1 = 1.0;
 real xmin = -25.0;

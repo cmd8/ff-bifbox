@@ -7,7 +7,7 @@
 //
 
 assert(mpisize == 1); // Must be run with 1 processor
-include "settings_douglas_etal_2023.idp"
+include "settings.idp"
 real n0 = 32;
 real n1 = 8;
 real n2 = 2;

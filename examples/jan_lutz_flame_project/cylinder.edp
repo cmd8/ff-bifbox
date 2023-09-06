@@ -7,12 +7,12 @@
 //
 
 assert(mpisize == 1); // Must be run with 1 processor
-include "settings_jan_lutz_flame_project.idp"
+include "settings.idp"
 real n0 = 50;
 real n1 = 10;
 real xmin = -5.0;
 real xmax = 10.0;
-real rmax = 1.0;
+real rmax = 0.5;
 real rcyl = 0.25;
 
 string meshout = getARGV("-mo", "cylinder.msh"); // mesh filename
@@ -26,7 +26,7 @@ if(meshout.rfind(".msh") < 0) meshout = meshout + ".msh"; // add extension if no
 //  o-----2-----o  0  o---------4----------o
 border C01(t=0, 1){x=xmin; y=rmax*(1-t); label=BCinflow;}
 border C02(t=0, 1){x=xmin-(xmin+rcyl)*t; y=0; label=BCaxis;}
-border C03(t=0, 1){x=-rcyl*cos(pi*t); y=rcyl*sin(pi*t); label=BCwall;}
+border C03(t=0, 1){x=-rcyl*cos(pi*t); y=rcyl*sin(pi*t); label=BCcyl;}
 border C04(t=0, 1){x=rcyl+(xmax-rcyl)*t; y=0; label=BCaxis;}
 border C05(t=0, 1){x=xmax; y=rmax*t; label=BCopen;}
 border C06(t=0, 1){x=xmax+(xmin-xmax)*t; y=rmax; label=BCwall;}

@@ -1,0 +1,118 @@
+//
+// eqns_jan_project.idp
+// Chris Douglas
+// chris.douglas@ladhyx.polytechnique.fr
+//
+// Define KSP parameters
+string KSPparams = "";
+string EPSparams = " -eps_pos_gen_non_hermitian ";
+
+// term macros ------------------------------------------------------
+macro gdotf(g, f) ( g*f )//EOM
+
+macro vdotu(v, u) ( v*u + v#y*u#y ) //EOM
+
+macro divu(ik, u) ( dx(u) + dy(u#y) ) // velocity divergence
+
+macro ndotvisc(v, ik, u) (N.x*(v*(dx(u  ) - 2./3.*divu(ik, u)) + v#y*dy(u  )                       )
+                        + N.y*(v*dx(u#y)                       + v#y*(dy(u#y) - 2./3.*divu(ik, u)) )) //EOM
+
+macro ugradu(v, U, ik, u) (  v  *(U*dx(u  ) + U#y*dy(u  ) )
+                           + v#y*(U*dx(u#y) + U#y*dy(u#y) ) ) // scaled convection term
+
+macro visc(ij, v, ik, u)   ( dx(v  )*(2.*dx(u  ) - 2./3.*divu(ik, u))  + dy(v  )*(dx(u#y) + dy(u  ))
+                           + dx(v#y)*(dx(u#y) + dy(u  ))               + dy(v#y)*(2.*dy(u#y) - 2./3.*divu(ik, u)) ) // EOM
+
+macro diff(ij, g, ik, f) ( dx(g)*dx(f) + dy(g)*dy(f) ) // EOM
+
+macro ugradf(U, ik, f)   ( U*dx(f) + U#y*dy(f) ) // EOM
+
+macro Reeff()( params["Re"] )//EOM
+// Boundary conditions
+  macro BoundaryConditions(u, U)
+    on(BCwall, BCcyl, u = U, u#y = U#y, u#T = U#T - 1.0)
+    + on(BCinflow, u = U - (2.0 - 8.0*y^2), u#y = U#y, u#T = U#T - 1.0)
+    + on(BCaxis, u#y = U#y)
+  // EOM
+  macro HomBoundaryConditions(sym, u)
+    on(BCwall, BCcyl, BCinflow, u = 0, u#y = 0, u#T = 0)
+    + on((abs(int(sym)) % 2 == 0)*BCaxis, u#y = 0 )
+    + on((abs(int(sym)) % 2 != 0)*BCaxis, u = 0, u#T = 0)
+  // EOM
+
+// RESIDUAL OPERATOR
+varf vR(defu(um), defu(v))
+      = int2d(Th)(
+        vR*(ugradf(ub, 0, ubR) + ubR*divu(0, ub))
+        + ubR*ugradu(v, ub, 0, ub) - 1.0/(params["ga"]*params["Ma"]^2)*divu(0, v)*(ubR*ubT - 1.0) + visc(0, v, 0, ub)/Reeff
+        + vT*(ubR*ugradf(ub, 0, ubT) + (params["ga"] - 1.0)*(ubR*ubT*divu(0, ub) - params["ga"]*params["Ma"]^2./Reeff*visc(0, ub, 0, ub))) + params["ga"]/(Reeff*params["Pr"])*diff(0, vT, 0, ubT)
+      )
+      - int1d(Th, BCopen) (
+        ndotvisc(v, 0, ub)/Reeff
+      )
+      + BoundaryConditions(um, ub);
+
+// JACOBIAN OPERATOR
+varf vJ(defu(dum), defu(v))
+      = int2d(Th)(
+        iomega*(gdotf(vR, dumR) + ubR*(gdotf(vT, dumT) + vdotu(v, dum)))
+        + vR*(ugradf(ub, ik, dumR) + ugradf(dum, 0, ubR) + dumR*divu(0, ub) + ubR*divu(ik, dum))
+        + ubR*(ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum)) + dumR*ugradu(v, ub, 0, ub) - 1.0/(params["ga"]*params["Ma"]^2)*divu(-ik, v)*(dumR*ubT + ubR*dumT) + visc(-ik, v , ik, dum )/Reeff
+        + vT*(ubR*(ugradf(dum, 0, ubT) + ugradf(ub, ik, dumT)) + dumR*ugradf(ub, 0, ubT) + (params["ga"] - 1.0)*(dumR*ubT*divu(0, ub) + ubR*dumT*divu(0, ub) + ubR*ubT*divu(ik, dum) - params["ga"]*params["Ma"]^2./Reeff*(visc(ik, dum, 0, ub) + visc(0, ub, ik, dum)))) + params["ga"]/(Reeff*params["Pr"])*diff(-ik, vT, ik, dumT)
+      )
+      - int1d(Th, BCopen) (
+        ndotvisc(v, ik, dum)/Reeff
+      )
+      + int2d(Th)(
+        iomega*(gdotf(vR, umR) + ubR*(gdotf(vT, umT) + vdotu(v, um)))
+        + vR*(ugradf(ub, ik, umR) + ugradf(um, 0, ubR) + umR*divu(0, ub) + ubR*divu(ik, um))
+        + ubR*(ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um)) + umR*ugradu(v, ub, 0, ub) - 1.0/(params["ga"]*params["Ma"]^2)*divu(-ik, v)*(umR*ubT + ubR*umT) + visc(-ik, v , ik, um )/Reeff
+        + vT*(ubR*(ugradf(um, 0, ubT) + ugradf(ub, ik, umT)) + umR*ugradf(ub, 0, ubT) + (params["ga"] - 1.0)*(umR*ubT*divu(0, ub) + ubR*umT*divu(0, ub) + ubR*ubT*divu(ik, um) - params["ga"]*params["Ma"]^2./Reeff*(visc(ik, um, 0, ub) + visc(0, ub, ik, um)))) + params["ga"]/(Reeff*params["Pr"])*diff(-ik, vT, ik, umT)
+      )
+      - int1d(Th, BCopen) (
+        ndotvisc(v, ik, um)/Reeff
+      )
+      + HomBoundaryConditions(sym, dum);
+
+// MASS OPERATOR
+varf vM(defu(dum), defu(v))
+      = int2d(Th)(
+        gdotf(vR, dumR) + ubR*(gdotf(vT, dumT) + vdotu(v, dum))
+      )
+      + int2d(Th)(
+          gdotf(vR, umR) + ubR*(gdotf(vT, umT) + vdotu(v, um))
+      )
+      + HomBoundaryConditions(sym, dum);
+
+// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+varf vMq(defu(dum), defu(v))
+      = int2d(Th)( gdotf(vR, umR) + ubR*(gdotf(vT, umT) + vdotu(v, um)) );
+
+varf vMf(deff(dum), deff(v))
+      = int2d(Th)( ubR*vdotu(v, dum) );
+
+varf vP(deff(fm), defu(v))
+      = int2d(Th)( vdotu(v, fm) );
+
+// HESSIAN OPERATOR
+varf vH(defu(dum), defu(v))
+      = int2d(Th)(
+        iomega*um2R*(gdotf(vT, umT) + vdotu(v, um)) + iomega2*umR*(gdotf(vT, um2T) + vdotu(v, um2))
+        + vR*(ugradf(um2, ik, umR) + ugradf(um, ik2, um2R) + umR*divu(ik2, um2) + um2R*divu(ik, um))
+        + um2R*(ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um)) + ubR*(ugradu(v, um, ik2, um2) + ugradu(v, um2, ik, um)) + umR*(ugradu(v, um2, 0, ub) + ugradu(v, ub, ik2, um2)) - 1.0/(params["ga"]*params["Ma"]^2)*divu(-ik-ik2, v)*(umR*um2T + um2R*umT)
+        + vT*(um2R*(ugradf(um, 0, ubT) + ugradf(ub, ik, umT)) + ubR*(ugradf(um, ik2, um2T) + ugradf(um2, ik, umT)) + umR*(ugradf(um2, 0, ubT) + ugradf(ub, ik2, um2T)) + (params["ga"] - 1.0)*(umR*(um2T*divu(0, ub) + ubT*divu(ik2, um2)) + umT*(um2R*divu(0, ub) + ubR*divu(ik2, um2)) + (um2R*ubT + ubR*um2T)*divu(ik, um) - params["ga"]*params["Ma"]^2./Reeff*(visc(ik, um, ik2, um2) + visc(ik2, um2, ik, um))))
+      )
+      + int2d(Th)(
+        iomega*dumR*(gdotf(vT, umT) + vdotu(v, um)) + iomega2*umR*(gdotf(vT, dumT) + vdotu(v, dum))
+        + vR*(ugradf(dum, ik, umR) + ugradf(um, ik2, dumR) + umR*divu(ik2, dum) + dumR*divu(ik, um))
+        + dumR*(ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um)) + ubR*(ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um)) + umR*(ugradu(v, dum, 0, ub) + ugradu(v, ub, ik2, dum)) - 1.0/(params["ga"]*params["Ma"]^2)*divu(-ik-ik2, v)*(umR*dumT + dumR*umT)
+        + vT*(dumR*(ugradf(um, 0, ubT) + ugradf(ub, ik, umT)) + ubR*(ugradf(um, ik2, dumT) + ugradf(dum, ik, umT)) + umR*(ugradf(dum, 0, ubT) + ugradf(ub, ik2, dumT)) + (params["ga"] - 1.0)*(umR*(dumT*divu(0, ub) + ubT*divu(ik2, dum)) + umT*(dumR*divu(0, ub) + ubR*divu(ik2, dum)) + (dumR*ubT + ubR*dumT)*divu(ik, um) - params["ga"]*params["Ma"]^2./Reeff*(visc(ik, um, ik2, dum) + visc(ik2, dum, ik, um))))
+      )
+      + HomBoundaryConditions(sym, dum);
+
+// TRESSIAN OPERATOR (FOR WEAKLY NONLINEAR ANALYSIS)
+varf vT(defu(dum), defu(v))
+      = int2d(Th)(
+        um2R*(ugradu(v, um, ik3, um3) + ugradu(v, um3, ik, um)) + um3R*(ugradu(v, um, ik2, um2) + ugradu(v, um2, ik, um)) + umR*(ugradu(v, um2, ik3, um3) + ugradu(v, um3, ik2, um2))
+        + vT*(um2R*(ugradf(um, ik3, um3T) + ugradf(um3, ik, umT)) + um3R*(ugradf(um, ik2, um2T) + ugradf(um2, ik, umT)) + umR*(ugradf(um2, ik3, um3T) + ugradf(um3, ik2, um2T)) + (params["ga"] - 1.0)*(umR*(um2T*divu(ik3, um3) + ubT*divu(ik2, um2)) + umT*(um2R*divu(ik3, um3) + um3R*divu(ik2, um2)) + (um2R*um3T + um3R*um2T)*divu(ik, um)))
+      ) + HomBoundaryConditions(sym, dum);
