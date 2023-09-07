@@ -18,12 +18,12 @@ cd ~/your/path/to/ff-bifbox/
 ```
 2. Export working directory for easy reference.
 ```
-export workdir=examples/garnaud_2012
+export workdir=examples/garnaud_2012/data
 ```
 3. Create symbolic links for governing equations and solver settings.
 ```
-ln -sf $workdir/eqns_garnaud_2012.idp eqns.idp
-ln -sf $workdir/settings_garnaud_2012.idp settings.idp
+ln -sf examples/garnaud_2012/eqns_garnaud_2012.idp eqns.idp
+ln -sf examples/garnaud_2012/settings_garnaud_2012.idp settings.idp
 ```
 
 ## Build initial meshes
@@ -35,7 +35,7 @@ FreeFem++-mpi -v 0 importgmsh.edp -dir $workdir -mi jet.geo
 Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
 #### CASE 2: Gmsh is not installed - build initial mesh using BAMG in FreeFEM
 ```
-FreeFem++-mpi -v 0 $workdir/jet.edp -mo $workdir/jet
+FreeFem++-mpi -v 0 examples/garnaud_2012/jet.edp -mo $workdir/jet
 ```
 
 ## Perform parallel computations using `ff-bifbox`

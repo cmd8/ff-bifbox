@@ -23,8 +23,8 @@ export workdir=examples/meliga_etal_2012
 ```
 3. Create symbolic links for governing equations and solver settings.
 ```
-ln -sf $workdir/eqns_meliga_etal_2012.idp eqns.idp
-ln -sf $workdir/settings_meliga_etal_2012.idp settings.idp
+ln -sf examples/meliga_etal_2012/eqns_meliga_etal_2012.idp eqns.idp
+ln -sf examples/meliga_etal_2012/settings_meliga_etal_2012.idp settings.idp
 ```
 
 ## Build initial meshes
@@ -36,7 +36,7 @@ FreeFem++-mpi -v 0 importgmsh.edp -dir $workdir -mi vortex.geo
 Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
 #### CASE 2: Gmsh is not installed - build initial mesh using BAMG in FreeFEM
 ```
-FreeFem++-mpi -v 0 $workdir/vortex.edp -mo $workdir/vortex
+FreeFem++-mpi -v 0 examples/meliga_etal_2012/vortex.edp -mo $workdir/vortex
 ```
 
 ## Perform parallel computations using `ff-bifbox`

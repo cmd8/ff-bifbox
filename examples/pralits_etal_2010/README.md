@@ -23,18 +23,18 @@ cd ~/your/path/to/ff-bifbox/
 ```
 2. Export working directory for easy reference.
 ```
-export workdir=examples/pralits_etal_2010
+export workdir=examples/pralits_etal_2010/data
 ```
 3. Create symbolic links for governing equations and solver settings.
 ```
-ln -sf $workdir/eqns_pralits_etal_2010.idp eqns.idp
-ln -sf $workdir/settings_pralits_etal_2010.idp settings.idp
+ln -sf examples/pralits_etal_2010/eqns_pralits_etal_2010.idp eqns.idp
+ln -sf examples/pralits_etal_2010/settings_pralits_etal_2010.idp settings.idp
 ```
 
 ## Build initial meshes using BAMG in FreeFEM
 `ff-bifbox` uses FreeFEM for adaptive meshing during the solution process, but it needs an initial mesh to adaptively refine.
 ```
-FreeFem++-mpi -v 0 $workdir/cylinder.edp -mo $workdir/cylinder
+FreeFem++-mpi -v 0 examples/pralits_etal_2010/cylinder.edp -mo $workdir/cylinder
 ```
 
 ## Perform parallel computations using `ff-bifbox`

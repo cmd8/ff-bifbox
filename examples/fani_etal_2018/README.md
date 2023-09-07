@@ -20,12 +20,12 @@ cd ~/your/path/to/ff-bifbox/
 ```
 2. Export working directory for easy reference.
 ```
-export workdir=examples/fani_etal_2018
+export workdir=examples/fani_etal_2018/data
 ```
 3. Create symbolic links for governing equations and solver settings.
 ```
-ln -sf $workdir/eqns_fani_etal_2018.idp eqns.idp
-ln -sf $workdir/settings_fani_etal_2018.idp settings.idp
+ln -sf examples/fani_etal_2018/eqns_fani_etal_2018.idp eqns.idp
+ln -sf examples/fani_etal_2018/settings_fani_etal_2018.idp settings.idp
 ```
 
 ## Build initial meshes
@@ -37,7 +37,7 @@ FreeFem++-mpi -v 0 importgmsh.edp -dir $workdir -mi cylinder.geo
 Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
 #### CASE 2: Gmsh is not installed - build initial mesh using BAMG in FreeFEM
 ```
-FreeFem++-mpi -v 0 $workdir/cylinder.edp -mo $workdir/cylinder
+FreeFem++-mpi -v 0 examples/fani_etal_2018/cylinder.edp -mo $workdir/cylinder
 ```
 
 ## Perform parallel computations using `ff-bifbox`

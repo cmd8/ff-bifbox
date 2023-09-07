@@ -21,12 +21,12 @@ cd ~/your/path/to/ff-bifbox/
 ```
 2. Export working directory for easy reference.
 ```
-export workdir=examples/douglas_etal_2021
+export workdir=examples/douglas_etal_2021/data
 ```
 3. Create symbolic links for governing equations and solver settings.
 ```
-ln -sf $workdir/eqns_douglas_etal_2021.idp eqns.idp
-ln -sf $workdir/settings_douglas_etal_2021.idp settings.idp
+ln -sf examples/douglas_etal_2021/eqns_douglas_etal_2021.idp eqns.idp
+ln -sf examples/douglas_etal_2021/settings_douglas_etal_2021.idp settings.idp
 ```
 
 ## Build initial meshes
@@ -38,7 +38,7 @@ FreeFem++-mpi -v 0 importgmsh.edp -dir $workdir -mi swirljet.geo
 Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
 #### CASE 2: Gmsh is not installed - build initial mesh using BAMG in FreeFEM
 ```
-FreeFem++-mpi -v 0 $workdir/swirljet.edp -mo $workdir/swirljet
+FreeFem++-mpi -v 0 examples/douglas_etal_2021/swirljet.edp -mo $workdir/swirljet
 ```
 
 ## Perform parallel computations using `ff-bifbox`

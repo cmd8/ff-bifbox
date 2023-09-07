@@ -9,7 +9,7 @@ cd ~/your/path/to/ff-bifbox/
 ```
 2. Export working directory for easy reference.
 ```
-export workdir=examples/jan_lutz_flame_project
+export workdir=examples/jan_lutz_flame_project/data
 ```
 3. Create symbolic links for governing equations and solver settings.
 ### CASE 1: non-reacting case

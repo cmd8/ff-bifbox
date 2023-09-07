@@ -23,12 +23,12 @@ cd ~/your/path/to/ff-bifbox/
 ```
 2. Export working directory for easy reference.
 ```
-export workdir=examples/sipp_lebedev_2007
+export workdir=examples/sipp_lebedev_2007/data
 ```
 3. Create symbolic links for governing equations and solver settings.
 ```
-ln -sf $workdir/eqns_sipp_lebedev_2007.idp eqns.idp
-ln -sf $workdir/settings_sipp_lebedev_2007.idp settings.idp
+ln -sf examples/sipp_lebedev_2007/eqns_sipp_lebedev_2007.idp eqns.idp
+ln -sf examples/sipp_lebedev_2007/settings_sipp_lebedev_2007.idp settings.idp
 ```
 
 ## Build initial meshes
@@ -41,8 +41,8 @@ FreeFem++-mpi -v 0 importgmsh.edp -dir $workdir -mi cavity.geo
 Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
 #### CASE 2: Gmsh is not installed - build initial mesh using BAMG in FreeFEM
 ```
-FreeFem++-mpi -v 0 $workdir/cylinder.edp -mo $workdir/cylinder
-FreeFem++-mpi -v 0 $workdir/cavity.edp -mo $workdir/cavity
+FreeFem++-mpi -v 0 examples/sipp_lebedev_2007/cylinder.edp -mo $workdir/cylinder
+FreeFem++-mpi -v 0 examples/sipp_lebedev_2007/cavity.edp -mo $workdir/cavity
 ```
 
 ## Perform parallel computations using `ff-bifbox`
