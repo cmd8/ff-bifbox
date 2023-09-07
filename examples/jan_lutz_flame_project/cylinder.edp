@@ -8,12 +8,11 @@
 
 assert(mpisize == 1); // Must be run with 1 processor
 include "settings.idp"
-real n0 = 50;
-real n1 = 10;
-real xmin = -5.0;
-real xmax = 10.0;
-real rmax = 0.5;
-real rcyl = 0.25;
+real n0 = getARGV("-n0", 50);;
+real n1 = getARGV("-n1", 10);
+real xcyl = getARGV("-xcyl", 5.0);
+real Lduct = getARGV("-Lduct", 20.0);
+real Dcyl = getARGV("-Dcyl", 0.2);
 
 string meshout = getARGV("-mo", "cylinder.msh"); // mesh filename
 if(meshout.rfind(".msh") < 0) meshout = meshout + ".msh"; // add extension if not provided
@@ -24,14 +23,14 @@ if(meshout.rfind(".msh") < 0) meshout = meshout + ".msh"; // add extension if no
 //  1                                      5
 //  |           ╭--3--╮                    |
 //  o-----2-----o  0  o---------4----------o
-border C01(t=0, 1){x=xmin; y=rmax*(1-t); label=BCinflow;}
-border C02(t=0, 1){x=xmin-(xmin+rcyl)*t; y=0; label=BCaxis;}
-border C03(t=0, 1){x=-rcyl*cos(pi*t); y=rcyl*sin(pi*t); label=BCcyl;}
-border C04(t=0, 1){x=rcyl+(xmax-rcyl)*t; y=0; label=BCaxis;}
-border C05(t=0, 1){x=xmax; y=rmax*t; label=BCopen;}
-border C06(t=0, 1){x=xmax+(xmin-xmax)*t; y=rmax; label=BCwall;}
+border C01(t=0, 1){x=-xcyl; y=0.5*(1-t); label=BCinflow;}
+border C02(t=0, 1){x=-xcyl+(xcyl-0.5*Dcyl)*t; y=0; label=BCaxis;}
+border C03(t=0, 1){x=-0.5*Dcyl*cos(pi*t); y=0.5*Dcyl*sin(pi*t); label=BCcyl;}
+border C04(t=0, 1){x=0.5*Dcyl+(Lduct-xcyl-0.5*Dcyl)*t; y=0; label=BCaxis;}
+border C05(t=0, 1){x=Lduct-xcyl; y=0.5*t; label=BCopen;}
+border C06(t=0, 1){x=Lduct-xcyl-Lduct*t; y=0.5; label=BCwall;}
 // Assemble mesh
-mesh Thg = buildmesh(C01(n1*rmax) + C02(n1*(rcyl-xmin)) + C03(n0*pi*rcyl) + C04(n1*(xmax-rcyl)) + C05(n1*rmax) + C06(n1*(xmax-xmin)));
+mesh Thg = buildmesh(C01(n1*0.5) + C02(n1*(xcyl-0.5*Dcyl)) + C03(n0*0.5*pi*Dcyl) + C04(n1*(Lduct-xcyl-0.5*Dcyl)) + C05(n1*0.5) + C06(n1*Lduct));
 
 int[int] meshlabels = labels(Thg);
 cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
