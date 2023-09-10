@@ -19,7 +19,7 @@ cd ~/your/path/to/ff-bifbox/
 ```
 2. Export working directory for easy reference.
 ```
-export workdir=examples/meliga_etal_2012
+export workdir=examples/meliga_etal_2012/data
 ```
 3. Create symbolic links for governing equations and solver settings.
 ```
