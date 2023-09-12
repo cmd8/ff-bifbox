@@ -32,7 +32,7 @@ ln -sf examples/fani_etal_2018/settings_fani_etal_2018.idp settings.idp
 `ff-bifbox` uses FreeFEM for adaptive meshing during the solution process, but it needs an initial mesh to adaptively refine.
 #### CASE 1: Gmsh is installed - build initial mesh directly from .geo files
 ```
-FreeFem++-mpi -v 0 importgmsh.edp -dir $workdir -mi cylinder.geo
+FreeFem++-mpi -v 0 importgmsh.edp -gmshdir examples/fani_etal_2018 -dir $workdir -mi cylinder.geo
 ```
 Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
 #### CASE 2: Gmsh is not installed - build initial mesh using BAMG in FreeFEM
@@ -55,7 +55,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi cylinder.base 
 
 3. Compute base states at Re ~ 50 and Re = 150 with guesses from continuation
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder_8.base -fo cylinder50 -1/Re 0.021
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder_8.base -fo cylinder50 -1/Re 0.02
 mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder_14.base -fo cylinder150 -1/Re 0.0066666666667
 ```
 

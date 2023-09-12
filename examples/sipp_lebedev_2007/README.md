@@ -35,8 +35,8 @@ ln -sf examples/sipp_lebedev_2007/settings_sipp_lebedev_2007.idp settings.idp
 `ff-bifbox` uses FreeFEM for adaptive meshing during the solution process, but it needs an initial mesh to adaptively refine.
 #### CASE 1: Gmsh is installed - build initial mesh directly from .geo files
 ```
-FreeFem++-mpi -v 0 importgmsh.edp -dir $workdir -mi cylinder.geo
-FreeFem++-mpi -v 0 importgmsh.edp -dir $workdir -mi cavity.geo
+FreeFem++-mpi -v 0 importgmsh.edp -gmshdir examples/sipp_lebedev_2007 -dir $workdir -mi cylinder.geo
+FreeFem++-mpi -v 0 importgmsh.edp -gmshdir examples/sipp_lebedev_2007 -dir $workdir -mi cavity.geo
 ```
 Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
 #### CASE 2: Gmsh is not installed - build initial mesh using BAMG in FreeFEM

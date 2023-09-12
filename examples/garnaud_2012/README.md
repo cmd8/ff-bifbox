@@ -30,7 +30,7 @@ ln -sf examples/garnaud_2012/settings_garnaud_2012.idp settings.idp
 `ff-bifbox` uses FreeFEM for adaptive meshing during the solution process, but it needs an initial mesh to adaptively refine.
 #### CASE 1: Gmsh is installed - build initial mesh directly from .geo files
 ```
-FreeFem++-mpi -v 0 importgmsh.edp -dir $workdir -mi jet.geo
+FreeFem++-mpi -v 0 importgmsh.edp -gmshdir examples/garnaud_2012 -dir $workdir -mi jet.geo
 ```
 Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
 #### CASE 2: Gmsh is not installed - build initial mesh using BAMG in FreeFEM
