@@ -27,6 +27,7 @@ int nomega = getARGV("-nomega", 1);
 real omegaf = getARGV("-omegaf", 1.0);
 string ksptype = getARGV("-ksp_type", "preonly"); // set -ksp_method
 string pctype = getARGV("-pc_type", "lu"); // set -pc_type
+string optionsleft = getARGV("-options_left", "no"); // set -options_left
 int epsnev = getARGV("-eps_nev", 1);
 bool strictnev = getARGV("-strict", 1);
 
@@ -126,10 +127,12 @@ for (int n = 0; n < nomega; ++n){
   iomega = 1i*omega;
   L  = vJ(XMh, XMh, tgv = -1); //Linear operator
   int k = EPSSolve(LHS, Mf, vectors = fvec, values = val,
-                 sparams = " -eps_type krylovschur " +
-                           " -eps_largest_real " +
-                           " -eps_monitor_conv " +
-                           " -eps_gen_hermitian ");
+                 sparams = " -eps_type krylovschur "
+                           + " -eps_largest_real "
+                           + " -eps_monitor_conv "
+                           + " -options_left " + optionsleft
+                           + " -eps_gen_hermitian "
+                           );
   if (strictnev) {// activate to limit number of eigenpairs
     val.resize(min(k, epsnev));
     fvec.resize(min(k, epsnev));

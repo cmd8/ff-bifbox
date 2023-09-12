@@ -47,6 +47,7 @@ real eps = getARGV("-eps", 1e-7);
 real eps2 = getARGV("-eps2", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
+string optionsleft = getARGV("-options_left", "no"); // set -options_left
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym, sym1, sym2;
 real omega, omega1, omega2;
@@ -497,6 +498,7 @@ if(mpirank == 0) {
 int ret;
 SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_linesearch_type " + sneslinesearchtype
                                                         + " -snes_monitor -snes_converged_reason "
+                                                        + " -options_left " + optionsleft
                                                         );
 if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 5 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM

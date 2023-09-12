@@ -35,6 +35,7 @@ int monotone = getARGV("-mono", 1);
 real eps = getARGV("-eps", 1e-7);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
+string optionsleft = getARGV("-options_left", "no"); // set -options_left
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int refactor = getARGV("-refact", snesmaxit);
@@ -231,6 +232,7 @@ while (count < maxcount){
             sparams = " -snes_linesearch_type " + sneslinesearchtype
                     + " -snes_max_it " + snesmaxit
                     + " -snes_converged_reason "
+                    + " -options_left " + optionsleft
                     + " "); // solve nonlinear problem with SNES
   if (ret > 0) {
     ++count;
@@ -293,6 +295,7 @@ while (count < maxcount){
       SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
                 sparams = " -snes_linesearch_type " + sneslinesearchtype
                         + " -snes_converged_reason "
+                        + " -options_left " + optionsleft
                         ); // solve nonlinear problem with SNES
       assert(ret > 0);
       if(mpirank==0) { // Save adapted mesh

@@ -29,6 +29,7 @@ string filein = getARGV("-fi", ""); // input file with extension
 string fileout = getARGV("-fo", ""); // output file without extension
 string ksptype = getARGV("-ksp_type", "preonly"); // set -ksp_method
 string pctype = getARGV("-pc_type", "lu"); // set -pc_type
+string optionsleft = getARGV("-options_left", "no"); // set -options_left
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 
 string fileroot, meshroot;
@@ -145,6 +146,7 @@ int ret;
 // solve nonlinear problem with SNES
 SNESSolve(J, funcJ, funcR, q, reason = ret, sparams = " -snes_linesearch_type " + sneslinesearchtype
                                                     + " -snes_monitor -snes_converged_reason "
+                                                    + " -options_left " + optionsleft
                                                     );
 if(ret > 0) { // Save solution if solver converged and output file is given
   if(mpirank==0 && adapt) { // Save adapted mesh

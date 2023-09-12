@@ -26,6 +26,7 @@ int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
 string ksptype = getARGV("-ksp_type", "preonly");
 string pctype = getARGV("-pc_type", "lu");
+string optionsleft = getARGV("-options_left", "no"); // set -options_left
 real dt = getARGV("-dt", 0.01);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 
@@ -135,6 +136,7 @@ while (count < maxcount){
   // solve nonlinear problem with TS
   SNESSolve(J, funcJ, funcF, q, reason = ret,
             sparams = " -snes_linesearch_type " + sneslinesearchtype
+                    + " -options_left " + optionsleft
                     + " -snes_converged_reason "
                     ); // solve nonlinear problem with SNES
   if(ret > 0) { // Save solution if solver converged and output file is given
@@ -174,6 +176,7 @@ while (count < maxcount){
       SNESSolve(J, funcJ, funcF, q, reason = ret,
                 sparams = " -snes_linesearch_type " + sneslinesearchtype
                         + " -snes_converged_reason "
+                        + " -options_left " + optionsleft
                         ); // solve nonlinear problem with SNES
       assert(ret > 0);
       if(mpirank == 0) { // Save adapted mesh
