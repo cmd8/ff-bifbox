@@ -45,7 +45,7 @@ The number of processors is set using the `-n` argument from `mpirun`. Here, thi
 ### Zeroth order
 1. Compute base state on the created mesh at Re = 10 from default guess
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi cylinder.msh -fo cylinder -1/Re 0.1 -1/Pr 1.38888888889 -Ma^2 0.04 -gamma 1.4
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi cylinder.msh -fo cylinder -1/Re 0.1 -1/Pr 1.38888888889 -Ma 0.2 -gamma 1.4
 ```
 
 2. Continue base state along the parameter 1/Re with adaptive remeshing
@@ -82,9 +82,9 @@ mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder50.mode
 mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -param 1/Re -thetamax 5 -pv 1
 ```
 
-4. Continue the neutral Hopf curve in the (1/Re,Ma^2)-plane with adaptive remeshing
+4. Continue the neutral Hopf curve in the (1/Re,Ma)-plane with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -thetamax 5 -param Ma^2 -param2 1/Re -h0 -1 -scount 3 -maxcount 12
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -thetamax 5 -param Ma -param2 1/Re -h0 -1 -scount 3 -maxcount 12
 ```
 
 NOTE: the signs and normalizations of the normal form coefficients used in `hopfcompute.edp` are different than those of the Stuart-Landau coefficients in Sipp and Lebedev JFM (2007).
