@@ -35,7 +35,7 @@ The number of processors is set using the `-n` argument from `mpirun`. Here, thi
 ### Zeroth order
 1. Compute base state on the created mesh at Re = 10 from default guess
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi cylinder.msh -fo cylinder -Re 10 -Pr 0.7 -Ma 0.1 -ga 1.4
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi cylinder.msh -fo cylinder -Re 10 -Pr 0.7 -Ma 0.1 -gamma 1.4
 ```
 
 2. Continue base state along the parameter Re with adaptive remeshing
