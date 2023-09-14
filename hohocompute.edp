@@ -719,7 +719,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
         temp -= temp1;
         temp /= eps;
         ChangeNumbering(J, um2[], qDa(k, :), inverse = true, exchange = true); // FreeFEM to PETSc
-        temp += vH(0, XMh, tgv = -10); // 2.0/2.0
+        temp1 = vH(0, XMh, tgv = -10); // 2.0/2.0
+        temp += temp1;
         alpha1[paramnames[k]] = -J(uma[], temp);
       }
     }
@@ -741,7 +742,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
         temp -= temp1;
         temp /= eps;
         ChangeNumbering(J, um2[], qDa(k, :), inverse = true, exchange = true); // FreeFEM to PETSc
-        temp += vH(0, XMh, tgv = -10); // 2.0/2.0
+        temp1 = vH(0, XMh, tgv = -10); // 2.0/2.0
+        temp += temp1;
         alpha2[paramnames[k]] = -J(uma[], temp);
       }
     }
@@ -766,7 +768,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 1i*omega1;
     iomega2 = 0.0;
     ChangeNumbering(J, um2[], qAAs, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp += vH(0, XMh, tgv = -10);
+    temp1 = vH(0, XMh, tgv = -10);
+    temp += temp1;
     //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
     ik = -1i*real(sym1);
     ik2 = 2i*real(sym1);
@@ -774,7 +777,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega2 = 2i*omega1;
     um[] = um3[];
     ChangeNumbering(J, um2[], qAA, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp += vH(0, XMh, tgv = -10);
+    temp1 = vH(0, XMh, tgv = -10);
+    temp += temp1;
     beta1 = -J(uma[], temp);
 
     // B|B|^2
@@ -798,7 +802,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 1i*omega2;
     iomega2 = 0.0;
     ChangeNumbering(J, um2[], qBBs, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp += vH(0, XMh, tgv = -10);
+    temp1 = vH(0, XMh, tgv = -10);
+    temp += temp1;
     //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
     ik = -1i*real(sym2);
     ik2 = 2i*real(sym2);
@@ -806,7 +811,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega2 = 2i*omega2;
     um[] = um3[];
     ChangeNumbering(J, um2[], qBB, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp += vH(0, XMh, tgv = -10);
+    temp1 = vH(0, XMh, tgv = -10);
+    temp += temp1;
     beta2 = -J(uma[], temp);
 
     // A|B|^2
@@ -829,7 +835,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 1i*omega1;
     iomega2 = 0.0;
     ChangeNumbering(J, um2[], qBBs, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp += vH(0, XMh, tgv = -10);
+    temp1 = vH(0, XMh, tgv = -10);
+    temp += temp1;
 
     ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
     ik = 1i*real(sym2);
@@ -837,7 +844,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 1i*omega2;
     iomega2 = 1i*(omega1 - omega2);
     ChangeNumbering(J, um2[], qABs, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp += vH(0, XMh, tgv = -10);
+    temp1 = vH(0, XMh, tgv = -10);
+    temp += temp1;
     //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
     um[] = um3[];
     ik = -1i*real(sym2);
@@ -845,7 +853,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = -1i*omega2;
     iomega2 = 1i*(omega1 + omega2);
     ChangeNumbering(J, um2[], qAB, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp += vH(0, XMh, tgv = -10);
+    temp1 = vH(0, XMh, tgv = -10);
+    temp += temp1;
     gamma1 = -J(uma[], temp);
 
 
@@ -869,7 +878,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 1i*omega2;
     iomega2 = 0.0;
     ChangeNumbering(J, um2[], qAAs, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp += vH(0, XMh, tgv = -10);
+    temp1 = vH(0, XMh, tgv = -10);
+    temp += temp1;
 
     ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
     ik = 1i*real(sym1);
@@ -878,7 +888,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega2 = 1i*(omega2 - omega1);
     ChangeNumbering(J, um2[], qABs, inverse = true, exchange = true); // FreeFEM to PETSc
     um2[] = conj(um2[]);
-    temp += vH(0, XMh, tgv = -10);
+    temp1 = vH(0, XMh, tgv = -10);
+    temp += temp1;
     //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
     um[] = um3[];
     ik = -1i*real(sym1);
@@ -886,7 +897,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = -1i*omega1;
     iomega2 = 1i*(omega1 + omega2);
     ChangeNumbering(J, um2[], qAB, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp += vH(0, XMh, tgv = -10);
+    temp1 = vH(0, XMh, tgv = -10);
+    temp += temp1;
     gamma2 = -J(uma[], temp);
 
     if (res1x == 3){
@@ -912,7 +924,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       iomega = 1i*omega2;
       iomega2 = 2i*omega2;
       ChangeNumbering(J, um2[], qBB, inverse = true, exchange = true); // FreeFEM to PETSc
-      temp += vH(0, XMh, tgv = -10);
+      temp1 = vH(0, XMh, tgv = -10);
+      temp += temp1;
 
       gamma13 = -J(uma[], temp);
 
@@ -940,7 +953,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       iomega2 = -2i*omega2;
       ChangeNumbering(J, um2[], qBB, inverse = true, exchange = true); // FreeFEM to PETSc
       um2[] = conj(um2[]);
-      temp += vH(0, XMh, tgv = -10);
+      temp1 = vH(0, XMh, tgv = -10);
+      temp += temp1;
 
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
       um[] = conj(um[]);
@@ -949,7 +963,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       iomega = -1i*omega2;
       iomega2 = 1i*(omega1 - omega2);
       ChangeNumbering(J, um2[], qABs, inverse = true, exchange = true); // FreeFEM to PETSc
-      temp += vH(0, XMh, tgv = -10);
+      temp1 = vH(0, XMh, tgv = -10);
+      temp += temp1;
 
       gamma23 = -J(uma[], temp);
     }

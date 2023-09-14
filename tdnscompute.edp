@@ -41,11 +41,10 @@ if(fileext == "mode" || fileext == "rslv"){
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshroot); // trim extension from output mesh, if given
-if (count > 0) fileroot = fileroot(0:filein.rfind("_" + count)-1); // get file root
-
-bool adapt = false;
-if(meshout == "") meshout = meshin; // if no adaptation
-else adapt = true;  // if output meshfile is given, adapt mesh
+if(count > 0) {
+  fileroot = fileroot(0:fileroot.rfind("_" + count)-1); // get file root
+  meshroot = meshroot(0:meshroot.rfind("_" + count)-1); // get file root
+}
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
@@ -96,6 +95,10 @@ if (count == 0){
     real time;
     ub[] = loadtdns(fileroot, meshin, time);
   }
+  else {
+    defu(ub) = InitialConditions;
+    setparams(paramnames, params);
+  }
   savetdns(filein, (savecount > 0 ? fileout : ""), meshin, filein, time, false, false);
 }
 else {
@@ -104,28 +107,31 @@ else {
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
-Mat M(J);
 int sym = 0;
 real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 1.0/dt, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp" // load equations
+bool adapt = false;
+if(meshout != "")  adapt = true;  // if output meshfile is given, adapt mesh
+meshout = meshin; // if no adaptation
 set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
-real[int] q;
+real[int] q, qp;
 ChangeNumbering(J, ub[], q);
-real[int] qp = q;
+ChangeNumbering(J, ub[], qp);
 // Function to build residual "F(t,u,\dot{u})" operator in PETSc numbering
-func real[int] funcF(real[int]& in) {
-    ChangeNumbering(J, ub[], in, inverse = true, exchange = true);
+func real[int] funcF(real[int]& qPETSc) {
+    ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
     ChangeNumbering(J, um[], qp, inverse = true, exchange = true);
     um[] -= ub[]; // -dq
     um[] /= -dt; // -dq/-dt = dq/dt
-    real[int] out, F = vR(0, XMh, tgv = -1);
-    F += vM(0, XMh, tgv = -10);
-    ChangeNumbering(J, F, out);
-    return out;
+    real[int] FPETSc, F = vR(0, XMh, tgv = -1);
+    real[int] M = vM(0, XMh, tgv = -10);
+    F += M;
+    ChangeNumbering(J, F, FPETSc);
+    return FPETSc;
 }
 // Function to build Jacobian operator in PETSc numbering
-func int funcJ(real[int]& in) {
-    ChangeNumbering(J, ub[], in, inverse = true, exchange = true);
+func int funcJ(real[int]& qPETSc) {
+    ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
     iomega = 1.0/dt;
     J = vJ(XMh, XMh, tgv = -1);
     return 0;
@@ -153,7 +159,7 @@ while (count < maxcount){
       mpiAllReduce(tempu[], umG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
       if(mpirank == 0)  // Perform mesh adaptation (serially) on processor 0
         Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
-        broadcast(processor(0), Thg); // broadcast global mesh to all processors
+      broadcast(processor(0), Thg); // broadcast global mesh to all processors
       defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
       defu(umG) = defu(umG); //interpolate global solution from old mesh to new mesh
       Th = Thg; //Reinitialize local mesh with global mesh
@@ -168,7 +174,6 @@ while (count < maxcount){
       ub[] = uG[](restu); //restrict global solution to each local mesh
       um[] = umG[](restu); //restrict global solution to each local mesh
       Mat Adapt0(J);
-      M = Adapt0;
       q.resize(J.n);  // Resize state vector
       qp.resize(J.n);  // Resize state vector
       ChangeNumbering(J, ub[], q);
