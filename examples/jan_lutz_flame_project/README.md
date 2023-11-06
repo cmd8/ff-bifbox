@@ -37,6 +37,10 @@ The number of processors is set using the `-n` argument from `mpirun`. Here, thi
 ```
 mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi cylinder.msh -fo cylinder -Re 10 -Pr 0.7 -Ma 0.1 -gamma 1.4
 ```
+ to compute with reacting formulation:
+```
+mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi cylinder.msh -fo cylinderreact -Re 10 -Pr 0.7 -Le 1 -Da 1 -Ze 1 -dT 0.1 -Ma 0.1 -gamma 1.4 -a 0.7
+```
 
 2. Continue base state along the parameter Re with adaptive remeshing
 ```
