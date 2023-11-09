@@ -10,27 +10,45 @@
 // NOTE: Requires Gmsh (https://gmsh.info/) to handle .geo files directly.
 //
 load "gmsh"
-include "getARGV.idp"
+include "settings.idp"
+include "macros_bifbox.idp"
 assert(mpisize == 1); // Must be run with 1 processor
 string meshin = getARGV("-mi", ""); // mesh filename
 string meshout = getARGV("-mo", meshin); // mesh filename
-string gmshdir = getARGV("-gmshdir","./data/"); // path to GMSH work directory
-string workdir = getARGV("-dir","./data/"); // path to FreeFEM work directory
+parsefilename(meshout, meshout); // trim extension from output mesh, if given
+string gmshdir = getARGV("-gmshdir",workdir + ".."); // path to GMSH file directory
 if (gmshdir(gmshdir.length-1:gmshdir.length-1) != "/") gmshdir = gmshdir + "/";
-if (workdir(workdir.length-1:workdir.length-1) != "/") workdir = workdir + "/";
 cout << "  Loading '" + meshin + "' in '" + gmshdir + "'." << endl;
 string meshext = meshin(meshin.rfind(".")+1:meshin.length-1); // get file extension
-mesh Thg;
+IFMACRO(dimension,2)
 if (meshext == "geo") {
   cout << "  Calling GMSH to build .msh file from .geo file." << endl;
-  if (meshout.rfind(".geo") > 0)
-     meshout = meshout(0:meshout.rfind(".geo")-1);
-  if (meshout.rfind(".msh") < 0)
-    meshout = meshout + ".msh";
+  meshout = meshout + ".msh";
   exec("gmsh " + gmshdir + meshin + " -2 -v " + verbosity + " -o " + workdir + meshout);
-  Thg = gmshload(workdir + meshout); // load mesh stored in Gmsh format
+  Thg = gmshload(workdir + meshout); // load mesh stored in Gmsh .msh format
 }
-else Thg = gmshload(workdir + meshin); // load mesh stored in Gmsh format
+else Thg = gmshload(workdir + meshin); // load mesh stored in Gmsh .msh format
+ENDIFMACRO
+IFMACRO(dimension,3)
+if (meshext == "geo") {
+  cout << "  Calling GMSH to build .msh file from .geo file." << endl;
+  meshout = meshout + ".msh";
+  exec("gmsh " + gmshdir + meshin + " -3 -v " + verbosity + " -o " + gmshdir + meshout);
+  lockOrientation = false;
+  mesh3 Th1 = gmshload3(gmshdir + meshout); // load mesh stored in Gmsh .mesh format
+  exec("rm " + gmshdir + meshout);
+  lockOrientation = true;
+  Thg = Th1;
+}
+else {
+  lockOrientation = false;
+  meshN Th1 = gmshload3(gmshdir + meshin); // load mesh stored in Gmsh .mesh format
+  lockOrientation = true;
+  Thg = Th1;
+}
+parsefilename(meshout, meshout); // trim extension from output mesh, if given
+meshout = meshout + ".mesh";
+ENDIFMACRO
 int[int] meshlabels = labels(Thg);
 cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
 cout << "  Saving '" << meshout + "' in '" + workdir + "'." << endl;
