@@ -25,7 +25,7 @@ if (fileout.rfind(".") > 0) fileout = fileout(0:fileout.rfind(".")-1); // trim e
 
 if (mpirank==0){
   if(meshin == "") meshin = readmeshname(workdir + filein);
-  Thg = readmesh(workdir + meshin);
+  Thg = readmeshN(workdir + meshin);
   if (fileext == "base"){
     XMhg defu(ub);
     restu = 0:XMhg.ndof-1;
