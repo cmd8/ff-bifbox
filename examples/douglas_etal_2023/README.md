@@ -1,16 +1,18 @@
 # Low-Mach conical flame Example: Douglas et al., CNF, (2023)
 This file shows an example `ff-bifbox` workflow for reproducing the results in the study:
 ```
-@phdthesis{douglas_etal_2023,
+@article{douglas_etal_2023,
   title = {{Flash-back, blow-off, and symmetry breaking of premixed conical flames}},
+  volume={258},
   author = {Douglas, Christopher M. and Polifke, Wolfgang and Lesshafft, Lutz},
-  doi = {},
+  doi = {10.1016/j.combustflame.2023.113060},
   journal={Combustion and Flame},
   publisher={Elsevier},
+  pages = {113060},
   year={2023},
 }
 ```
-The commands below illustrate how to perform a resolvent analysis of an incompressible laminar axisymmetric jet using `ff-bifbox`.
+The commands below illustrate how to perform a bifurcation analysis of a premixed conical flame using `ff-bifbox`.
 
 ## Setup environment for `ff-bifbox`
 1. Navigate to the main `ff-bifbox` directory.
