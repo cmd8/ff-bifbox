@@ -39,10 +39,6 @@ bool normalform = getARGV("-nf", 1);
 string param = getARGV("-param", "");
 string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
-string ksptype = getARGV("-ksp_type", "preonly");
-string pctype = getARGV("-pc_type", "lu");
-string optionsleft = getARGV("-options_left", "no"); // set -options_left
-string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym = 0;
 real[string] alpha;
 real beta;
@@ -103,7 +99,6 @@ real lambda = getlambda(param);
 Mat J;
 createMatu(Th, J, Pk);
 real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
-include "eqns.idp"
 
 // MESH ADAPTATION
 bool adapt = false;
@@ -126,10 +121,28 @@ else { // if output meshfile is given, adapt mesh
   for[i, v : restu] tempu[][v] = uma[][i]; // populate local portion of global soln
   mpiAllReduce(tempu[], umaG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
   if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
-    if(adaptto == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
-    else if(adaptto == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptmeshoptions);
-    else if(adaptto == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umaG), adaptmeshoptions);
-    else if(adaptto == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptu(umaG), adaptmeshoptions);
+    IFMACRO(dimension,2)
+      if(adaptto == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+      else if(adaptto == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptmeshoptions);
+      else if(adaptto == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umaG), adaptmeshoptions);
+      else if(adaptto == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptu(umaG), adaptmeshoptions);
+    ENDIFMACRO
+    IFMACRO(dimension,3)
+      cout << "NOTE: 3D mesh adaptation is still under development." << endl;
+      load "mshmet"
+      load "mmg"
+      real anisomax = getARGV("-anisomax",1.0);
+      real[int] met;
+      if(adaptto == "b") met = mshmet(Thg, adaptu(uG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      else if(adaptto == "bd") met = mshmet(Thg, adaptu(uG), adaptu(umG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      else if(adaptto == "ba") met = mshmet(Thg, adaptu(uG), adaptu(umaG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      else if(adaptto == "bda") met = mshmet(Thg, adaptu(uG), adaptu(umG), adaptu(umaG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      if(anisomax > 1.0) {
+        load "aniso"
+        boundaniso(6, met, anisomax);
+      }
+      Thg = mmg3d(Thg, verbose = verbosity-(verbosity==0), metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1);
+    ENDIFMACRO
   } // TODO: add adaptation to endogeneity and structural sensitivity
   broadcast(processor(0), Thg); // broadcast global mesh to all processors
   defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
@@ -151,6 +164,7 @@ else { // if output meshfile is given, adapt mesh
   uma[] = umaG[](restu); //restrict global solution to each local mesh
 }
 // Build bordered block matrix from only Mat components
+include "eqns.idp"
 Mat H(J);
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), gqPM(J.n, mpirank == 0 ? 1 : 0), glPM(mpirank == 0 ? 1 : 0, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Mat Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
@@ -208,7 +222,7 @@ real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
   }
 
 set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
-set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+set(J, sparams = " -prefix_push fieldsplit_0_ " + KSPparams + "-prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
 
 // Initialize
 real[int] qa;
@@ -232,8 +246,8 @@ ChangeNumbering(J, um[], qP);
 ChangeNumbering(J, uma[], pP);
 // solve nonlinear problem with SNES
 int ret;
-SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_linesearch_type " + sneslinesearchtype
-                                                        + " -options_left " + optionsleft
+SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_linesearch_type basic "
+                                                        + " -options_left no "
                                                         + " -snes_monitor -snes_converged_reason "
                                                         );
 if (ret > 0) { // Save solution if solver converged and output file is given

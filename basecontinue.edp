@@ -33,11 +33,7 @@ real deltamax = getARGV("-dmax", 4.0);
 real anglemax = getARGV("-amax", 30.)*pi/180.0;
 int monotone = getARGV("-mono", 1);
 real eps = getARGV("-eps", 1e-7);
-string ksptype = getARGV("-ksp_type", "preonly");
-string pctype = getARGV("-pc_type", "lu");
-string optionsleft = getARGV("-options_left", "no"); // set -options_left
 int snesmaxit = getARGV("-snes_max_it", 10);
-string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int refactor = getARGV("-refact", snesmaxit);
 bool forcesave = false;
 
@@ -190,7 +186,7 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
   }
 
 set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
-set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+set(J, sparams = " -prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
 
 // PREDICTOR
 real[int] qa;
@@ -229,11 +225,11 @@ while (count < maxcount){
   internalit = 0;
   adaptflag = 0;
   SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
-            sparams = " -snes_linesearch_type " + sneslinesearchtype
+            sparams = " -snes_linesearch_type basic "
                     + " -snes_max_it " + snesmaxit
                     + " -snes_converged_reason "
-                    + " -options_left " + optionsleft
-                    + " "); // solve nonlinear problem with SNES
+                    + " -options_left no"
+                    ); // solve nonlinear problem with SNES
   if (ret > 0) {
     ++count;
     h0 /= f;
@@ -250,13 +246,29 @@ while (count < maxcount){
       updatelambda(param, lambda);
       ChangeNumbering(J, yb[], yqP, inverse = true);
       XMhg defu(uG), defu(yG), defu(tempu);
-      for[i, v : restu] tempu[][v] = ub[][i];
+      tempu[](restu) = ub[]; // populate local portion of global soln
       mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
-      for[i, v : restu] tempu[][v] = yb[][i];
+      tempu[](restu) = yb[]; // populate local portion of global tangent vector
       mpiAllReduce(tempu[], yG[], mpiCommWorld, mpiSUM);
       if(mpirank == 0) {
-        if(adaptto == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
-        if(adaptto == "by") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptmeshoptions);
+        IFMACRO(dimension,2)
+          if(adaptto == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+          else if(adaptto == "by") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptmeshoptions);
+        ENDIFMACRO
+        IFMACRO(dimension,3)
+          cout << "NOTE: 3D mesh adaptation is still under development." << endl;
+          load "mshmet"
+          load "mmg"
+          real anisomax = getARGV("-anisomax",1.0);
+          real[int] met;
+          if(adaptto == "b") met = mshmet(Thg, adaptu(uG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+          else if(adaptto == "by") met = mshmet(Thg, adaptu(uG), adaptu(yG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+          if(anisomax > 1.0) {
+            load "aniso"
+            boundaniso(6, met, anisomax);
+          }
+          Thg = mmg3d(Thg, verbose = verbosity-(verbosity==0), metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1);
+        ENDIFMACRO
       }
       broadcast(processor(0), Thg);
       defu(uG) = defu(uG);
@@ -276,7 +288,7 @@ while (count < maxcount){
       yqPM = Adapt2;
       Ja = [[J,JlPM],[yqPM',-1.0]]; // make dummy Jacobian
       set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
-      set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+      set(J, sparams = " -prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
       qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
       if(mpirank == 0) {
@@ -293,9 +305,9 @@ while (count < maxcount){
       internalit = 0;
       adaptflag = 1;
       SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
-                sparams = " -snes_linesearch_type " + sneslinesearchtype
+                sparams = " -snes_linesearch_type basic "
                         + " -snes_converged_reason "
-                        + " -options_left " + optionsleft
+                        + " -options_left no "
                         ); // solve nonlinear problem with SNES
       assert(ret > 0);
       if(mpirank==0) { // Save adapted mesh

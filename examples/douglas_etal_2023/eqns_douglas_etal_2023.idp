@@ -4,8 +4,8 @@
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // Define KSP parameters
-string KSPparams = "";
-string EPSparams = " -eps_pos_gen_non_hermitian ";
+  string KSPparams = " -ksp_type preonly -pc_type lu ";
+  string EPSparams = " -st_type sinvert -st_pc_type lu -eps_pos_gen_non_hermitian ";
 // term macros ------------------------------------------------------
   macro ndotgrads(s) ( y*( N.x*dx(s) + N.y*dy(s))) // EOM
   macro ndotgradT1Pe(U) ( U#T^(params["a"]+1.0)*ndotgrads(U#T)*params["1/Re"]*params["1/Pr"] )// EOM
@@ -17,7 +17,7 @@ string EPSparams = " -eps_pos_gen_non_hermitian ";
 
   macro vdotu(v, u) ( y*(v*u + v#y*u#y + v#z*u#z) ) //EOM
 
-  macro divu(ik, u) ( y*(dx(u) + dy(u#y)) + u#y + (ik)*u#z ) // velocity divergence
+  macro div(ik, u) ( y*(dx(u) + dy(u#y)) + u#y + (ik)*u#z ) // velocity divergence
 
   macro ndotvisc(v, ik, u) (N.x*(y*(v*dx(u  ) + v#y*dy(u  )) + v#z*(ik)*u ) + N.y*(y*(v*dx(u#y) + v#y*dy(u#y)) + v#z*((ik)*u#y - u#z) )) //EOM
   macro ndotvisc1Re(v, U) ( U#T^(params["a"]+1.0)*ndotvisc(v, 0, U)*params["1/Re"] )// EOM
@@ -83,8 +83,8 @@ varf vR(defu(um), defu(v))
       = int2d(Th)(
           vY*(ugradf(ub, 0, ubY) +              DaYexp(ub)                  + diffdot1Pe(Y, ub)*params["1/Le"]) + diff1Pe(vY, Y, ub)*params["1/Le"]
         + vT*(ugradf(ub, 0, ubT) - params["dT"]*DaYexp(ub)                  + diffdot1Pe(T, ub))                + diff1Pe(vT, T, ub)
-        + ugradu(v, ub, 0, ub)   - (divu(0, v)*ubT + ugradf(v, 0, ubT))*ubp + gfdgu1Re(v, ub)                   + visc1Re(v, ub)
-        + vp*( -ubT*divu(0, ub)  + params["dT"]*DaYexp(ub)                  - diffdot1Pe(T, ub))                - diff1Pe(vp, T, ub)
+        + ugradu(v, ub, 0, ub)   - (div(0, v)*ubT + ugradf(v, 0, ubT))*ubp + gfdgu1Re(v, ub)                   + visc1Re(v, ub)
+        + vp*( -ubT*div(0, ub)  + params["dT"]*DaYexp(ub)                  - diffdot1Pe(T, ub))                - diff1Pe(vp, T, ub)
       )
       - int1d(Th, BCopen) (
         ndotvisc1Re(v, ub)
@@ -100,8 +100,8 @@ varf vJ(defu(dum), defu(v))
         iomega*(gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum))
         + vY*(ugradf(dum, 0, ubY) + ugradf(ub, ik, dumY) +              dDaYexp(ub, dum)                                                          + ddiffdot1Pe(Y, ub, ik, dum)*params["1/Le"]) + ddiff1Pe(vY, Y, ub, ik, dum)*params["1/Le"]
         + vT*(ugradf(dum, 0, ubT) + ugradf(ub, ik, dumT) - params["dT"]*dDaYexp(ub, dum)                                                          + ddiffdot1Pe(T, ub, ik, dum))                + ddiff1Pe(vT, T, ub, ik, dum)
-        + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum) - divu(-ik, v)*(dumT*ubp + ubT*dump) - ugradf(v, ik, dumT)*ubp - ugradf(v, 0, ubT)*dump  + dgfdgu1Re(v, ub, ik, dum)                   + dvisc1Re(v, ub, ik, dum)
-        + vp*( -ubT*divu(ik, dum) - dumT*divu(0, ub)     + params["dT"]*dDaYexp(ub, dum)                                                          - ddiffdot1Pe(T, ub, ik, dum))                - ddiff1Pe(vp, T, ub, ik, dum)
+        + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum) - div(-ik, v)*(dumT*ubp + ubT*dump) - ugradf(v, ik, dumT)*ubp - ugradf(v, 0, ubT)*dump  + dgfdgu1Re(v, ub, ik, dum)                   + dvisc1Re(v, ub, ik, dum)
+        + vp*( -ubT*div(ik, dum) - dumT*div(0, ub)     + params["dT"]*dDaYexp(ub, dum)                                                          - ddiffdot1Pe(T, ub, ik, dum))                - ddiff1Pe(vp, T, ub, ik, dum)
       )
       - int1d(Th, BCopen) (
         dndotvisc1Re(v, ub, ik, dum)
@@ -113,8 +113,8 @@ varf vJ(defu(dum), defu(v))
         iomega*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
         + vY*(ugradf(um, 0, ubY) + ugradf(ub, ik, umY) +              dDaYexp(ub, um)                                                       + ddiffdot1Pe(Y, ub, ik, um)*params["1/Le"]) + ddiff1Pe(vY, Y, ub, ik, um)*params["1/Le"]
         + vT*(ugradf(um, 0, ubT) + ugradf(ub, ik, umT) - params["dT"]*dDaYexp(ub, um)                                                       + ddiffdot1Pe(T, ub, ik, um))                + ddiff1Pe(vT, T, ub, ik, um)
-        + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - divu(-ik, v)*(umT*ubp + ubT*ump) - ugradf(v, -ik, umT)*ubp - ugradf(v, 0, ubT)*ump + dgfdgu1Re(v, ub, ik, um)                   + dvisc1Re(v, ub, ik, um)
-        + vp*( -ubT*divu(ik, um) - umT*divu(0, ub)     + params["dT"]*dDaYexp(ub, um)                                                       - ddiffdot1Pe(T, ub, ik, um))                - ddiff1Pe(vp, T, ub, ik, um)
+        + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - div(-ik, v)*(umT*ubp + ubT*ump) - ugradf(v, -ik, umT)*ubp - ugradf(v, 0, ubT)*ump + dgfdgu1Re(v, ub, ik, um)                   + dvisc1Re(v, ub, ik, um)
+        + vp*( -ubT*div(ik, um) - umT*div(0, ub)     + params["dT"]*dDaYexp(ub, um)                                                       - ddiffdot1Pe(T, ub, ik, um))                - ddiff1Pe(vp, T, ub, ik, um)
       )
       - int1d(Th, BCopen) (
         dndotvisc1Re(v, ub, ik, um)
@@ -145,8 +145,8 @@ varf vH(defu(dum), defu(v))
       = int2d(Th)(
           vY*(ugradf(um, ik2, um2Y) + ugradf(um2, ik, umY) +              ddDaYexp(ub, um, um2)                                                          + dddiffdot1Pe(Y, ub, ik, um, ik2, um2)*params["1/Le"]) + dddiff1Pe(vY, Y, ub, ik, um, ik2, um2)*params["1/Le"]
         + vT*(ugradf(um, ik2, um2T) + ugradf(um2, ik, umT) - params["dT"]*ddDaYexp(ub, um, um2)                                                          + dddiffdot1Pe(T, ub, ik, um, ik2, um2))                + dddiff1Pe(vT, T, ub, ik, um, ik2, um2)
-        + ugradu(v, um, ik2, um2) + ugradu(v, um2, ik, um) - divu(-ik-ik2, v)*(ump*um2T + um2p*umT) - ugradf(v, ik, umT)*um2p - ugradf(v, ik2, um2T)*ump + ddgfdgu1Re(v, ub, ik, um, ik2, um2)                   + ddvisc1Re(v, ub, ik, um, ik2, um2)
-        + vp*( -um2T*divu(ik, um) - umT*divu(ik2, um2)     + params["dT"]*ddDaYexp(ub, um, um2)                                                          - dddiffdot1Pe(T, ub, ik, um, ik2, um2))                - dddiff1Pe(vp, T, ub, ik, um, ik2, um2)
+        + ugradu(v, um, ik2, um2) + ugradu(v, um2, ik, um) - div(-ik-ik2, v)*(ump*um2T + um2p*umT) - ugradf(v, ik, umT)*um2p - ugradf(v, ik2, um2T)*ump + ddgfdgu1Re(v, ub, ik, um, ik2, um2)                   + ddvisc1Re(v, ub, ik, um, ik2, um2)
+        + vp*( -um2T*div(ik, um) - umT*div(ik2, um2)     + params["dT"]*ddDaYexp(ub, um, um2)                                                          - dddiffdot1Pe(T, ub, ik, um, ik2, um2))                - dddiff1Pe(vp, T, ub, ik, um, ik2, um2)
       )
       - int1d(Th, BCopen) (
         ddndotvisc1Re(v, ub, ik, um, ik2, um2)
@@ -157,8 +157,8 @@ varf vH(defu(dum), defu(v))
       + int2d(Th)(
           vY*(ugradf(um, ik2, dumY) + ugradf(dum, ik, umY) +              ddDaYexp(ub, um, dum)                                                          + dddiffdot1Pe(Y, ub, ik, um, ik2, dum)*params["1/Le"]) + dddiff1Pe(vY, Y, ub, ik, um, ik2, dum)*params["1/Le"]
         + vT*(ugradf(um, ik2, dumT) + ugradf(dum, ik, umT) - params["dT"]*ddDaYexp(ub, um, dum)                                                          + dddiffdot1Pe(T, ub, ik, um, ik2, dum))                + dddiff1Pe(vT, T, ub, ik, um, ik2, dum)
-        + ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um) - divu(-ik-ik2, v)*(ump*dumT + dump*umT) - ugradf(v, ik, umT)*dump - ugradf(v, ik2, dumT)*ump + ddgfdgu1Re(v, ub, ik, um, ik2, dum)                   + ddvisc1Re(v, ub, ik, um, ik2, dum)
-        + vp*( -dumT*divu(ik, um) - umT*divu(ik2, dum)     + params["dT"]*ddDaYexp(ub, um, dum)                                                          - dddiffdot1Pe(T, ub, ik, um, ik2, dum))                - dddiff1Pe(vp, T, ub, ik, um, ik2, dum)
+        + ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um) - div(-ik-ik2, v)*(ump*dumT + dump*umT) - ugradf(v, ik, umT)*dump - ugradf(v, ik2, dumT)*ump + ddgfdgu1Re(v, ub, ik, um, ik2, dum)                   + ddvisc1Re(v, ub, ik, um, ik2, dum)
+        + vp*( -dumT*div(ik, um) - umT*div(ik2, dum)     + params["dT"]*ddDaYexp(ub, um, dum)                                                          - dddiffdot1Pe(T, ub, ik, um, ik2, dum))                - dddiff1Pe(vp, T, ub, ik, um, ik2, dum)
       )
       - int1d(Th, BCopen) (
         ddndotvisc1Re(v, ub, ik, um, ik2, dum)

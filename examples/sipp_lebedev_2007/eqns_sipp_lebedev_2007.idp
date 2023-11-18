@@ -4,12 +4,12 @@
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // Define KSP parameters
-  string KSPparams = "";
-  string EPSparams = " -eps_pos_gen_non_hermitian ";
+  string KSPparams = " -ksp_type preonly -pc_type lu ";
+  string EPSparams = " -st_type sinvert -st_pc_type lu -eps_pos_gen_non_hermitian ";
 // term macros ------------------------------------------------------
   macro vdotu(v, u) ( v*u + v#y*u#y) // velocity inner product
 
-  macro divu(u) ( dx(u) + dy(u#y)) // velocity divergence
+  macro div(u) ( dx(u) + dy(u#y)) // velocity divergence
 
   macro ugradu(v, U, u) ( v*(U*dx(u) + U#y*dy(u)) + v#y*(U*dx(u#y) + U#y*dy(u#y)) ) // velocity advection term
 
@@ -30,8 +30,8 @@
 // RESIDUAL OPERATOR
   varf vR(defu(dum), defu(v))
     = int2d(Th)(
-      ugradu(v, ub, ub) - divu(v)*ubp + visc(v, ub)*params["1/Re"]
-      - vp*divu(ub)
+      ugradu(v, ub, ub) - div(v)*ubp + visc(v, ub)*params["1/Re"]
+      - vp*div(ub)
     )
     + BoundaryConditions(dum, ub);
 
@@ -39,13 +39,13 @@
   varf vJ(defu(dum), defu(v))
     = int2d(Th)(
       iomega*vdotu(v, dum)
-      + ugradu(v, dum, ub) + ugradu(v, ub, dum) - divu(v)*dump + visc(v, dum)*params["1/Re"]
-      - vp*divu(dum)
+      + ugradu(v, dum, ub) + ugradu(v, ub, dum) - div(v)*dump + visc(v, dum)*params["1/Re"]
+      - vp*div(dum)
     )
     + int2d(Th)(
       iomega*vdotu(v, um)
-      + ugradu(v, um, ub) + ugradu(v, ub, um) - divu(v)*ump + visc(v, um)*params["1/Re"]
-      - vp*divu(um)
+      + ugradu(v, um, ub) + ugradu(v, ub, um) - div(v)*ump + visc(v, um)*params["1/Re"]
+      - vp*div(um)
     )
     + HomBoundaryConditions(sym, dum);
 

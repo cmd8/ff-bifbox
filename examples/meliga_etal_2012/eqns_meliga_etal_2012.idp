@@ -4,8 +4,8 @@
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // Define KSP parameters
-  string KSPparams = "";
-  string EPSparams = " -eps_pos_gen_non_hermitian ";
+  string KSPparams = " -ksp_type preonly -pc_type lu ";
+  string EPSparams = " -st_type sinvert -st_pc_type lu -eps_pos_gen_non_hermitian ";
 // term macros ------------------------------------------------------
   macro zeta(a, b) (0.5 + 0.5*tanh(4.0*tan(-0.5*pi+pi*abs((a)-(b))/50.0)))//EOM
 
@@ -14,7 +14,7 @@
 
   macro vdotu(v, u) ( y*(v*u + v#y*u#y + v#z*u#z) ) //EOM
 
-  macro divu(ik, u) ( y*(dx(u) + dy(u#y)) + u#y + (ik)*u#z ) // velocity divergence
+  macro div(ik, u) ( y*(dx(u) + dy(u#y)) + u#y + (ik)*u#z ) // velocity divergence
 
   macro ugradu(v, U, ik, u) (  v  *(y*(U*dx(u  ) + U#y*dy(u  )) + U#z* (ik)*u          )
                              + v#y*(y*(U*dx(u#y) + U#y*dy(u#y)) + U#z*((ik)*u#y - u#z))
@@ -37,8 +37,8 @@
 // RESIDUAL OPERATOR
   varf vR(defu(dum), defu(v))
     = int2d(Th)(
-      ugradu(v, ub, 0, ub) - divu(0, v)*ubp + visc(0, v, 0, ub)/Retilde
-      - vp*divu(0, ub)
+      ugradu(v, ub, 0, ub) - div(0, v)*ubp + visc(0, v, 0, ub)/Retilde
+      - vp*div(0, ub)
     )
     + BoundaryConditions(dum, ub);
 
@@ -46,13 +46,13 @@
   varf vJ(defu(dum), defu(v))
     = int2d(Th)(
       iomega*vdotu(v, dum)
-      + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum) - divu(-ik, v)*dump + visc(-ik, v , ik, dum )/Retilde
-      - vp*divu(ik, dum)
+      + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum) - div(-ik, v)*dump + visc(-ik, v , ik, dum )/Retilde
+      - vp*div(ik, dum)
     )
     + int2d(Th)(
       iomega*vdotu(v, um)
-      + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - divu(-ik, v)*ump + visc(-ik, v , ik, um )/Retilde
-      - vp*divu(ik, um)
+      + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - div(-ik, v)*ump + visc(-ik, v , ik, um )/Retilde
+      - vp*div(ik, um)
     )
     + HomBoundaryConditions(sym, dum);
 

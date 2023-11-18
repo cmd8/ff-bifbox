@@ -27,10 +27,6 @@ string meshin = getARGV("-mi", ""); // input meshfile with extension
 string meshout = getARGV("-mo", ""); // output mesh without extension
 string filein = getARGV("-fi", ""); // input file with extension
 string fileout = getARGV("-fo", ""); // output file without extension
-string ksptype = getARGV("-ksp_type", "preonly"); // set -ksp_method
-string pctype = getARGV("-pc_type", "lu"); // set -pc_type
-string optionsleft = getARGV("-options_left", "no"); // set -options_left
-string sneslinesearchtype = getARGV("-snes_linesearch_type","basic"); // set -snes_linesearch_type
 
 string fileroot, meshroot;
 string fileext = parsefilename(filein, fileroot); //extract file name and extension
@@ -99,7 +95,6 @@ Mat J;
 createMatu(Th, J, Pk);
 int sym = 0;
 real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
-include "eqns.idp" // load equations
 
 // MESH ADAPTATION
 bool adapt = false;
@@ -111,10 +106,25 @@ else { // if output meshfile is given, adapt mesh
   real[int] q;
   ChangeNumbering(J, ub[], q);
   ChangeNumbering(J, ub[], q, inverse = true);
-  for[i, v : restu] tempu[][v] = ub[][i]; // populate local portion of global soln
+  tempu[](restu) = ub[]; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
-  if(mpirank == 0)  // Perform mesh adaptation (serially) on processor 0
-    Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+  if(mpirank == 0) { // Perform mesh adaptation (serially) on processor 0
+    IFMACRO(dimension,2)
+      Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+    ENDIFMACRO
+    IFMACRO(dimension,3)
+      cout << "NOTE: 3D mesh adaptation is still under development." << endl;
+      load "mshmet"
+      load "mmg"
+      real anisomax = getARGV("-anisomax",1.0);
+      real[int] met = mshmet(Thg, adaptu(uG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0), hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      if(anisomax > 1.0) {
+        load "aniso"
+        boundaniso(6, met, anisomax);
+      }
+      Thg = mmg3d(Thg, verbose = verbosity-(verbosity==0), metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1);
+    ENDIFMACRO
+  }
   broadcast(processor(0), Thg); // broadcast global mesh to all processors
   defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
   Th = Thg; //Reinitialize local mesh with global mesh
@@ -126,7 +136,8 @@ else { // if output meshfile is given, adapt mesh
   restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
   ub[] = uG[](restu); //restrict global solution to each local mesh
 }
-set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
+include "eqns.idp" // load equations
+set(J, sparams = KSPparams);
 real[int] q;
 ChangeNumbering(J, ub[], q);
 // Function to build residual operator in PETSc numbering
@@ -144,9 +155,9 @@ func int funcJ(real[int]& qPETSc) {
 }
 int ret;
 // solve nonlinear problem with SNES
-SNESSolve(J, funcJ, funcR, q, reason = ret, sparams = " -snes_linesearch_type " + sneslinesearchtype
+SNESSolve(J, funcJ, funcR, q, reason = ret, sparams = " -snes_linesearch_type basic "
                                                     + " -snes_monitor -snes_converged_reason "
-                                                    + " -options_left " + optionsleft
+                                                    + " -options_left no "
                                                     );
 if(ret > 0) { // Save solution if solver converged and output file is given
   if(mpirank==0 && adapt) { // Save adapted mesh

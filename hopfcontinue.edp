@@ -39,11 +39,7 @@ real anglemax = getARGV("-amax", 30.)*pi/180.0;
 int monotone = getARGV("-mono", 0);
 real eps = getARGV("-eps", 1e-7);
 real eps2 = getARGV("-eps2", 1e-7);
-string ksptype = getARGV("-ksp_type", "preonly");
-string pctype = getARGV("-pc_type", "lu");
 int snesmaxit = getARGV("-snes_max_it", 10);
-string optionsleft = getARGV("-options_left", "no"); // set -options_left
-string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym;
 real omega;
 complex[string] alpha;
@@ -272,7 +268,7 @@ complex alpha0, beta0;
 
 set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
 set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa, setup = 1);
-set(J, sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
+set(J, sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
 
 // PREDICTOR
 complex[int] qa;
@@ -390,10 +386,9 @@ while (count < maxcount){
   internalit = 0;
   adaptflag = 0;
   SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
-            sparams = " -snes_linesearch_type " + sneslinesearchtype
+            sparams = " -snes_linesearch_type basic "
                     + " -snes_max_it " + snesmaxit
-                    + " -options_left " + optionsleft
-                    + " -snes_converged_reason "
+                    + " -options_left no -snes_converged_reason "
                     ); // solve nonlinear problem with SNES
   if (ret > 0) {
     ++count;
@@ -433,14 +428,36 @@ while (count < maxcount){
       for[i, v : restu] tempu[][v] = real(yb[][i]);
       mpiAllReduce(tempu[], yG[], mpiCommWorld, mpiSUM);
       if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
+        IFMACRO(dimension,2)
         if(adaptto == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
-        else if(adaptto == "by") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptmeshoptions);
-        else if(adaptto == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptmeshoptions);
-        else if(adaptto == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
-        else if(adaptto == "byd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umrG), adaptu(umiG), adaptmeshoptions);
-        else if(adaptto == "bya") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
-        else if(adaptto == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
-        else if(adaptto == "byda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+          else if(adaptto == "by") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptmeshoptions);
+          else if(adaptto == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptmeshoptions);
+          else if(adaptto == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+          else if(adaptto == "byd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umrG), adaptu(umiG), adaptmeshoptions);
+          else if(adaptto == "bya") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+          else if(adaptto == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+          else if(adaptto == "byda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(yG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
+        ENDIFMACRO
+        IFMACRO(dimension,3)
+      cout << "NOTE: 3D mesh adaptation is still under development." << endl;
+          load "mshmet"
+          load "mmg"
+          real anisomax = getARGV("-anisomax",1.0);
+          real[int] met;
+          if(adaptto == "b") met = mshmet(Thg, adaptu(uG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+          else if(adaptto == "by") met = mshmet(Thg, adaptu(uG), adaptu(yG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+          else if(adaptto == "bd") met = mshmet(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+          else if(adaptto == "ba") met = mshmet(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+          else if(adaptto == "byd") met = mshmet(Thg, adaptu(uG), adaptu(yG), adaptu(umrG), adaptu(umiG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+          else if(adaptto == "bya") met = mshmet(Thg, adaptu(uG), adaptu(yG), adaptu(umarG), adaptu(umaiG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+          else if(adaptto == "bda") met = mshmet(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG),  normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+          else if(adaptto == "byda") met = mshmet(Thg, adaptu(uG), adaptu(yG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+          if(anisomax > 1.0) {
+            load "aniso"
+            boundaniso(6, met, anisomax);
+          }
+          Thg = mmg3d(Thg, verbose = verbosity-(verbosity==0), metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1);
+        ENDIFMACRO
       } // TODO: add adaptation to endogeneity and structural sensitivity
       broadcast(processor(0), Thg); // broadcast global mesh to all processors
       defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
@@ -477,7 +494,7 @@ while (count < maxcount){
       Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; // make dummy Jacobian
       set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
       set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa, setup = 1);
-      set(J, sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
+      set(J, sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
       qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
       if(mpirank == 0) {
@@ -509,8 +526,8 @@ while (count < maxcount){
       internalit = 0;
       adaptflag = 1;
       SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
-                sparams = " -snes_linesearch_type " + sneslinesearchtype
-                        + " -options_left " + optionsleft
+                sparams = " -snes_linesearch_type basic "
+                        + " -options_left no "
                         + " -snes_converged_reason "
                         ); // solve nonlinear problem with SNES
       assert(ret > 0);

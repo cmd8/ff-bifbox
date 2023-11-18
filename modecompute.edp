@@ -26,9 +26,6 @@ int sym = getARGV("-sym", 0);
 string epstarget = getARGV("-eps_target", "0+0i");
 int epsnev = getARGV("-eps_nev", 1);
 bool strictnev = getARGV("-strict", 0);
-string sttype = getARGV("-st_type", "sinvert");
-string stpctype = getARGV("-st_pc_type", "lu");
-string optionsleft = getARGV("-options_left", "no"); // set -options_left
 
 string fileroot;
 string fileext = parsefilename(filein, fileroot); //extract file name and extension
@@ -40,6 +37,8 @@ if(fileext == "mode" || fileext == "rslv"){
 }
 if(filein != "" && meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 
+int sepcharind = max(epstarget.rfind("+"), epstarget.rfind("-"));
+complex shift = atof(epstarget(0:sepcharind)) + 1i*atof(epstarget(sepcharind:epstarget.length-2));
 // Load mesh, make FE basis
 Th = readmeshN(workdir + meshin);
 Thg = Th;
@@ -106,11 +105,9 @@ include "eqns.idp"
     J = Jtemp;
   }
   int k = EPSSolve(J, M, vectors = vec, values = val,
-                 sparams = " -st_type " + sttype
-                         + " -st_pc_type " + stpctype
-                         + " -eps_target " + epstarget
-                         + " -options_left " + optionsleft
-                         + " -eps_monitor_conv " + EPSparams);
+                 sparams = " -eps_target " + epstarget
+                         + " -options_left no -eps_monitor_conv " 
+                         + EPSparams);
   if (strictnev) {// activate to limit number of eigenpairs
     val.resize(min(k, epsnev));
     vec.resize(min(k, epsnev));

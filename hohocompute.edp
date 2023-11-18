@@ -45,10 +45,6 @@ string param2 = getARGV("-param2", "");
 string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
 real eps2 = getARGV("-eps2", 1e-7);
-string ksptype = getARGV("-ksp_type", "preonly");
-string pctype = getARGV("-pc_type", "lu");
-string optionsleft = getARGV("-options_left", "no"); // set -options_left
-string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic"); // set -snes_linesearch_type
 int sym, sym1, sym2;
 real omega, omega1, omega2;
 complex[string] alpha1, alpha2;
@@ -186,7 +182,6 @@ real lambda2 = getlambda(param2);
 Mat<complex> J;
 createMatu(Th, J, Pk);
 complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
-include "eqns.idp"
 // MESH ADAPTATION
 bool adapt = false;
 if(meshout == "") meshout = meshin; // if no adaptation
@@ -224,10 +219,28 @@ else { // if output meshfile is given, adapt mesh
   for[i, v : restu] tempu[][v] = imag(um3[][i]);
   mpiAllReduce(tempu[], um3iG[], mpiCommWorld, mpiSUM);
   if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
-    if(adaptto == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
-    else if(adaptto == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(um2rG), adaptu(um2iG), adaptmeshoptions);
-    else if(adaptto == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptu(um3rG), adaptu(um3iG), adaptmeshoptions);
-    else if(adaptto == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptu(um2rG), adaptu(um2iG), adaptu(um3rG), adaptu(um3iG), adaptmeshoptions);
+    IFMACRO(dimension,2)
+      if(adaptto == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+      else if(adaptto == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(um2rG), adaptu(um2iG), adaptmeshoptions);
+      else if(adaptto == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptu(um3rG), adaptu(um3iG), adaptmeshoptions);
+      else if(adaptto == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptu(um2rG), adaptu(um2iG), adaptu(um3rG), adaptu(um3iG), adaptmeshoptions);
+    ENDIFMACRO
+    IFMACRO(dimension,3)
+      cout << "NOTE: 3D mesh adaptation is still under development." << endl;
+      load "mshmet"
+      load "mmg"
+      real anisomax = getARGV("-anisomax",1.0);
+      real[int] met;
+      if(adaptto == "b") met = mshmet(Thg, adaptu(uG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      else if(adaptto == "bd") met = mshmet(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(um2rG), adaptu(um2iG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      else if(adaptto == "ba") met = mshmet(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptu(um3rG), adaptu(um3iG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      else if(adaptto == "bda") met = mshmet(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptu(um2rG), adaptu(um2iG), adaptu(um3rG), adaptu(um3iG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      if(anisomax > 1.0) {
+        load "aniso"
+        boundaniso(6, met, anisomax);
+      }
+      Thg = mmg3d(Thg, verbose = verbosity-(verbosity==0), metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1);
+    ENDIFMACRO
   } // TODO: add adaptation to endogeneity and structural sensitivity
   broadcast(processor(0), Thg);
   defu(uG) = defu(uG);
@@ -260,6 +273,7 @@ else { // if output meshfile is given, adapt mesh
   um3[].re = um3rG[](restu);
   um3[].im = um3iG[](restu);
 }
+include "eqns.idp"
 // Build bordered block matrix from only Mat components
 Mat<complex> JlPM(J.n, mpirank == 0 ? 4 : 0), gqPM(J.n, mpirank == 0 ? 4 : 0), glPM(mpirank == 0 ? 4 : 0, mpirank == 0 ? 4 : 0); // Initialize Mat objects for bordered matrix
 Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
@@ -441,7 +455,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
   }
 
 set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
-set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+set(J, sparams = " -prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
 
 // Initialize
 complex[int] qa;
@@ -496,9 +510,9 @@ if(mpirank == 0) {
 }
 // solve nonlinear problem with SNES
 int ret;
-SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_linesearch_type " + sneslinesearchtype
+SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_linesearch_type basic "
                                                         + " -snes_monitor -snes_converged_reason "
-                                                        + " -options_left " + optionsleft
+                                                        + " -options_left no "
                                                         );
 if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 5 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
@@ -541,7 +555,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     Mat<complex> qPM(J.n, mpirank == 0 ? 1 : 0), pPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
     Mat<complex> Ja = [[J, qPM], [pPM', 0]]; // make dummy Jacobian
     set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
-    set(J, sparams = " -fieldsplit_0_ksp_type " + ksptype + " -fieldsplit_0_pc_type " + pctype + " " + KSPparams, prefix = "fieldsplit_0_", parent = Ja);
+    set(J, sparams = " -prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
     if (res1x == 2){
       omega2 = (2.0*omega2 + omega1)/4.0;
       omega1 = 2.0*omega2;
