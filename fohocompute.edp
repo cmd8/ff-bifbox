@@ -160,7 +160,6 @@ real lambda2 = getlambda(param2);
 // Create distributed Mat
 Mat<complex> J;
 createMatu(Th, J, Pk);
-complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
 // MESH ADAPTATION
 bool adapt = false;
 if(meshout == "") meshout = meshin; // if no adaptation
@@ -205,7 +204,7 @@ else { // if output meshfile is given, adapt mesh
       load "mshmet"
       load "mmg"
       real anisomax = getARGV("-anisomax",1.0);
-      real[int] met;
+      real[int] met((bool(anisomax > 1) ? 6 : 1)*Thg.nv);
       if(adaptto == "b") met = mshmet(Thg, adaptu(uG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0), hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
       else if(adaptto == "bd") met = mshmet(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(um2rG),  normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0), hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
       else if(adaptto == "ba") met = mshmet(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptu(um3rG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0), hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
@@ -214,7 +213,7 @@ else { // if output meshfile is given, adapt mesh
         load "aniso"
         boundaniso(6, met, anisomax);
       }
-      Thg = mmg3d(Thg, verbose = verbosity-(verbosity==0), metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1);
+      Thg = mmg3d(Thg, metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1, verbose = verbosity-(verbosity==0));
     ENDIFMACRO
   }
   broadcast(processor(0), Thg);
@@ -244,6 +243,7 @@ else { // if output meshfile is given, adapt mesh
   um2[].re = um2rG[](restu);
   um3[].re = um3rG[](restu);
 }
+complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // Build bordered block matrix from only Mat components
 Mat<complex> JlPM(J.n, mpirank == 0 ? 3 : 0), gqPM(J.n, mpirank == 0 ? 3 : 0), glPM(mpirank == 0 ? 3 : 0, mpirank == 0 ? 3 : 0); // Initialize Mat objects for bordered matrix
@@ -403,8 +403,9 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       return 0;
   }
 
-set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
-set(J, sparams = " -prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop ", prefix = "fieldsplit_0_", parent = Ja);
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
+IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
+set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
 
 // Initialize
 complex[int] qa;
@@ -454,10 +455,8 @@ if(mpirank == 0) {
 }
 // solve nonlinear problem with SNES
 int ret;
-SNESSolve(Ja, funcJa, funcRa, qa, reason = ret, sparams = " -snes_linesearch_type basic "
-                                                        + " -options_left no "
-                                                        + " -snes_monitor -snes_converged_reason "
-                                                        );
+SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
+          sparams = "-snes_linesearch_type basic -options_left no -snes_monitor -snes_converged_reason");
 if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
   if(mpirank == 0) {
@@ -495,7 +494,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     Mat<complex> qPM(J.n, mpirank == 0 ? 1 : 0), pPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
     Mat<complex> Ja = [[J, qPM], [pPM', 0]]; // make dummy Jacobian
     set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
-    set(J, sparams = " -prefix_push fieldsplit_0_ " + KSPparams + "-prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
+    IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
+    set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
     // 2nd-order
     //  A: base modifications due to parameter changes
     ik = 0.0;

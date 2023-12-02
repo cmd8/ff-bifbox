@@ -69,8 +69,8 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cavity_16.base 
 ### First order
 1. Compute leading direct eigenmode at Re = 50 (cylinder) and Re = 4000 (cavity)
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder50.base -fo cylinder50 -so "" -eps_target 0.1+0.8i -sym 1
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cavity4000.base -fo cavity4000 -so "" -eps_target 0.1+8.0i -sym 0
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder50.base -fo cylinder50 -so "" -eps_target 0.1+0.8i -sym 1 -eps_pos_gen_non_hermitian
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cavity4000.base -fo cavity4000 -so "" -eps_target 0.1+8.0i -sym 0 -eps_pos_gen_non_hermitian
 ```
 NOTE: Here, the `-sym` argument specifies the asymmetric (1) or symmetric (0) reflective symmetry across the boundary `BCaxis`.
 
@@ -85,4 +85,4 @@ mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity4000.mode
 mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -param 1/Re -thetamax 5 -pv 1
 mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity.hopf -fo cavity -mo cavityhopf -adaptto bda -param 1/Re -pv 1
 ```
-NOTE: the normalizations for the direct and adjoint eigenmodes (and therefore also the weakly-nonlinear corrections) used by `ff-bifbox` are different than the normalizations used by Sipp and Lebedev. This causes the results to differ by a scaling factor. Further, the sign of the Stuart-Landau coefficients in Sipp and Lebedev JFM (2007) are opposite to those in the normal form used in `hopfcompute.edp`.
+NOTE: the normalizations for the direct and adjoint eigenmodes (and therefore also the weakly-nonlinear corrections) used by `ff-bifbox` are different than the normalizations used by Sipp and Lebedev. This causes the results to differ by a complex scaling factor. Further, the sign of the Stuart-Landau coefficients in Sipp and Lebedev JFM (2007) are opposite to those of the normal form used in `hopfcompute.edp`.

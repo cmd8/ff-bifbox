@@ -109,7 +109,8 @@ include "eqns.idp" // load equations
 bool adapt = false;
 if(meshout != "")  adapt = true;  // if output meshfile is given, adapt mesh
 meshout = meshin; // if no adaptation
-set(J, sparams = " -ksp_type " + ksptype + " -pc_type " + pctype + " " + KSPparams);
+IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
+set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams);
 real[int] q, qp;
 ChangeNumbering(J, ub[], q);
 ChangeNumbering(J, ub[], qp);
@@ -137,8 +138,7 @@ while (count < maxcount){
   int ret;
   // solve nonlinear problem with TS
   SNESSolve(J, funcJ, funcF, q, reason = ret,
-            sparams = " -snes_linesearch_type basic -options_left no -snes_converged_reason "
-                    ); // solve nonlinear problem with SNES
+            sparams = "-snes_linesearch_type basic -options_left no -snes_converged_reason"); // solve nonlinear problem with SNES
   if(ret > 0) { // Save solution if solver converged and output file is given
     count++;
     time += dt;
@@ -165,7 +165,7 @@ while (count < maxcount){
             load "aniso"
             boundaniso(6, met, anisomax);
           }
-          Thg = mmg3d(Thg, verbose = verbosity-(verbosity==0), metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1);
+          Thg = mmg3d(Thg, metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1, verbose = verbosity-(verbosity==0));
         ENDIFMACRO
       }
       broadcast(processor(0), Thg); // broadcast global mesh to all processors
@@ -175,7 +175,8 @@ while (count < maxcount){
       Mat Adapt;
       createMatu(Th, Adapt, Pk); // Partition new mesh and update the PETSc numbering
       J = Adapt;
-      set(J, sparams = KSPparams);
+      IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
+      set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams);
       defu(ub) = initu(0.0); // set local values to zero
       defu(um) = initu(0.0); // set local values to zero
       restu.resize(ub[].n); // Change size of restriction operator
@@ -188,8 +189,7 @@ while (count < maxcount){
       ChangeNumbering(J, ub[], q);
       ChangeNumbering(J, um[], qp);
       SNESSolve(J, funcJ, funcF, q, reason = ret,
-                sparams = " -snes_linesearch_type basic -snes_converged_reason -options_left no "
-                        ); // solve nonlinear problem with SNES
+                sparams = "-snes_linesearch_type basic -snes_converged_reason -options_left no"); // solve nonlinear problem with SNES
       assert(ret > 0);
       if(mpirank == 0) { // Save adapted mesh
         cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
@@ -199,6 +199,7 @@ while (count < maxcount){
     ChangeNumbering(J, ub[], q, inverse = true);
     savetdns(fileout + "_" + count, (savecount > 0 ? fileout : ""), meshout, filein, time, (count % savecount == 0), true);
     qp = q;
+    IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
   }
   else {
     if(mpirank == 0) cout << "\tConvergence failed. Reattempting with halved time step." << endl;

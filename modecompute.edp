@@ -104,10 +104,9 @@ include "eqns.idp"
     else Jtemp = -Jtemp;
     J = Jtemp;
   }
-  int k = EPSSolve(J, M, vectors = vec, values = val,
-                 sparams = " -eps_target " + epstarget
-                         + " -options_left no -eps_monitor_conv " 
-                         + EPSparams);
+  IFMACRO(Jprecon) Jprecon(-shift); ENDIFMACRO
+  int k = EPSSolve(J, M, vectors = vec, values = val, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO
+                 sparams = "-st_type sinvert -options_left no -eps_monitor_conv -prefix_push st_ " + KSPparams + " -prefix_pop -eps_target " + epstarget);
   if (strictnev) {// activate to limit number of eigenpairs
     val.resize(min(k, epsnev));
     vec.resize(min(k, epsnev));

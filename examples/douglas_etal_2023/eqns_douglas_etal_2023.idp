@@ -4,8 +4,7 @@
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // Define KSP parameters
-  string KSPparams = " -ksp_type preonly -pc_type lu ";
-  string EPSparams = " -st_type sinvert -st_pc_type lu -eps_pos_gen_non_hermitian ";
+  string KSPparams = "-ksp_type preonly -pc_type lu";
 // term macros ------------------------------------------------------
   macro ndotgrads(s) ( y*( N.x*dx(s) + N.y*dy(s))) // EOM
   macro ndotgradT1Pe(U) ( U#T^(params["a"]+1.0)*ndotgrads(U#T)*params["1/Re"]*params["1/Pr"] )// EOM

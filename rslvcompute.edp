@@ -91,9 +91,9 @@ Xh<complex>[int] deff(fvec)(epsnev);
 Xh<complex> deff(fm);
 XMh<complex> defu(um);
 
-Mat<complex> L, Mf;
-createMatu(Th, L, Pk);
-Mat<complex> M(L);
+Mat<complex> J, Mf;
+createMatu(Th, J, Pk);
+Mat<complex> M(J);
 createMatf(Th, Mf, Pkf);
 complex ik = 1i*real(sym), ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
@@ -102,14 +102,13 @@ M  = vMq(XMh, XMh); // Response Norm
 Mf = vMf(Xh, Xh); // Forcing Norm
 matrix<complex> LocPQ = vP(Xh, XMh); // Forcing/Response Correspondence
 Mat<complex> PQ(M, Mf, LocPQ);
-set(L, sparams = KSPparams);
 
 func complex[int] LHSop(complex[int]& inPETSc) {
   complex[int] temp(XMh.ndof), outPETSc(inPETSc.n);
   MatMult(PQ, inPETSc, outPETSc);
-  KSPSolve(L, outPETSc, temp);
+  KSPSolve(J, outPETSc, temp);
   MatMult(M, temp, outPETSc);
-  KSPSolveHermitianTranspose(L, outPETSc, temp);
+  KSPSolveHermitianTranspose(J, outPETSc, temp);
   MatMultHermitianTranspose(PQ, temp, outPETSc);
   return outPETSc;
 }
@@ -122,14 +121,11 @@ for (int n = 0; n < nomega; ++n){
     omega = omegas + (omegaf - omegas)*real(n)/real(nomega - 1);
   }
   iomega = 1i*omega;
-  L  = vJ(XMh, XMh, tgv = -1); //Linear operator
+  J  = vJ(XMh, XMh, tgv = -1); //Linear operator
+  IFMACRO(Jprecon) Jprecon(iomega); ENDIFMACRO
+  set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams);
   int k = EPSSolve(LHS, Mf, vectors = fvec, values = val,
-                 sparams = " -eps_type krylovschur "
-                           + " -eps_largest_real "
-                           + " -eps_monitor_conv "
-                           + " -options_left no "
-                           + " -eps_gen_hermitian "
-                           );
+                 sparams = "-eps_type krylovschur -eps_largest_real -eps_monitor_conv -options_left no -eps_gen_hermitian");
   if (strictnev) {// activate to limit number of eigenpairs
     val.resize(min(k, epsnev));
     fvec.resize(min(k, epsnev));
@@ -144,8 +140,8 @@ for (int n = 0; n < nomega; ++n){
       ChangeNumbering(Mf, fm[], gm, inverse = true);
       fvec[ii][] = fm[];
       MatMult(PQ, gm, temp);
-      KSPSolve(L, temp, qm);
-      ChangeNumbering(L, um[], qm, inverse = true);
+      KSPSolve(J, temp, qm);
+      ChangeNumbering(J, um[], qm, inverse = true);
       uvec[ii][] = um[];
     }
   }

@@ -4,8 +4,7 @@
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // Define KSP parameters
-  string KSPparams = " -ksp_type preonly -pc_type lu ";
-  string EPSparams = " -st_type sinvert -st_pc_type lu -eps_pos_gen_non_hermitian ";
+  string KSPparams = "-ksp_type preonly -pc_type lu";
 // term macros ------------------------------------------------------
   macro beta1(x,y) ((x < -25.0)*abs(1.0 - 1.0/sqrt(params["Ma"]^2))*0.0001*(-25.0-x)
                   + (x > 80.0)*abs(1.0 + 1.0/sqrt(params["Ma"]^2))*0.0001*(x-80.0)

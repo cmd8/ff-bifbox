@@ -59,13 +59,13 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi vortexDH.base -
 ```
 2. Compute near-critical modes
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fo vortexm1 -fi vortexDH.base -sym -1 -eps_target 0+1i
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fo vortexm2 -fi vortexDH.base -sym -2 -eps_target 0+2i
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fo vortexm1 -fi vortexDH.base -sym -1 -eps_target 0+1i -eps_pos_gen_non_hermitian
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fo vortexm2 -fi vortexDH.base -sym -2 -eps_target 0+2i -eps_pos_gen_non_hermitian
 ```
 3. Compute Hopf-Hopf point assuming non-resonant interaction
 ```
 mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -dir $workdir -fo vortexDH -fi vortexm2.mode -fi2 vortexm1.mode -param S -param2 1/Re -nf 0
-mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -dir $workdir -fo vortex -fi vortexDH.hoho -param S -param2 1/Re -adaptto bda -mo vortexm1m2adapt
+mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -dir $workdir -fo vortexDH -fi vortexDH.hoho -param S -param2 1/Re -adaptto bda -mo vortexm1m2adapt
 ```
 
 4. Compute Hopf-Hopf point assuming 2:1 resonant interaction

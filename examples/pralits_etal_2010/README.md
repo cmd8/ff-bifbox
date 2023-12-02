@@ -65,7 +65,7 @@ NOTE: care should be taken to ensure that the continuation does not jump from on
 5. Compute backward and forward fold bifurcations from steady solution branch
 ```
 cd $workdir && declare -a foldguesslist=(*specialpt.base) && cd -
-//note some languages may index from 1 and 2 instead of 0 and 1
+//note some shells may index from 1 and 2 instead of 0 and 1
 mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -dir $workdir -fi ${foldguesslist[0]} -fo cylinder100_B -param alpha -nf 0
 mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -dir $workdir -fi ${foldguesslist[1]} -fo cylinder100_F -param alpha -nf 0
 ```
@@ -84,13 +84,13 @@ NOTE: This will return a guess for the location of the cusp bifurcation as `cyli
 ### Hopf Bifurcations
 8. Compute direct eigenmode at Re = 50, alpha = 0
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder50.base -fo cylindermode1 -so "" -eps_target 0.1+0.8i
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder50.base -fo cylindermode1 -so "" -eps_target 0.1+0.8i -eps_pos_gen_non_hermitian
 ```
 
 9. Compute direct eigenmode at Re = 100, alpha = 4.8
 ```
 mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder100_70.base -fo cylinder4p8 -1/Re 0.01 -alpha 4.8
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder4p8.base -fo cylindermode2 -so "" -eps_target 0.1+0.2i
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder4p8.base -fo cylindermode2 -so "" -eps_target 0.1+0.2i -eps_pos_gen_non_hermitian
 ```
 
 10. Compute the critical point and critical base/direct/adjoint solution

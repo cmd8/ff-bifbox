@@ -67,7 +67,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi swirljet100.ba
 5. Compute backward and forward fold bifurcations from steady solution branch on base-adapted mesh
 ```
 cd $workdir && declare -a foldguesslist=(*specialpt.base) && cd -
-//note some languages may index from 1 and 2 instead of 0 and 1
+//note some shells may index from 1 and 2 instead of 0 and 1
 mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -dir $workdir -fi ${foldguesslist[0]} -fo swirljet100_B -param S -mo swirljet100_B -adaptto b -thetamax 1 -nf 0
 mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -dir $workdir -fi ${foldguesslist[1]} -fo swirljet100_F -param S -mo swirljet100_F -adaptto b -thetamax 1 -nf 0
 ```
@@ -91,8 +91,8 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi swirljet100_10.
 
 9. Compute leading |m| = 1 and |m| = 2 eigenvalues
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m1 -so "" -eps_target 0.1-0.8i -sym -1
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m2 -so "" -eps_target 0.1+0.4i -sym -2
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m1 -so "" -eps_target 0.1-0.8i -sym -1 -eps_pos_gen_non_hermitian
+mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m2 -so "" -eps_target 0.1+0.4i -sym -2 -eps_pos_gen_non_hermitian
 ```
 
 10. Compute Hopf bifurcation points

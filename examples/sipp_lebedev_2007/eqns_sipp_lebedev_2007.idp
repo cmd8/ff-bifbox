@@ -4,8 +4,7 @@
 // chris.douglas@ladhyx.polytechnique.fr
 //
 // Define KSP parameters
-  string KSPparams = " -ksp_type preonly -pc_type lu ";
-  string EPSparams = " -st_type sinvert -st_pc_type lu -eps_pos_gen_non_hermitian ";
+  string KSPparams = "-ksp_type preonly -pc_type lu";
 // term macros ------------------------------------------------------
   macro vdotu(v, u) ( v*u + v#y*u#y) // velocity inner product
 
@@ -13,7 +12,7 @@
 
   macro ugradu(v, U, u) ( v*(U*dx(u) + U#y*dy(u)) + v#y*(U*dx(u#y) + U#y*dy(u#y)) ) // velocity advection term
 
-  macro visc(v, u)  (  dx(v)*dx(u) + dy(v)*dy(u) + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y) ) // viscous term
+  macro visc(v, u)  ( dx(v)*dx(u) + dy(v)*dy(u) + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y) ) // viscous term
 // Boundary conditions
   macro BoundaryConditions(u, U)
     on(BCwall, u = U, u#y = U#y)

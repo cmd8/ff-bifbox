@@ -42,8 +42,8 @@ EndFor
 // Labels
 Physical Line ("AXIS") = {2};
 Physical Line ("OUTFLOW") = {3,4};
-Physical Line ("INFLOW") = {1};
 Physical Line ("WALL") = {5};
+Physical Line ("INFLOW") = {1};
 Physical Line ("PIPE") = {6};
 
 // Surfaces
