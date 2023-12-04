@@ -25,6 +25,7 @@ int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
 real dt = getARGV("-dt", 0.01);
+string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 
 // Load mesh, make FE basis
 string fileroot, meshroot;
@@ -138,7 +139,7 @@ while (count < maxcount){
   int ret;
   // solve nonlinear problem with TS
   SNESSolve(J, funcJ, funcF, q, reason = ret,
-            sparams = "-snes_linesearch_type basic -options_left no -snes_converged_reason"); // solve nonlinear problem with SNES
+            sparams = "-snes_linesearch_type " + sneslinesearchtype + " -options_left no -snes_converged_reason"); // solve nonlinear problem with SNES
   if(ret > 0) { // Save solution if solver converged and output file is given
     count++;
     time += dt;
@@ -189,7 +190,7 @@ while (count < maxcount){
       ChangeNumbering(J, ub[], q);
       ChangeNumbering(J, um[], qp);
       SNESSolve(J, funcJ, funcF, q, reason = ret,
-                sparams = "-snes_linesearch_type basic -snes_converged_reason -options_left no"); // solve nonlinear problem with SNES
+                sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_converged_reason -options_left no"); // solve nonlinear problem with SNES
       assert(ret > 0);
       if(mpirank == 0) { // Save adapted mesh
         cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;

@@ -1,4 +1,4 @@
-# 2D Incompressible Swirling Flow Example: Douglas etal, JFM, (2021)
+# Incompressible Swirling Jet Example: Douglas etal, JFM, (2021)
 This file shows an example `ff-bifbox` workflow for reproducing the results in section 4 of the study:
 ```
 @article{douglas_etal_2021,

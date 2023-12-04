@@ -39,6 +39,7 @@ bool normalform = getARGV("-nf", 1);
 string param = getARGV("-param", "");
 string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
+string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 real[string] alpha;
 real beta;
 
@@ -247,7 +248,7 @@ ChangeNumbering(J, uma[], pP);
 // solve nonlinear problem with SNES
 int ret;
 SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
-          sparams = "-snes_linesearch_type basic -options_left no -snes_monitor -snes_converged_reason");
+          sparams = "-snes_linesearch_type " + sneslinesearchtype + " -options_left no -snes_monitor -snes_converged_reason");
 if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true);
   if(mpirank == 0) lambda = qa(qa.n - 1);

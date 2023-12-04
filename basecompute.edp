@@ -27,6 +27,7 @@ string meshin = getARGV("-mi", ""); // input meshfile with extension
 string meshout = getARGV("-mo", ""); // output mesh without extension
 string filein = getARGV("-fi", ""); // input file with extension
 string fileout = getARGV("-fo", ""); // output file without extension
+string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 
 string fileroot, meshroot;
 string fileext = parsefilename(filein, fileroot); //extract file name and extension
@@ -156,7 +157,7 @@ func int funcJ(real[int]& qPETSc) {
 int ret;
 // solve nonlinear problem with SNES
 SNESSolve(J, funcJ, funcR, q, reason = ret,
-          sparams = "-snes_linesearch_type basic -snes_monitor -snes_converged_reason -options_left no");
+          sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_monitor -snes_converged_reason -options_left no");
 if(ret > 0) { // Save solution if solver converged and output file is given
   if(mpirank==0 && adapt) { // Save adapted mesh
     cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;

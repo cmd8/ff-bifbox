@@ -40,6 +40,7 @@ int monotone = getARGV("-mono", 0);
 real eps = getARGV("-eps", 1e-7);
 real eps2 = getARGV("-eps2", 1e-7);
 int snesmaxit = getARGV("-snes_max_it", 10);
+string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 int sym;
 real omega;
 complex[string] alpha;
@@ -387,7 +388,7 @@ while (count < maxcount){
   internalit = 0;
   adaptflag = 0;
   SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
-            sparams = "-snes_linesearch_type basic -options_left no -snes_converged_reason -snes_max_it " + snesmaxit); // solve nonlinear problem with SNES
+            sparams = "-snes_linesearch_type " + sneslinesearchtype + " -options_left no -snes_converged_reason -snes_max_it " + snesmaxit); // solve nonlinear problem with SNES
   if (ret > 0) {
     ++count;
     h0 /= f;
@@ -525,7 +526,7 @@ while (count < maxcount){
       internalit = 0;
       adaptflag = 1;
       SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
-                sparams = "-snes_linesearch_type basic -options_left no -snes_converged_reason"); // solve nonlinear problem with SNES
+                sparams = "-snes_linesearch_type " + sneslinesearchtype + " -options_left no -snes_converged_reason"); // solve nonlinear problem with SNES
       assert(ret > 0);
       if(mpirank==0) { // Save adapted mesh
         cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;

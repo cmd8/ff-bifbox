@@ -6,7 +6,7 @@
 // NOTE: When starting a project this is one of the main files that should be edited
 //
 // Set dimension macro for 'macro_ddm.idp' (2)
-macro dimension()2//EOM NOTE: only 2 for now
+macro dimension()2//EOM
 // Load hpddm macros
 include "macro_ddm.idp"
 verbosity = getARGV("-v",0);

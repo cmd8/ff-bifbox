@@ -121,6 +121,7 @@ bool zerofreq = getARGV("-zero", 0);
 string param = getARGV("-param", "");
 string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
+string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 int sym, sym1;
 real omega;
 complex[string] alpha;
@@ -412,7 +413,7 @@ if(mpirank == 0) {
 // solve nonlinear problem with SNES
 int ret;
 SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
-          sparams = "-snes_linesearch_type basic -snes_monitor -snes_converged_reason -options_left no");
+          sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_monitor -snes_converged_reason -options_left no");
 if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 3 : 1)), inverse = true, exchange = true);
   if(mpirank == 0) {
