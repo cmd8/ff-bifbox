@@ -1,7 +1,7 @@
 //
 // fohocompute.edp
 // Chris Douglas
-// chris.douglas@ladhyx.polytechnique.fr
+// cdoug@mit.edu
 //
 // EXAMPLE USAGE:
 //  Initialize with hopf file, solve on same mesh

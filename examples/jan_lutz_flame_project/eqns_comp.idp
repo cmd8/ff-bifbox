@@ -1,7 +1,7 @@
 //
 // eqns_jan_project.idp
 // Chris Douglas
-// chris.douglas@ladhyx.polytechnique.fr
+// cdoug@mit.edu
 //
 // Define KSP parameters
   string KSPparams = "-ksp_type preonly -pc_type lu";

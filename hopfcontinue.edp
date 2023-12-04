@@ -1,7 +1,7 @@
 //
 // hopfcontinue.edp
 // Chris Douglas
-// chris.douglas@ladhyx.polytechnique.fr
+// cdoug@mit.edu
 //
 // EXAMPLE USAGE:
 //  Initialize with fold from file, solve on same mesh

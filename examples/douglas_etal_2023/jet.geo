@@ -1,7 +1,7 @@
 //
 // jet.geo
 // Chris Douglas
-// chris.douglas@ladhyx.polytechnique.fr
+// cdoug@mit.edu
 //
 // This file can be used with Gmsh to create a mesh for the laminar jet.
 //

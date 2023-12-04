@@ -1,7 +1,7 @@
 //
 // settings_jan_lutz_flame_project.idp
 // Chris Douglas
-// chris.douglas@ladhyx.polytechnique.fr
+// cdoug@mit.edu
 //
 // Set dimension macro for 'macro_ddm.idp' (2)
   macro dimension()2//EOM

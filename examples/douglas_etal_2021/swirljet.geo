@@ -1,7 +1,7 @@
 //
 // swirljet.geo
 // Chris Douglas
-// chris.douglas@ladhyx.polytechnique.fr
+// cdoug@mit.edu
 //
 // This file can be used with Gmsh to create a mesh for the laminar jet as in
 // [Xavier Garnaud, Ecole Polytechnique PhD Thesis, (2012)].

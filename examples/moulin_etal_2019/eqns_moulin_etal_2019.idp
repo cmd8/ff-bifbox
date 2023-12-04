@@ -1,7 +1,7 @@
 //
 // eqns_moulin_etal_2019.idp
 // Chris Douglas
-// chris.douglas@ladhyx.polytechnique.fr
+// cdoug@mit.edu
 //
 // Define KSP parameters and preconditioner macros
   string KSPparams;

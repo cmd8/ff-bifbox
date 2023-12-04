@@ -1,7 +1,7 @@
 //
 // eqns_douglas_etal_2023.idp
 // Chris Douglas
-// chris.douglas@ladhyx.polytechnique.fr
+// cdoug@mit.edu
 //
 // Define KSP parameters
   string KSPparams = "-ksp_type preonly -pc_type lu";
