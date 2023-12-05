@@ -36,6 +36,8 @@ real eps = getARGV("-eps", 1e-7);
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 int refactor = getARGV("-refact", snesmaxit);
+real paramtarget = getARGV("-paramtarget",1.0);
+bool stopflag = false;
 bool forcesave = false;
 
 // Load mesh, make FE basis
@@ -107,6 +109,7 @@ else {
   ub[] = loadbase(fileroot + "_" + count, meshin);
 }
 real lambda = getlambda(param);
+real paramdiff = lambda - paramtarget;
 
 Mat J, Ja;
 createMatu(Th, J, Pk);
@@ -215,7 +218,7 @@ broadcast(processor(0), lambda);
   KSPSolve(J, yqP, yqP);
   yqP0 = yqP;
 }
-while (count < maxcount){
+while (!stopflag){
   real[int] qa0 = qa;
   ChangeNumbering(J, yb[], yqP, inverse = true); // PETSc to FreeFEM
   real h = h0/sqrt(J(yb[], yb[]) + 1.0); // use FreeFEM numbering here
@@ -235,6 +238,8 @@ while (count < maxcount){
             sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_converged_reason -options_left no -snes_max_it " + snesmaxit); // solve nonlinear problem with SNES
   if (ret > 0) {
     ++count;
+    if (maxcount > 0) stopflag = (count >= maxcount);
+    else if ((lambda - paramtarget)*paramdiff <= 0) stopflag = true;
     h0 /= f;
     if (cosalpha < 0) {
       h0 *= -1.0;
@@ -320,7 +325,7 @@ while (count < maxcount){
     if(mpirank == 0) lambda = qa(qa.n-1);
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
-    savebase(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, ((count % savecount == 0) || forcesave), true);
+    savebase(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, ((count % savecount == 0) || forcesave || stopflag), true);
     forcesave = false;
     yqP0 = yqP;
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
