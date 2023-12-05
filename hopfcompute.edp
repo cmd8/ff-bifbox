@@ -388,11 +388,10 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       sym = sym1;
       return 0;
   }
-
+// set up Mat parameters
 set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
-
 // Initialize
 complex[int] qa;
 ChangeNumbering(J, ub[], qa);
