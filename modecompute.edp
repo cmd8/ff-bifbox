@@ -85,6 +85,12 @@ else if(fileext == "tdns") {
   real time;
   ub[] = loadtdns(fileroot, meshin, time);
 }
+else if(fileext == "porb") {
+  int sym1, Nh;
+  real omega;
+  complex[int][int] qh(1);
+  ub[] = loadporb(fileroot, meshin, qh, sym1, omega, Nh);
+}
 complex[int] val(epsnev);
 XMh<complex>[int] defu(vec)(epsnev);
 XMh<complex> defu(um);

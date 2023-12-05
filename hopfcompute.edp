@@ -174,6 +174,12 @@ else if (fileext == "rslv") {
   complex[int] fm;
   um[] = loadrslv(fileroot, meshin, fm, sym1, omega, gain);
 }
+else if(fileext == "porb") {
+  int Nh;
+  complex[int][int] qh(1);
+  ub[].re = loadporb(fileroot, meshin, qh, sym1, omega, Nh);
+  um[] = qh[0];
+}
 else assert(false); // invalid input filetype
 if (basefileext == "base") {
   ub[].re = loadbase(basefileroot, meshin);
@@ -209,11 +215,17 @@ else if(basefileext == "hoho") {
   complex[string] alpha1, alpha2;
   complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
   complex[int] q1m, q1ma, q2m, q2ma;
-  ub[].re = loadhoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+  ub[].re = loadhoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
 }
 else if(basefileext == "tdns") {
   real time;
   ub[].re = loadtdns(basefileroot, meshin, time);
+}
+else if(basefileext == "porb") {
+  int sym1, Nh;
+  real omega;
+  complex[int][int] qh(1);
+  ub[].re = loadporb(basefileroot, meshin, qh, sym1, omega, Nh);
 }
 real lambda = getlambda(param);
 // Create distributed Mat

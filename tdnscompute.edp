@@ -92,6 +92,12 @@ if (count == 0){
     real time;
     ub[] = loadtdns(fileroot, meshin, time);
   }
+  else if(fileext == "porb") {
+    int sym, Nh;
+    real omega;
+    complex[int][int] qh(1);
+    ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);
+  }
   else {
     defu(ub) = InitialConditions;
     setparams(paramnames, params);

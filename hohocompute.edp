@@ -99,6 +99,12 @@ else if (fileext2 == "rslv") {
   complex[int] fm;
   um2[] = loadrslv(fileroot2, meshin, fm, sym2, omega2, gain);
 }
+else if(fileext2 == "porb") {
+  int Nh;
+  complex[int][int] qh(1);
+  ub[].re = loadporb(fileroot2, meshin, qh, sym2, omega2, Nh);
+  um2[] = qh[0];
+}
 else if (fileext2 != "") assert(false); // invalid input filetype
 if (fileext1 == "hoho" && fileext2 == "") {
   ub[].re = loadhoho(fileroot1, meshin, um[], uma[], um2[], um3[], sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
@@ -135,6 +141,12 @@ else if (fileext1 == "rslv") {
   real gain;
   complex[int] fm;
   um[] = loadrslv(fileroot1, meshin, fm, sym1, omega1, gain);
+}
+else if(fileext1 == "porb") {
+  int Nh;
+  complex[int][int] qh(1);
+  ub[].re = loadporb(fileroot1, meshin, qh, sym1, omega, Nh);
+  um[] = qh[0];
 }
 else assert(false); // invalid input filetype
 if (basefileext == "base") {
@@ -176,6 +188,12 @@ else if(basefileext == "hoho") {
 else if(basefileext == "tdns") {
   real time;
   ub[].re = loadtdns(basefileroot, meshin, time);
+}
+else if(basefileext == "porb") {
+  int sym1, Nh;
+  real omega;
+  complex[int][int] qh(1);
+  ub[].re = loadporb(basefileroot, meshin, qh, sym1, omega, Nh);
 }
 real lambda1 = getlambda(param);
 real lambda2 = getlambda(param2);
