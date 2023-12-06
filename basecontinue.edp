@@ -128,7 +128,7 @@ int it, internalit, adaptflag;
 real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
@@ -152,10 +152,10 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
       }
       else {
         real dlambda;
+        real[int] qdiff = qa - qap;
         if(mpirank == 0) dlambda = lambda - qap(qap.n-1); // Extract parameter value from state vector on proc 0
         broadcast(processor(0), dlambda);
-        real[int] qdiff  = qa(0:qa.n - (mpirank == 0 ? 2 : 1)) - qap(0:qap.n - (mpirank == 0 ? 2 : 1));
-        ChangeNumbering(J, R, qdiff, inverse = true);
+        ChangeNumbering(J, R, qdiff(0:J.n-1), inverse = true);
         delta = sqrt(J(R, R) + dlambda^2); // distance to curve
         ChangeNumbering(J, R, yqP0, inverse = true);
         ChangeNumbering(J, yb[], yqP, inverse = true);
@@ -176,7 +176,7 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
       qap = qa;
       resp = res;
       deltap = delta;
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda + eps);
@@ -222,7 +222,7 @@ while (!stopflag){
   real[int] qa0 = qa;
   ChangeNumbering(J, yb[], yqP, inverse = true); // PETSc to FreeFEM
   real h = h0/sqrt(J(yb[], yb[]) + 1.0); // use FreeFEM numbering here
-  qa(0:qa.n - (mpirank == 0 ? 2 : 1)) -= (h*yqP);
+  qa(0:J.n-1) -= (h*yqP);
   if (mpirank == 0) {
     qa(qa.n-1) += h; // -= (-1.0*h)
     lambda = qa(qa.n-1);
@@ -248,7 +248,7 @@ while (!stopflag){
     }
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
+      ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
       if(mpirank == 0) lambda = qa(qa.n-1);
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
@@ -321,7 +321,7 @@ while (!stopflag){
         savemesh(Thg, workdir + meshout);
       }
     }
-    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
+    ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
     if(mpirank == 0) lambda = qa(qa.n-1);
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);

@@ -119,7 +119,7 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10, yw, yw0,
 complex alpha0, beta0;
 // FUNCTIONS
   func complex[int] funcRa(complex[int]& qa) {
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
         lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
         omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
@@ -171,7 +171,7 @@ complex alpha0, beta0;
         broadcast(processor(0), dlambda1);
         broadcast(processor(0), domega);
         broadcast(processor(0), dlambda2);
-        ChangeNumbering(J, R, qdiff(0:qdiff.n - (mpirank == 0 ? 4 : 1)), inverse = true);
+        ChangeNumbering(J, R, qdiff(0:J.n-1), inverse = true);
         delta = sqrt(real(J(R, R)) + dlambda1^2 + domega^2 + dlambda2^2); // distance to curve
         ChangeNumbering(J, R, yqP0, inverse = true);
         ChangeNumbering(J, yb[], yqP, inverse = true);
@@ -192,7 +192,7 @@ complex alpha0, beta0;
       qap = qa;
       resp = res;
       deltap = delta;
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
         lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
         omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
@@ -372,7 +372,7 @@ while (!stopflag){
   complex[int] qa0 = qa;
   ChangeNumbering(J, yb[], yqP, inverse = true); // PETSc to FreeFEM
   real h = h0/sqrt(real(J(yb[], yb[])) + yl1^2 + yw^2 + 1.0); // use FreeFEM numbering here
-  qa(0:qa.n - (mpirank == 0 ? 4 : 1)) -= (h*yqP);
+  qa(0:J.n-1) -= (h*yqP);
   if (mpirank == 0) {
     qa(qa.n-3) -= h*yl1;
     qa(qa.n-2) -= h*yw;
@@ -405,7 +405,7 @@ while (!stopflag){
     }
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
+      ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
       if(mpirank == 0) {
         lambda1 = real(qa(qa.n-3));
         omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
@@ -514,7 +514,7 @@ while (!stopflag){
       qma.resize(J.n);
       ChangeNumbering(J, uma[], qma);
       qP.resize(J.n);
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
+      ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       complex[int] Mq = vM(0, XMh, tgv = -10);
       ChangeNumbering(J, Mq, qP);
@@ -539,7 +539,7 @@ while (!stopflag){
         savemesh(Thg, workdir + meshout);
       }
     }
-    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
+    ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
     if(mpirank == 0) {
       lambda1 = real(qa(qa.n-3));
       omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
@@ -703,11 +703,11 @@ while (!stopflag){
       }
       forcesave = true;
     }
-    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
+    ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
     savehopf(fileout + "_" + count + (forcesave ? "specialpt" : ""), fileout, meshout, sym, omega, alpha, beta, ((count % savecount == 0) || forcesave || stopflag), true);
     forcesave = false;
-    ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
+    ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     Mq = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, Mq, qP);

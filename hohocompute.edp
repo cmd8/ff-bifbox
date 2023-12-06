@@ -299,7 +299,7 @@ Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J.n), q2P(J.n);
 // FUNCTIONS
   func complex[int] funcRa(complex[int]& qa) {
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 5 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
         lambda1 = real(qa(qa.n-4)); // Extract parameter value from state vector on proc 0
         omega1 = zerofreq ? 0.0 : real(qa(qa.n-3)); // Extract frequency value from state vector on proc 0
@@ -347,7 +347,7 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
   }
 
   func int funcJa(complex[int]& qa) {
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 5 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
         lambda1 = real(qa(qa.n-4)); // Extract parameter value from state vector on proc 0
         omega1 = zerofreq ? 0.0 : real(qa(qa.n-3)); // Extract frequency value from state vector on proc 0
@@ -532,7 +532,7 @@ int ret;
 SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
           sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_monitor -snes_converged_reason -options_left no");
 if (ret > 0) { // Save solution if solver converged and output file is given
-  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 5 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+  ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
   if(mpirank == 0) {
     lambda1 = real(qa(qa.n-4)); // Extract parameter value from state vector on proc 0
     omega1 = zerofreq ? 0.0 : real(qa(qa.n-3)); // Extract frequency value from state vector on proc 0
@@ -661,7 +661,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
       KSPSolve(Ja, tempPa, sol);
-      qABs = sol(0:sol.n - (mpirank == 0 ? 2 : 1));
+      qABs = sol(0:J.n-1);
       if(mpirank == 0) gamma22 = sol(sol.n-1);
       broadcast(processor(0), gamma22);
     }
@@ -727,7 +727,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
       KSPSolve(Ja, tempPa, sol);
-      qBB = sol(0:sol.n - (mpirank == 0 ? 2 : 1));
+      qBB = sol(0:J.n-1);
       if(mpirank == 0) gamma12 = sol(sol.n-1);
       broadcast(processor(0), gamma12);
     }
@@ -1048,7 +1048,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshout);
   }
-  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 5 : 1)), inverse = true);
+  ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
   ChangeNumbering(J, um[], q1m, inverse = true);
   ChangeNumbering(J, uma[], q1ma, inverse = true);
   ChangeNumbering(J, um2[], q2m, inverse = true);

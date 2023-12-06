@@ -178,7 +178,7 @@ Mat Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
@@ -200,7 +200,7 @@ real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
   }
 
   func int funcJa(real[int]& qa) {
-      ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true); // PETSc to FreeFEM
+      ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
@@ -255,7 +255,7 @@ int ret;
 SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
           sparams = "-snes_linesearch_type " + sneslinesearchtype + " -options_left no -snes_monitor -snes_converged_reason");
 if (ret > 0) { // Save solution if solver converged and output file is given
-  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true);
+  ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
   if(mpirank == 0) lambda = qa(qa.n - 1);
   broadcast(processor(0), lambda);
   updatelambda(param, lambda);
@@ -300,7 +300,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
     savemesh(Thg, workdir + meshout);
   }
-  ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 2 : 1)), inverse = true);
+  ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
   ChangeNumbering(J, um[], qm, inverse = true);
   savefold(fileout, "", meshout, alpha, beta, true, true);
 }
