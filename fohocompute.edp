@@ -191,19 +191,19 @@ else { // if output meshfile is given, adapt mesh
   ChangeNumbering(J, um3[], q);
   ChangeNumbering(J, um3[], q, inverse = true);
   XMhg defu(uG), defu(umrG), defu(umiG), defu(umarG), defu(umaiG), defu(tempu), defu(um2rG), defu(um3rG);
-  for[i, v : restu] tempu[][v] = real(ub[][i]);
+  tempu[](restu) = ub[].re; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = real(um[][i]);
+  tempu[](restu) = um[].re; // populate local portion of global soln
   mpiAllReduce(tempu[], umrG[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = imag(um[][i]);
+  tempu[](restu) = um[].im; // populate local portion of global soln
   mpiAllReduce(tempu[], umiG[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = real(uma[][i]);
+  tempu[](restu) = uma[].re; // populate local portion of global soln
   mpiAllReduce(tempu[], umarG[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = imag(uma[][i]);
+  tempu[](restu) = uma[].im; // populate local portion of global soln
   mpiAllReduce(tempu[], umaiG[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = real(um2[][i]);
+  tempu[](restu) = um2[].re; // populate local portion of global soln
   mpiAllReduce(tempu[], um2rG[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = real(um3[][i]);
+  tempu[](restu) = um3[].re; // populate local portion of global soln
   mpiAllReduce(tempu[], um3rG[], mpiCommWorld, mpiSUM);
   if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
      IFMACRO(dimension,2)

@@ -245,15 +245,15 @@ else { // if output meshfile is given, adapt mesh
   ChangeNumbering(J, uma[], q);
   ChangeNumbering(J, uma[], q, inverse = true);
   XMhg defu(uG), defu(umrG), defu(umiG), defu(umarG), defu(umaiG), defu(tempu);
-  for[i, v : restu] tempu[][v] = real(ub[][i]);
+  tempu[](restu) = ub[].re; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = real(um[][i]);
+  tempu[](restu) = um[].re; // populate local portion of global soln
   mpiAllReduce(tempu[], umrG[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = imag(um[][i]);
+  tempu[](restu) = um[].im; // populate local portion of global soln
   mpiAllReduce(tempu[], umiG[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = real(uma[][i]);
+  tempu[](restu) = uma[].re; // populate local portion of global soln
   mpiAllReduce(tempu[], umarG[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = imag(uma[][i]);
+  tempu[](restu) = uma[].im; // populate local portion of global soln
   mpiAllReduce(tempu[], umaiG[], mpiCommWorld, mpiSUM);
   if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
     IFMACRO(dimension,2)

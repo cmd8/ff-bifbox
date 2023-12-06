@@ -88,7 +88,7 @@ thetamax = getARGV("-thetamax", 10.0)
 // FUNCTIONS -------------------------------------------------------------------
 macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
   XMhg defu(tempu), defu(ubg);
-  for[i, v : restu] tempu[][v] = ub[][i];
+  tempu[](restu) = ub[];
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
   if(monitorflag) getmonitors(ubg);
   if(mpirank == 0 && monitorflag) {
@@ -180,7 +180,7 @@ macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, sym, sa
     XMhg<complex> defu(tempu), defu(umg);
     for (int ii = 0; ii < evals.n; ++ii){
       um[] = evecs[ii][];
-      for[i, v : restu] tempu[][v] = um[][i];
+      tempu[](restu) = um[];
       mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
       string modefileout0 = modefileout + ((ii > 0) ? ("_" + ii) : "");
       if (mpirank == 0 && modefileout != ""){
@@ -256,9 +256,9 @@ macro saverslv(rslvfileout, gainsfile, basefile, meshfile, fvecs, uvecs, gains, 
     for (int ii = 0; ii < gains.n; ++ii){
       fm[] = fvecs[ii][];
       um[] = uvecs[ii][];
-      for[i, v : restu] tempu[][v] = um[][i];
+      tempu[](restu) = um[];
       mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
-      for[i, v : restf] tempf[][v] = fm[][i];
+      tempu[](restf) = fm[];
       mpiAllReduce(tempf[], fmg[], mpiCommWorld, mpiSUM);
       string fileout = rslvfileout + ((ii > 0) ? ("_" + ii) : "");
       if (mpirank == 0 && rslvfileout != ""){
@@ -314,11 +314,11 @@ macro saverslv(rslvfileout, gainsfile, basefile, meshfile, fvecs, uvecs, gains, 
 
 macro savefold(foldfileout, statsfile, meshfile, alpha, beta, saveflag, monitorflag){
   XMhg defu(tempu), defu(ubg), defu(umg), defu(umag);
-  for[i, v : restu] tempu[][v] = ub[][i];
+  tempu[](restu) = ub[];
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = um[][i];
+  tempu[](restu) = um[];
   mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = uma[][i];
+  tempu[](restu) = uma[];
   mpiAllReduce(tempu[], umag[], mpiCommWorld, mpiSUM);
   if(monitorflag) getmonitors(ubg);
   if(mpirank == 0 && monitorflag){
@@ -409,11 +409,11 @@ macro savefold(foldfileout, statsfile, meshfile, alpha, beta, saveflag, monitorf
 macro savehopf(hopffileout, statsfile, meshfile, sym, omega, alpha, beta, saveflag, monitorflag){
   XMhg defu(tempu), defu(ubg);
   XMhg<complex> defu(cplxu), defu(umg), defu(umag);
-  for[i, v : restu] tempu[][v] = real(ub[][i]);
+  tempu[](restu) = ub[].re;
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] cplxu[][v] = um[][i];
+  cplxu[](restu) = um[];
   mpiAllReduce(cplxu[], umg[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] cplxu[][v] = uma[][i];
+  cplxu[](restu) = uma[];
   mpiAllReduce(cplxu[], umag[], mpiCommWorld, mpiSUM);
   if(monitorflag) getmonitors(ubg);
   if(mpirank == 0 && monitorflag){
@@ -513,7 +513,7 @@ macro savehopf(hopffileout, statsfile, meshfile, sym, omega, alpha, beta, savefl
 
 macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitorflag){
   XMhg defu(tempu), defu(ubg);
-  for[i, v : restu] tempu[][v] = ub[][i];
+  tempu[](restu) = ub[];
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
   if(monitorflag) getmonitors(ubg);
   if(mpirank == 0 && monitorflag){
@@ -580,15 +580,15 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
 macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23, saveflag, monitorflag){
   XMhg defu(tempu), defu(ubg);
   XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag), defu(u2mg), defu(u2mag);
-  for[i, v : restu] tempu[][v] = real(ub[][i]);
+  tempu[](restu) = ub[].re;
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] cplxu[][v] = um[][i];
+  cplxu[](restu) = um[];
   mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] cplxu[][v] = uma[][i];
+  cplxu[](restu) = uma[];
   mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] cplxu[][v] = um2[][i];
+  cplxu[](restu) = um2[];
   mpiAllReduce(cplxu[], u2mg[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] cplxu[][v] = um3[][i];
+  cplxu[](restu) = um3[];
   mpiAllReduce(cplxu[], u2mag[], mpiCommWorld, mpiSUM);
   if(monitorflag) getmonitors(ubg);
   if(mpirank == 0 && monitorflag){
@@ -706,15 +706,15 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
 macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23, saveflag, monitorflag){
   XMhg defu(tempu), defu(ubg), defu(u2mg), defu(u2mag);
   XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag);
-  for[i, v : restu] tempu[][v] = real(ub[][i]);
+  tempu[](restu) = ub[].re;
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] cplxu[][v] = um[][i];
+  cplxu[](restu) = um[];
   mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] cplxu[][v] = uma[][i];
+  cplxu[](restu) = uma[];
   mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = real(um2[][i]);
+  cplxu[](restu) = um2[];
   mpiAllReduce(tempu[], u2mg[], mpiCommWorld, mpiSUM);
-  for[i, v : restu] tempu[][v] = real(um3[][i]);
+  cplxu[](restu) = um3[];
   mpiAllReduce(tempu[], u2mag[], mpiCommWorld, mpiSUM);
   if(monitorflag) getmonitors(ubg);
   if(mpirank == 0 && monitorflag){
@@ -827,10 +827,10 @@ macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monit
   XMhg defu(tempu), defu(ubg);
   XMhg<complex> defu(cplxu);
   XMhg<complex>[int] defu(uhg)(Nh);
-  for[i, v : restu] tempu[][v] = real(ub[][i]);
+  tempu[](restu) = ub[].re;
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
   for(int harm = 0; harm < Nh; harm++){
-    for[i, v : restu] cplxu[][v] = uh[harm][][i];
+    cplxu[](restu) = uh[harm][];
     mpiAllReduce(cplxu[], uhg[harm][], mpiCommWorld, mpiSUM);
   }
   if(monitorflag) getmonitors(ubg);
