@@ -45,6 +45,9 @@ int sym;
 real omega;
 complex[string] alpha;
 complex beta;
+real paramtarget = getARGV("-paramtarget",1.0);
+real param2target = getARGV("-param2target",1.0);
+bool stopflag = false;
 bool forcesave = false;
 
 // Load mesh, make FE basis
@@ -95,6 +98,8 @@ else {
 }
 real lambda1 = getlambda(param);
 real lambda2 = getlambda(param2);
+real paramdiff1 = lambda1 - paramtarget;
+real paramdiff2 = lambda2 - param2target;
 // Create distributed Mat
 Mat<complex> J;
 createMatu(Th, J, Pk);
@@ -363,7 +368,7 @@ if(mpirank == 0) {
   alpha0 = alpha[paramnames[0]];
   beta0 = beta;
 }
-while (count < maxcount){
+while (!stopflag){
   complex[int] qa0 = qa;
   ChangeNumbering(J, yb[], yqP, inverse = true); // PETSc to FreeFEM
   real h = h0/sqrt(real(J(yb[], yb[])) + yl1^2 + yw^2 + 1.0); // use FreeFEM numbering here
@@ -390,6 +395,8 @@ while (count < maxcount){
             sparams = "-snes_linesearch_type " + sneslinesearchtype + " -options_left no -snes_converged_reason -snes_max_it " + snesmaxit); // solve nonlinear problem with SNES
   if (ret > 0) {
     ++count;
+    if (maxcount > 0) stopflag = (count >= maxcount);
+    else if ((lambda1 - paramtarget)*paramdiff1 <= 0 || (lambda2 - param2target)*paramdiff2 <= 0) stopflag = true;
     h0 /= f;
     if (cosalpha < 0) {
       h0 *= -1.0;
@@ -698,7 +705,7 @@ while (count < maxcount){
     }
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
-    savehopf(fileout + "_" + count + (forcesave ? "specialpt" : ""), fileout, meshout, sym, omega, alpha, beta, ((count % savecount == 0) || forcesave), true);
+    savehopf(fileout + "_" + count + (forcesave ? "specialpt" : ""), fileout, meshout, sym, omega, alpha, beta, ((count % savecount == 0) || forcesave || stopflag), true);
     forcesave = false;
     ChangeNumbering(J, ub[], qa(0:qa.n - (mpirank == 0 ? 4 : 1)), inverse = true, exchange = true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
