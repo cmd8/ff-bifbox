@@ -97,12 +97,6 @@ if(count == 0) {
     complex[int] q1m, q1ma, q2m, q2ma;
     ub[] = loadhoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
   }
-  else if(fileext == "porb") {
-    int sym, Nh;
-    real omega;
-    complex[int][int] qh(1);
-    ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);
-  }
   savebase(filein, (savecount > 0 ? fileout : ""), meshin, false, false);
 }
 else {

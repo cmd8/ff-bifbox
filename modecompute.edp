@@ -86,9 +86,9 @@ else if(fileext == "tdns") {
   ub[] = loadtdns(fileroot, meshin, time);
 }
 else if(fileext == "porb") {
-  int sym1, Nh;
+  int sym1, Nh=1;
   real omega;
-  complex[int][int] qh(1);
+  complex[int, int] qh(ub[].n, Nh);
   ub[] = loadporb(fileroot, meshin, qh, sym1, omega, Nh);
 }
 complex[int] val(epsnev);

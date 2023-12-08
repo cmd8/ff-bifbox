@@ -61,13 +61,10 @@ if (count == 0){
   else if(fileext == "hopf") {
     int sym;
     real omega;
-    complex[string] alpha1;
-    complex beta1, gamma12, gamma13;
-    real[string] alpha2;
-    real beta22, beta23, gamma22, gamma23;
-    complex[int] q1m, q1ma;
-    real[int] q2m, q2ma;
-    ub[] = loadfoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
+    complex[string] alpha;
+    complex beta;
+    complex[int] qm, qma;
+    ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega, alpha, beta);
   }
   else if(fileext == "foho") {
     int sym;
@@ -95,8 +92,9 @@ if (count == 0){
   else if(fileext == "porb") {
     int sym, Nh;
     real omega;
-    complex[int][int] qh(1);
+    complex[int, int] qh(um[].n, Nh);
     ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);
+    for (int nh = 0; nh < Nh; nh++) ub[] += (2.0*qh(:,nh).re);
   }
   else {
     defu(ub) = InitialConditions;
@@ -116,6 +114,10 @@ include "eqns.idp" // load equations
 bool adapt = false;
 if(meshout != "")  adapt = true;  // if output meshfile is given, adapt mesh
 meshout = meshin; // if no adaptation
+// initialize
+real[int] q, qp;
+ChangeNumbering(J, ub[], q);
+ChangeNumbering(J, ub[], qp);
 // Function to build residual "F(t,u,\dot{u})" operator in PETSc numbering
 func real[int] funcF(real[int]& qPETSc) {
     ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
@@ -138,10 +140,6 @@ func int funcJ(real[int]& qPETSc) {
 // set up Mat parameters
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams);
-// initialize
-real[int] q, qp;
-ChangeNumbering(J, ub[], q);
-ChangeNumbering(J, ub[], qp);
 while (count < maxcount){
   int ret;
   // solve nonlinear problem with TS

@@ -826,12 +826,12 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
 macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monitorflag){
   XMhg defu(tempu), defu(ubg);
   XMhg<complex> defu(cplxu);
-  XMhg<complex>[int] defu(uhg)(Nh);
-  tempu[](restu) = ub[].re;
+  complex[int, int] uhg(ubg[].n, Nh);
+  tempu[](restu) = ub[];
   mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
   for(int harm = 0; harm < Nh; harm++){
-    cplxu[](restu) = uh[harm][];
-    mpiAllReduce(cplxu[], uhg[harm][], mpiCommWorld, mpiSUM);
+    cplxu[](restu) = uh(:, harm);
+    mpiAllReduce(cplxu[], uhg(:, harm), mpiCommWorld, mpiSUM);
   }
   if(monitorflag) getmonitors(ubg);
   if(mpirank == 0 && monitorflag){
@@ -880,7 +880,7 @@ macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monit
         }
       }
       file << ubg[] << endl;
-      for(int harm = 0; harm < Nh; harm++) file << uhg[harm][] << endl;
+      for(int harm = 0; harm < Nh; harm++) file << uhg(:, harm) << endl;
     }
     if (paraviewflag > 0){
       cout << "  Saving '" + porbfileout + "_porb_[mean,harm0,harm1,...].vtu' in '" + workdir + "'." << endl;
@@ -891,7 +891,7 @@ macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monit
         XMhs<complex> defu(ums);
         savevtk(workdir + porbfileout + "_porb_mean.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
         for(int harm = 0; harm < Nh; harm++){
-          cplxu[] = uhg[harm][];
+          cplxu[] = uhg(:, harm);
           defu(ums) = defu(cplxu);
           ubs[] = ums[].re;
           ubsi[] = ums[].im;
@@ -901,8 +901,9 @@ macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monit
       else {
         savevtk(workdir + porbfileout + "_porb_mean.vtu", Thg, adaptu(ubg), dataname = ParaviewDataName, order = ParaviewOrder);
         for(int harm = 0; harm < Nh; harm++){
-          ubg[] = uhg[harm][].re;
-          tempu[] = uhg[harm][].im;
+          cplxu[] = uhg(:, harm);
+          ubg[] = cplxu[].re;
+          tempu[] = cplxu[].im;
           savevtk(workdir + porbfileout + "_porb_harm" + harm + ".vtu", Thg, adaptu(ubg), adaptu(tempu), dataname = ParaviewDataNamec, order = ParaviewOrderc);
         }
       }
@@ -1345,13 +1346,14 @@ func real[int] loadfoho(string inputfilename, string meshfilename, complex[int] 
       return qlocal;
     }
 
-func real[int] loadporb(string inputfilename, string meshfilename, complex[int][int] & qhlocal, int & sym, real & omega, int & Nh) {
+func real[int] loadporb(string inputfilename, string meshfilename, complex[int,int] & qhlocal, int & sym, real & omega, int & Nh) {
       XMhg defu(ubg);
       XMhg<complex> defu(umg);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".porb' on '" + meshfilename + "' from '" + workdir + "'." << endl;
       string dummy, filemesh;
+      int Nhfile;
       ifstream file(workdir + inputfilename + ".porb");
-      file >> dummy >> filemesh >> dummy >> sym >> dummy >> omega >> dummy >> Nh;
+      file >> dummy >> filemesh >> dummy >> sym >> dummy >> omega >> dummy >> Nhfile;
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
           file >> paramnames[k] >> params[paramnames[k]];
@@ -1362,35 +1364,44 @@ func real[int] loadporb(string inputfilename, string meshfilename, complex[int][
           file >> monitornames[k] >> monitors[monitornames[k]];
         }
       }
-      if(qhlocal.n == 0) qhlocal.resize(Nh);
-      XMhg<complex>[int] defu(uhg)(Nh);
+      if(Nh == 0) {
+        Nh = Nhfile;
+        qhlocal.resize(qhlocal.n, Nh);
+      }
+      complex[int,int] uhg(ubg[].n, Nhfile);
       if (mpirank == 0) {
-        cout << "\tsym = " + sym + ", omega = " + omega + ", Nh = " + Nh;
+        cout << "\tsym = " + sym + ", omega = " + omega + ", Nh = " + Nhfile;
         if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
         if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
         cout << "." << endl;
       }
       if (filemesh == meshfilename){ // no interpolation needed
         file >> ubg[];
-        for (int harm = 0; harm < Nh; harm++) file >> uhg[harm][];
+        for (int harm = 0; harm < Nhfile; harm++) {
+          file >> umg[];
+          uhg(:, harm) = umg[];
+        }
       }
       else { // must interpolate
         if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh << "'." << endl;
         meshN Thg1 = readmeshN(workdir + filemesh);
         fespace XMhg1(Thg1, Pk);
         XMhg1 defu(ubg1);
+        XMhg1<complex> defu(umg1);
         file >> ubg1[];
         defu(ubg) = defu(ubg1);
-        XMhg1<complex> defu(umg1);
-        for (int harm = 0; harm < Nh; harm++) {
+        for (int harm = 0; harm < Nhfile; harm++) {
           file >> umg1[];
           defu(umg) = defu(umg1);
-          uhg[harm][] = umg[];
+          uhg(:, harm) = umg[];
         }
       }
       setparams(paramnames, params);
       real[int] qlocal = ubg[](restu);
-      for (int harm = 0; harm < min(Nh, qhlocal.n); harm++) qhlocal[harm] = uhg[harm][](restu);
+      for (int harm = 0; harm < min(Nh, Nhfile); harm++) {
+        umg[] = uhg(:, harm);
+        qhlocal(:, harm) = umg[](restu);
+      }
       return qlocal;
     }
 

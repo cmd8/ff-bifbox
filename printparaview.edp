@@ -272,10 +272,11 @@ if (mpirank==0){
   }
   else if (fileext == "porb"){
     XMhg defu(ub);
+    XMhg<complex> defu(um);
     restu = 0:XMhg.ndof-1;
-    int sym, Nh;
+    int sym, Nh=0;
     real omega;
-    complex[int][int] qh;
+    complex[int, int] qh(ub[].n, Nh);
     ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);
     cout << "  Saving '" + fileout + "_porb_[mean,harm0,harm1,...].vtu' in '" + workdir + "'." << endl;
     if (paraviewflag > 1){
@@ -283,10 +284,9 @@ if (mpirank==0){
       fespace XMhs(Thgs, Pk);
       XMhs defu(ubs) = defu(ub), defu(ubsi);
       savevtk(workdir + fileout + "_porb_mean.vtu", Thgs, adaptu(ubs), dataname = ParaviewDataName, order = ParaviewOrder);
-      XMhg<complex> defu(um);
       XMhs<complex> defu(ums);
       for(int harm = 0; harm < Nh; harm++){
-        um[] = qh[harm];
+        um[] = qh(:, harm);
         defu(ums) = defu(um);
         ubs[] = ums[].re;
         ubsi[] = ums[].im;
@@ -297,8 +297,9 @@ if (mpirank==0){
       savevtk(workdir + fileout + "_porb_mean.vtu", Thg, adaptu(ub), dataname = ParaviewDataName, order = ParaviewOrder);
       XMhg defu(ubi);
       for(int harm = 0; harm < Nh; harm++){
-        ub[] = qh[harm].re;
-        ubi[] = qh[harm].im;
+        um[] = qh(:, harm);
+        ub[] = um[].re;
+        ubi[] = um[].im;
         savevtk(workdir + fileout + "_porb_harm" + harm + ".vtu", Thg, adaptu(ub), adaptu(ubi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
       }
     }
