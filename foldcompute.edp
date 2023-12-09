@@ -248,8 +248,18 @@ if (fileext != "fold" && fileext != "foho"){
   um[] = J^-1*Jl;
   uma[] = J'^-1*Jl;
 }
-ChangeNumbering(J, um[], qP);
-ChangeNumbering(J, uma[], pP);
+real[int] Mq = vM(0, XMh, tgv = -10);
+ChangeNumbering(J, um[], qm);
+ChangeNumbering(J, um[], qm, inverse = true);
+real Mnorm = sqrt(J(um[], Mq));
+Mq /= Mnorm;
+ChangeNumbering(J, Mq, qP);
+ChangeNumbering(J, uma[], qma);
+ChangeNumbering(J, um[], qma, inverse = true);
+Mq = vM(0, XMh, tgv = -10);
+ChangeNumbering(J, um[], qm, inverse = true);
+Mq *= (Mnorm/J(um[], Mq)); // so that <uma[],M*um[]> = 1
+ChangeNumbering(J, Mq, pP);
 // solve nonlinear problem with SNES
 int ret;
 SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
