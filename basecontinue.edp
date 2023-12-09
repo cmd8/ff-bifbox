@@ -117,7 +117,7 @@ meshout = meshin; // if no adaptation
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Ja = [[J,JlPM],[yqPM',-1.0]]; // make dummy Jacobian
 
-real[int] yqP(J.n), qap(J.n + (mpirank == 0 ? 1 : 0)), yqP0(J.n);
+real[int] R(ub[].n), yqP(J.n), qap(J.n + (mpirank == 0 ? 1 : 0)), yqP0(J.n);
 int it, internalit, adaptflag;
 real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
 // FUNCTIONS
@@ -126,11 +126,12 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
       if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
-      real[int] Ra, R = vR(0, XMh, tgv = -1);
+      R = vR(0, XMh, tgv = -1);
+      real[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       if(mpirank == 0) {
-          Ra.resize(Ra.n+1); // Append 0 to residual vector on proc 0
-          Ra(Ra.n-1) = 0.0;
+        Ra.resize(Ra.n+1); // Append 0 to residual vector on proc 0
+        Ra(Ra.n-1) = 0.0;
       }
       res = sqrt(J(R, R));
       string text1;
@@ -146,14 +147,14 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
       }
       else {
         real dlambda;
-        real[int] qdiff = qa - qap;
+        real[int] temp, qdiff = qa - qap;
         if(mpirank == 0) dlambda = lambda - qap(qap.n-1); // Extract parameter value from state vector on proc 0
         broadcast(processor(0), dlambda);
-        ChangeNumbering(J, R, qdiff(0:J.n-1), inverse = true);
-        delta = sqrt(J(R, R) + dlambda^2); // distance to curve
-        ChangeNumbering(J, R, yqP0, inverse = true);
+        ChangeNumbering(J, temp, qdiff(0:J.n-1), inverse = true);
+        delta = sqrt(J(temp, temp) + dlambda^2); // distance to curve
+        ChangeNumbering(J, temp, yqP0, inverse = true);
         ChangeNumbering(J, yb[], yqP, inverse = true);
-        cosalpha = (J(R, yb[]) + 1.0)/sqrt((J(R, R) + 1.0)*(J(yb[], yb[]) + 1.0));
+        cosalpha = (J(temp, yb[]) + 1.0)/sqrt((J(temp, temp) + 1.0)*(J(yb[], yb[]) + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(cosalpha)*acos(abs(cosalpha))*180./pi) << ",\t" + param + " = " << lambda << "." << endl;
@@ -176,8 +177,7 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
       updatelambda(param, lambda + eps);
       real[int] Jl = vR(0, XMh, tgv = -1);
       updatelambda(param, lambda);
-      real[int] Jltemp = vR(0, XMh, tgv = -1);
-      Jl -= Jltemp;//vR(0, XMh, tgv = -1);
+      Jl -= R;
       Jl /= eps;
       if (it == 1 | refactor >= it) J = vJ(XMh, XMh, tgv = -1);
       ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
@@ -204,8 +204,8 @@ broadcast(processor(0), lambda);
   updatelambda(param, lambda + eps);
   real[int] Jl = vR(0, XMh, tgv = -1);
   updatelambda(param, lambda);
-  real[int] Jltemp = vR(0, XMh, tgv = -1);
-  Jl -= Jltemp;//vR(0, XMh, tgv = -1);
+  R = vR(0, XMh, tgv = -1);
+  Jl -= R;
   Jl /= eps;
   J = vJ(XMh, XMh, tgv = -1);
   ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
@@ -298,6 +298,7 @@ while (!stopflag){
         qa.resize(qa.n+1);
         qa(qa.n-1) = lambda;
       }
+      R.resize(ub[].n);
       yqP.resize(J.n);
       ChangeNumbering(J, yb[], yqP);
       yqP0.resize(J.n);

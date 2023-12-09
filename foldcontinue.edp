@@ -97,9 +97,10 @@ Mat JlPM(J.n, mpirank == 0 ? 1 : 0), gqPM(J.n, mpirank == 0 ? 1 : 0), glPM(mpira
 Mat JlPMa(J.n + (mpirank == 0 ? 1 : 0), mpirank == 0 ? 1 : 0), yqPMa(J.n + (mpirank == 0 ? 1 : 0), mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Mat H(J), Ja = [[J, JlPM], [gqPM', glPM]], Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; // make dummy Jacobian
 
-real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 2 : 0));
+real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(J.n), yqP0(J.n), qap(J.n + (mpirank == 0 ? 2 : 0));
 int it, internalit, adaptflag;
-real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10, beta0;
+real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10, alpha0, beta0;
+
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
@@ -111,7 +112,8 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10, beta0;
       broadcast(processor(0), lambda2);
       updatelambda(param, lambda1);
       updatelambda(param2, lambda2);
-      real[int] Ra, R = vR(0, XMh, tgv = -1);
+      R = vR(0, XMh, tgv = -1);
+      real[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
@@ -122,9 +124,9 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10, beta0;
       qm *= g;
       qma *= g;
       if(mpirank == 0) {
-          Ra.resize(Ra.n+2); // Append 0 to residual vector on proc 0
-          Ra(Ra.n-2) = g;
-          Ra(Ra.n-1) = 0.0;
+        Ra.resize(Ra.n+2); // Append 0 to residual vector on proc 0
+        Ra(Ra.n-2) = g;
+        Ra(Ra.n-1) = 0.0;
       }
       res = sqrt(J(R, R) + g^2);
       string text1;
@@ -140,18 +142,18 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10, beta0;
       }
       else {
         real dlambda1, dlambda2;
-        real[int] qdiff  = qa - qap;
+        real[int] temp, qdiff  = qa - qap;
         if(mpirank == 0) {
           dlambda1 = qdiff(qdiff.n-2); // Extract parameter value from state vector on proc 0
           dlambda2 = qdiff(qdiff.n-1); // Extract parameter value from state vector on proc 0
         }
         broadcast(processor(0), dlambda1);
         broadcast(processor(0), dlambda2);
-        ChangeNumbering(J, R, qdiff(0:J.n-1), inverse = true);
-        delta = sqrt(J(R, R) + dlambda1^2 + dlambda2^2); // distance to curve
-        ChangeNumbering(J, R, yqP0, inverse = true);
+        ChangeNumbering(J, temp, qdiff(0:J.n-1), inverse = true);
+        delta = sqrt(J(temp, temp) + dlambda1^2 + dlambda2^2); // distance to curve
+        ChangeNumbering(J, temp, yqP0, inverse = true);
         ChangeNumbering(J, yb[], yqP, inverse = true);
-        cosalpha = (J(R, yb[]) + yl10*yl1 + 1.0)/sqrt((J(R, R) + yl10^2 + 1.0)*(J(yb[], yb[]) + yl1^2 + 1.0));
+        cosalpha = (J(temp, yb[]) + yl10*yl1 + 1.0)/sqrt((J(temp, temp) + yl10^2 + 1.0)*(J(yb[], yb[]) + yl1^2 + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(cosalpha)*acos(abs(cosalpha))*180./pi) << ",\t" + param + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << "." << endl;
@@ -186,24 +188,23 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, yl1, yl10, beta0;
       real[int] Jl2 = vR(0, XMh, tgv = -1);
       real[int] Hl2 = vJ(0, XMh, tgv = -10);
       updatelambda(param2, lambda2);
-      real[int] a0 = vR(0, XMh, tgv = -1);
-      Jl1 -= a0;
-      Jl2 -= a0;
+      Jl1 -= R;
+      Jl2 -= R;
       Jl1 /= eps;
       Jl2 /= eps2;
-      a0 = vJ(0, XMh, tgv = -10);
+      real[int] temp, a0 = vJ(0, XMh, tgv = -10);
       Hl1 -= a0;
       Hl2 -= a0;
       Hl1 /= eps;
       Hl2 /= eps2;
-      ChangeNumbering(J, Jl1, yqP); // FreeFEM to PETSc
-      matrix tempPms = [[yqP]]; // dense array to sparse matrix
+      ChangeNumbering(J, Jl1, temp); // FreeFEM to PETSc
+      matrix tempPms = [[temp]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       tempPms = [[J(uma[], Hl1)]];
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       H = vH(XMh, XMh, tgv = -10);
-      MatMultTranspose(H, qma, yqP);
-      tempPms = [[yqP]];
+      MatMultTranspose(H, qma, temp);
+      tempPms = [[temp]];
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       ChangeNumbering(J, Jl2, yqP); // FreeFEM to PETSc
       real gl2 = J(uma[], Hl2);
@@ -249,26 +250,26 @@ if(mpirank == 0) {
   real[int] Jl2 = vR(0, XMh, tgv = -1);
   real[int] Hl2 = vJ(0, XMh, tgv = -10);
   updatelambda(param2, lambda2);
-  real[int] a0 = vR(0, XMh, tgv = -1);
-  Jl1 -= a0;
+  R = vR(0, XMh, tgv = -1);
+  Jl1 -= R;
+  Jl2 -= R;
   Jl1 /= eps;
-  Jl2 -= a0;
   Jl2 /= eps2;
-  a0 = vJ(0, XMh, tgv = -10);
+  real[int] a0 = vJ(0, XMh, tgv = -10);
   Hl1 -= a0;
-  Hl1 /= eps;
   Hl2 -= a0;
+  Hl1 /= eps;
   Hl2 /= eps2;
   J = vJ(XMh, XMh, tgv = -1);
   ChangeNumbering(J, Jl1, yqP); // FreeFEM to PETSc
   matrix tempPms = [[yqP]]; // dense array to sparse matrix
   ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-  tempPms = [[J(uma[], Hl1)]];
-  ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
   H = vH(XMh, XMh, tgv = -10);
   MatMultTranspose(H, qma, yqP);
   tempPms = [[yqP]];
   ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
+  tempPms = [[J(uma[], Hl1)]];
+  ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
   ChangeNumbering(J, Jl2, yqP); // FreeFEM to PETSc
   real gl2 = J(uma[], Hl2);
   if (mpirank == 0) {
@@ -281,10 +282,15 @@ if(mpirank == 0) {
     yqP.resize(yqP.n-1);
   }
   broadcast(processor(0), yl1);
-  qP = qm;
-  pP = qma;
+  ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+  a0 = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, a0, qP);
+  ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
+  a0 = vM(0, XMh, tgv = -10);
+  ChangeNumbering(J, a0, pP);
   yqP0 = yqP;
   yl10 = yl1;
+  alpha0 = alpha[paramnames[0]];
   beta0 = beta;
 }
 while (!stopflag){
@@ -423,6 +429,7 @@ while (!stopflag){
       qP = qm;
       pP.resize(J.n);
       pP = qma;
+      R.resize(ub[].n);
       yqP.resize(J.n);
       ChangeNumbering(J, yb[], yqP);
       yqP0.resize(J.n);
@@ -494,10 +501,16 @@ while (!stopflag){
     ChangeNumbering(J, um[], qm, inverse = true);
     savefold(fileout + "_" + count + (forcesave ? "specialpt" : ""), fileout, meshout, alpha, beta, ((count % savecount == 0) || forcesave || stopflag), true);
     forcesave = false;
-    qP = qm;
-    pP = qma;
+    ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
+    ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+    Mq = vM(0, XMh, tgv = -10);
+    ChangeNumbering(J, Mq, qP);
+    ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
+    Mq = vM(0, XMh, tgv = -10);
+    ChangeNumbering(J, Mq, pP);
     yqP0 = yqP;
     yl10 = yl1;
+    alpha0 = alpha[paramnames[0]];
     beta0 = beta;
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
   }
