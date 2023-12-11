@@ -51,7 +51,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi swirljet.msh -f
 
 2. Continue base state along the parameter 1/Re with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi swirljet.base -fo swirljet -param 1/Re -h0 -50 -scount 2 -maxcount 8 -mo swirljet -thetamax 1
+mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi swirljet.base -fo swirljet -param 1/Re -h0 -50 -scount 2 -maxcount 4 -mo swirljet -thetamax 1
 ```
 
 3. Compute base state at Re = 100 with guess from 1/Re continuation
@@ -61,7 +61,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi swirljet_4.base
 
 4. Continue base state at Re = 100 along the parameter S with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi swirljet100.base -fo swirljet100 -param S -h0 5 -scount 5 -maxcount 100 -mo swirljet100 -thetamax 1
+mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi swirljet100.base -fo swirljet100 -param S -h0 5 -scount 5 -maxcount 100 -mo swirljet100 -thetamax 1 -paramtarget 3
 ```
 
 5. Compute backward and forward fold bifurcations from steady solution branch on base-adapted mesh
@@ -80,7 +80,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -dir $workdir -fi swirljet100_F.f
 
 7. Continue the neutral fold curve in the (1/Re,S)-plane with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 foldcontinue.edp -dir $workdir -fi swirljet100_B.fold -fo swirljet -mo swirljetfold -adaptto bda -thetamax 1 -param 1/Re -param2 S -h0 4 -scount 4 -maxcount 32
+mpirun -n 4 FreeFem++-mpi -v 0 foldcontinue.edp -dir $workdir -fi swirljet100_B.fold -fo swirljet -mo swirljetfold -adaptto bda -thetamax 1 -param 1/Re -param2 S -h0 4 -scount 5 -maxcount 12
 ```
 
 ### Unsteady 3D dynamics

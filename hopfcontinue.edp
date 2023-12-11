@@ -144,12 +144,14 @@ complex alpha0, beta0;
       qm *= g; // rescale direct mode
       qma *= conj(g); // rescale adjoint mode
       if(mpirank == 0) {
-        Ra.resize(Ra.n+3); // Append 0 to residual vector on proc 0
+        Ra.resize(J.n+3); // Append 0 to residual vector on proc 0
         Ra(Ra.n-3) = real(g);
         Ra(Ra.n-2) = imag(g);
         Ra(Ra.n-1) = 0.0;
       }
-      res = sqrt(real(J(R, R)) + abs(g)^2);
+      res = real(Ra'*Ra);
+      mpiAllReduce(res, res, mpiCommWorld, mpiSUM);
+      res = sqrt(res);
       string text1;
       if (!adaptflag) text1 = count + "-" + it;
       else text1 = "A" + (count-1) + "-" + it;
@@ -162,21 +164,15 @@ complex alpha0, beta0;
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
       }
       else {
-        real dlambda1, domega, dlambda2;
-        complex[int] temp, qdiff  = qa - qap;
-        if(mpirank == 0) {
-          dlambda1 = real(qdiff(qdiff.n-3)); // Extract parameter value from state vector on proc 0
-          domega = zerofreq ? 0.0 : real(qdiff(qdiff.n-2)); // Extract parameter value from state vector on proc 0
-          dlambda2 = real(qdiff(qdiff.n-1)); // Extract parameter value from state vector on proc 0
-        }
-        broadcast(processor(0), dlambda1);
-        broadcast(processor(0), domega);
-        broadcast(processor(0), dlambda2);
-        ChangeNumbering(J, temp, qdiff(0:J.n-1), inverse = true);
-        delta = sqrt(real(J(temp, temp)) + dlambda1^2 + domega^2 + dlambda2^2); // distance to curve
-        ChangeNumbering(J, temp, yqP0, inverse = true);
-        ChangeNumbering(J, yb[], yqP, inverse = true);
-        cosalpha = (real(J(temp, yb[])) + yl10*yl1 + yw0*yw + 1.0)/sqrt((real(J(temp, temp)) + yl10^2 + yw0^2 + 1.0)*(real(J(yb[], yb[])) + yl1^2 + yw^2 + 1.0));
+        complex[int] qdiff = qa - qap;
+        delta = real(qdiff'*qdiff);
+        mpiAllReduce(delta, delta, mpiCommWorld, mpiSUM);
+        delta = sqrt(delta);
+        real ip1 = real(yqP0'*yqP), ip2 = real(yqP0'*yqP0), ip3 = real(yqP'*yqP);
+        mpiAllReduce(ip1, ip1, mpiCommWorld, mpiSUM);
+        mpiAllReduce(ip2, ip2, mpiCommWorld, mpiSUM);
+        mpiAllReduce(ip3, ip3, mpiCommWorld, mpiSUM);
+        cosalpha = (ip1 + yl10*yl1 + yw0*yw + 1.0)/sqrt((ip2 + yl10^2 + yw0^2 + 1.0)*(ip3 + yl1^2 + yw^2 + 1.0));
         kappa = max(delta/deltap, kappa);
         maxdelta = max(delta, maxdelta);
         if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(cosalpha)*acos(abs(cosalpha))*180./pi) << ",\t" + param + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
@@ -248,7 +244,7 @@ complex alpha0, beta0;
       ChangeNumbering(J, Jl2, yqP); // FreeFEM to PETSc
       complex gl2 = J(uma[], Hl2);
       if(mpirank == 0) {
-        yqP.resize(yqP.n+2);
+        yqP.resize(J.n+2);
         yqP(yqP.n-2) = real(gl2);
         yqP(yqP.n-1) = zerofreq ? 0.0 : imag(gl2);
       }
@@ -265,7 +261,7 @@ complex alpha0, beta0;
       if (mpirank == 0) {
         yl1 = real(yqP(yqP.n-2));
         yw = zerofreq ? 0.0 : real(yqP(yqP.n-1));
-        yqP.resize(yqP.n-2);
+        yqP.resize(J.n);
       }
       broadcast(processor(0), yl1);
       broadcast(processor(0), yw);
@@ -283,7 +279,7 @@ ChangeNumbering(J, um[], qm);
 ChangeNumbering(J, uma[], qma);
 ChangeNumbering(J, uma[], qma, inverse = true);
 if(mpirank == 0) {
-  qa.resize(qa.n+3);
+  qa.resize(J.n+3);
   qa(qa.n-3) = lambda1;
   qa(qa.n-2) = omega;
   qa(qa.n-1) = lambda2;
@@ -334,7 +330,7 @@ if(mpirank == 0) {
   ChangeNumbering(J, Jl2, yqP); // FreeFEM to PETSc
   complex gl2 = J(uma[], Hl2);
   if (mpirank == 0) {
-    yqP.resize(yqP.n+2);
+    yqP.resize(J.n+2);
     yqP(yqP.n-2) = real(gl2);
     yqP(yqP.n-1) = zerofreq ? 0.0 : imag(gl2);
   }
@@ -351,7 +347,7 @@ if(mpirank == 0) {
   if (mpirank == 0) {
     yl1 = real(yqP(yqP.n-2));
     yw = zerofreq ? 0.0 : real(yqP(yqP.n-1));
-    yqP.resize(yqP.n-2);
+    yqP.resize(J.n);
   }
   broadcast(processor(0), yl1);
   broadcast(processor(0), yw);
@@ -370,8 +366,9 @@ if(mpirank == 0) {
 }
 while (!stopflag){
   complex[int] qa0 = qa;
-  ChangeNumbering(J, yb[], yqP, inverse = true); // PETSc to FreeFEM
-  real h = h0/sqrt(real(J(yb[], yb[])) + yl1^2 + yw^2 + 1.0); // use FreeFEM numbering here
+  real h = real(yqP'*yqP);
+  mpiAllReduce(h, h, mpiCommWorld, mpiSUM);
+  h = h0/sqrt(h +yl1^2 + yw^2 + 1.0);
   qa(0:J.n-1) -= (h*yqP);
   if (mpirank == 0) {
     qa(qa.n-3) -= h*yl1;
@@ -504,7 +501,7 @@ while (!stopflag){
       qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
       if(mpirank == 0) {
-        qa.resize(qa.n+3);
+        qa.resize(J.n+3);
         qa(qa.n-3) = lambda1;
         qa(qa.n-2) = omega;
         qa(qa.n-1) = lambda2;
