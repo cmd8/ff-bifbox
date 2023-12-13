@@ -84,8 +84,12 @@ See the [examples](https://github.com/cmd8/ff-bifbox/tree/main/examples) folder.
 
 - [x] Add linear resolvent analysis framework
 - [x] Add time-domain nonlinear simulation framework
-- [ ] Add documentation and tutorial/examples
-- [ ] Add harmonic balance framework for analysis of periodic orbits
+- [x] Add support for 3-D problems
+- [x] Add harmonic balance framework for computation/continuation of periodic orbits
+- [ ] Add Floquet analysis for periodic orbits
+- [ ] Add fold/Neimark-Sacker bifurcation computation/continuation for periodic orbits
+- [ ] Improve performance for bordered block matrix solvers
+- [ ] Improve documentation and tutorials/examples
 
 
 See the [open issues](https://github.com/cmd8/ff-bifbox/issues) for a full list of proposed features (and known issues).

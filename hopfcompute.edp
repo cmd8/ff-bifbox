@@ -326,15 +326,14 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
       KSPSolveHermitianTranspose(J, qP, qma);
-      ChangeNumbering(J, R, qP, inverse = true);
-      ChangeNumbering(J, um[], qm, inverse = true);
-      complex g = 1.0/J(R, um[]);
-      qm *= g; // rescale direct mode
-      qma *= conj(g); // rescale adjoint mode
+      complex ginv = (qP'*qm);
+      mpiAllReduce(ginv, ginv, mpiCommWorld, mpiSUM);
+      qm /= ginv; // rescale direct mode
+      qma /= conj(ginv); // rescale adjoint mode
       if(mpirank == 0) {
         Ra.resize(Ra.n+2); // Append 0 to residual vector on proc 0
-        Ra(Ra.n-2) = real(g);
-        Ra(Ra.n-1) = zerofreq ? 0.0 : imag(g);
+        Ra(Ra.n-2) = real(1.0/ginv);
+        Ra(Ra.n-1) = zerofreq ? 0.0 : imag(1.0/ginv);
       }
       return Ra;
   }

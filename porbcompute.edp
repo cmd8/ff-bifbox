@@ -30,7 +30,7 @@ bool zerofreq = getARGV("-zero", 0);
 string adaptto = getARGV("-adaptto", "0");
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 int Nh = getARGV("-Nh", 0); //if 0 will try to get from file, otherwise fail
-int gmres = getARGV("-gmres", 0); //if 0 will try to get from file, otherwise fail
+int blocks = getARGV("-blocks", 1); //if blocks = 1, use monolithic LU; if blocks = N w/ 2 <= N <= Nh+1, use block preconditioner with N blocks
 int sym, sym1;
 real omega;
 
@@ -202,13 +202,14 @@ else { // if output meshfile is given, adapt mesh
   }
   broadcast(processor(0), Thg);
   defu(uG) = defu(uG);
+  real[int, int] uhrG2(uG[].n, Nh), uhiG2(uG[].n, Nh); // create private global FE functions
   for (int nh = 0; nh < Nh; nh++){
     tempu[] = uhrG(:, nh);
     defu(tempu2) = defu(tempu);
-    uhrG(:, nh) = tempu2[];
+    uhrG2(:, nh) = tempu2[];
     tempu[] = uhiG(:, nh);
     defu(tempu2) = defu(tempu);
-    uhiG(:, nh) = tempu2[];
+    uhiG2(:, nh) = tempu2[];
   }
   Th = Thg; //Reinitialize local mesh with global mesh
   Mat Adapt;
@@ -380,18 +381,19 @@ func int funcJHB(real[int]& qPETSc) {
     return 0;
 }
 // set up Mat parameters
-real[int] fields((1+2*Nh)*J.n);
+real[int] fields(JHB.n);
 fields = 1;
-for (int nh = 0; nh < Nh; nh++) fields((1+2*nh)*J.n:(3+2*nh)*J.n-1) = 1+gmres+nh;
+if(blocks > 1+Nh) blocks = 1+Nh;
+for (int nh = 0; nh < Nh; nh++) fields((1+2*nh)*J.n:(3+2*nh)*J.n-1) = 1+max(0,blocks-nh-1);
 string HBKSPparams = KSPparams;
-if (gmres) HBKSPparams = "-ksp_type gmres -ksp_pc_side right -pc_type fieldsplit -pc_fieldsplit_type additive -fieldsplit_pc_type lu -fieldsplit_pc_factor_mat_solver_type mumps -ksp_gmres_classicalgramschmidt -ksp_gmres_cgs_refinement_type refine_ifneeded ";
+if (blocks > 1) HBKSPparams = "-ksp_type gmres -ksp_pc_side right -pc_type fieldsplit -pc_fieldsplit_type symmetric_multiplicative -fieldsplit_pc_type lu -fieldsplit_pc_factor_mat_solver_type mumps -ksp_gmres_classicalgramschmidt -ksp_gmres_cgs_refinement_type refine_ifneeded ";
 if (zerofreq) set(JHBa, sparams = HBKSPparams);
 else {
   set(JHBa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
   set(JHB, sparams = "-prefix_push fieldsplit_0_ " + HBKSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = JHBa, fields = fields);
 }
 // initialize
-real[int] qHB((1+2*Nh)*J.n);
+real[int] qHB(JHBa.n);
 {
   real[int] q;
   ChangeNumbering(J, ub[], q);
@@ -402,10 +404,7 @@ for (int harm = 0; harm < Nh; harm++){
   ChangeNumbering([J, J], [uh(:, harm).re, uh(:, harm).im], qm);
   qHB((1+2*harm)*J.n:(3+2*harm)*J.n-1) = qm;
 }
-if(mpirank == 0 && !zerofreq) {
-  qHB.resize(qHB.n+1);
-  qHB(qHB.n-1) = omega;
-}
+if(mpirank == 0 && !zerofreq) qHB(qHB.n-1) = omega;
 int ret;
 // solve nonlinear problem with SNES
 SNESSolve(JHBa, funcJHB, funcRHB, qHB, reason = ret,

@@ -66,7 +66,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder_8.base
 mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cavity_16.base -fo cavity4000 -1/Re 0.00025
 ```
 
-### First order
+### First & second order
 1. Compute leading direct eigenmode at Re = 50 (cylinder) and Re = 4000 (cavity)
 ```
 mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder50.base -fo cylinder50 -so "" -eps_target 0.1+0.8i -sym 1 -eps_pos_gen_non_hermitian
@@ -82,7 +82,22 @@ mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity4000.mode
 
 3. Adapt the mesh to the critical solution, save .vtu files for Paraview
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -param 1/Re -thetamax 5 -pv 1
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity.hopf -fo cavity -mo cavityhopf -adaptto bda -param 1/Re -pv 1
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder.hopf -fo cylinderadapt -mo cylinderhopf -adaptto bda -param 1/Re -thetamax 5 -pv 1 -wnl 1 
+mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cavity.hopf -fo cavityadapt -mo cavityhopf -adaptto bda -param 1/Re -pv 1 -wnl 1
 ```
 NOTE: the normalizations for the direct and adjoint eigenmodes (and therefore also the weakly-nonlinear corrections) used by `ff-bifbox` are different than the normalizations used by Sipp and Lebedev. This causes the results to differ by a complex scaling factor. Further, the sign of the Stuart-Landau coefficients in Sipp and Lebedev JFM (2007) are opposite to those of the normal form used in `hopfcompute.edp`.
+
+
+### Harmonic Balance
+1. Continue periodic orbit from initial Hopf bifurcations using 2nd-order Harmonic Balance (Caution: memory intensive!)
+```
+mpirun -n 4 FreeFem++-mpi -v 0 porbcontinue.edp -dir $workdir -fi cylinder.hopf -fo cylinderNh2 -Nh 2 -mo cylinderporb -param 1/Re -thetamax 5 -h0 -1 -scount 5 -maxcount 10
+mpirun -n 4 FreeFem++-mpi -v 0 porbcontinue.edp -dir $workdir -fi cavity.hopf -fo cavityNh2 -Nh 2 -mo cavityporb -param 1/Re -h0 -1 -scount 4 -maxcount 8
+```
+
+2. Compute periodic orbits at Re = 50 (cylinder) and Re = 5000 (cavity) using 3rd-order Harmonic Balance with block Jacobi solver (Caution: memory intensive!)
+```
+mpirun -n 4 FreeFem++-mpi -v 0 porbcompute.edp -dir $workdir -fi cylinderNh2_10.porb -fo cylinder50Nh3 -Nh 3 -1/Re 0.02 -blocks 3
+mpirun -n 4 FreeFem++-mpi -v 0 porbcompute.edp -dir $workdir -fi cavityNh2_8.porb -fo cavity5000Nh3 -Nh 3 -1/Re 0.0002 -blocks 3
+```
+NOTE: Sipp & Lebedev do not perform harmonic balance analysis. See Fabre et al., Appl. Mech. Rev. 2018 and Meliga, JFM, 2017 for reference results from the cylinder and cavity geometries, respectively.

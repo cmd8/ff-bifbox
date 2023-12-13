@@ -187,14 +187,13 @@ real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
       KSPSolveTranspose(J, qP, qma);
-      ChangeNumbering(J, R, qP, inverse = true);
-      ChangeNumbering(J, um[], qm, inverse = true);
-      real g = 1.0/J(R, um[]);
-      qm *= g;
-      qma *= g;
+      real ginv = (qP'*qm);
+      mpiAllReduce(ginv, ginv, mpiCommWorld, mpiSUM);
+      qm /= ginv;
+      qma /= ginv;
       if(mpirank == 0) {
           Ra.resize(Ra.n + 1); // Append 0 to residual vector on proc 0
-          Ra(Ra.n - 1) = g;
+          Ra(Ra.n-1) = 1.0/ginv;
       }
       return Ra;
   }
@@ -255,7 +254,7 @@ real Mnorm = sqrt(J(um[], Mq));
 Mq /= Mnorm;
 ChangeNumbering(J, Mq, qP);
 ChangeNumbering(J, uma[], qma);
-ChangeNumbering(J, um[], qma, inverse = true);
+ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
 Mq = vM(0, XMh, tgv = -10);
 ChangeNumbering(J, um[], qm, inverse = true);
 Mq *= (Mnorm/J(um[], Mq)); // so that <uma[],M*um[]> = 1

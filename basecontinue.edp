@@ -117,7 +117,7 @@ meshout = meshin; // if no adaptation
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Mat Ja = [[J,JlPM],[yqPM',-1.0]]; // make dummy Jacobian
 
-real[int] R(ub[].n), yqP(J.n), qap(J.n + (mpirank == 0 ? 1 : 0)), yqP0(J.n);
+real[int] R(ub[].n), yqP(J.n), yqP0(J.n), qap(Ja.n);
 int it, internalit, adaptflag;
 real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
 // FUNCTIONS
@@ -133,37 +133,8 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
         Ra.resize(J.n+1); // Append 0 to residual vector on proc 0
         Ra(Ra.n-1) = 0.0;
       }
-      res = real(Ra'*Ra);
-      mpiAllReduce(res, res, mpiCommWorld, mpiSUM);
-      res = sqrt(res);
-      string text1;
-      if (!adaptflag) text1 = count + "-" + it;
-      else text1 = "A" + (count-1) + "-" + it;
-      if(internalit > 0) text1 = text1 + ">" + internalit;
-      if (it == 0){
-        kappa = 0.0;
-        maxdelta = 0.0;
-        cosalpha = 0.0;
-        delta = abs(h0);
-        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\th0 = " << h0 << ",\t" + param + " = " << lambda << "." << endl;
-      }
-      else {
-        real[int] qdiff = qa - qap;
-        delta = real(qdiff'*qdiff);
-        mpiAllReduce(delta, delta, mpiCommWorld, mpiSUM);
-        delta = sqrt(delta);
-        real ip1 = real(yqP0'*yqP), ip2 = real(yqP0'*yqP0), ip3 = real(yqP'*yqP);
-        mpiAllReduce(ip1, ip1, mpiCommWorld, mpiSUM);
-        mpiAllReduce(ip2, ip2, mpiCommWorld, mpiSUM);
-        mpiAllReduce(ip3, ip3, mpiCommWorld, mpiSUM);
-        cosalpha = (ip1 + 1.0)/sqrt((ip2 + 1.0)*(ip3 + 1.0));
-        kappa = max(delta/deltap, kappa);
-        maxdelta = max(delta, maxdelta);
-        if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << ",\t||dx|| = " << delta << ",\tangle = " << (sign(cosalpha)*acos(abs(cosalpha))*180./pi) << ",\t" + param + " = " << lambda << "." << endl;
-      }
-      f = max(acos(abs(cosalpha))/anglemax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
-      if (it > 0 && !adaptflag && (f > fmax || it-1 >= snesmaxit || res*(monotone!=0) > resp)) Ra(0) = NaN();
-      ++internalit;
+      StepAdaptMonitors(Ra, qa, qap, yqP, yqP0);
+      if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << (it == 0 ? (",\th0 = " + h0 ) : (",\t||dx|| = " + delta + ",\tangle = " + (sign(cosalpha)*acos(abs(cosalpha))*180./pi))) << ",\t" + param + " = " << lambda << "." << endl;
       return Ra;
   }
 

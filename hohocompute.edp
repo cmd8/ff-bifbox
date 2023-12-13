@@ -320,28 +320,26 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, p1P, q1m);
       KSPSolveHermitianTranspose(J, q1P, q1ma);
-      ChangeNumbering(J, R, q1P, inverse = true);
-      ChangeNumbering(J, um[], q1m, inverse = true);
-      complex g = 1.0/J(R, um[]);
-      q1m *= g; // rescale direct mode
-      q1ma *= conj(g); // rescale adjoint mode
+      complex ginv = (q1P'*q1m);
+      mpiAllReduce(ginv, ginv, mpiCommWorld, mpiSUM);
+      q1m /= ginv; // rescale direct mode
+      q1ma /= conj(ginv); // rescale adjoint mode
       iomega = 1i*omega2;
       ik = 1i*real(sym2);
       sym = sym2;
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, p2P, q2m);
       KSPSolveHermitianTranspose(J, q2P, q2ma);
-      ChangeNumbering(J, R, q2P, inverse = true);
-      ChangeNumbering(J, um2[], q2m, inverse = true);
-      complex h = 1.0/J(R, um2[]);
-      q2m *= h; // rescale direct mode
-      q2ma *= conj(h); // rescale adjoint mode
+      complex hinv = (q2P'*q2m);
+      mpiAllReduce(hinv, hinv, mpiCommWorld, mpiSUM);
+      q2m /= hinv; // rescale direct mode
+      q2ma /= conj(hinv); // rescale adjoint mode
       if(mpirank == 0) {
         Ra.resize(Ra.n+4); // Append 0 to residual vector on proc 0
-        Ra(Ra.n-4) = real(g);
-        Ra(Ra.n-3) = zerofreq ? 0.0 : imag(g);
-        Ra(Ra.n-2) = real(h);
-        Ra(Ra.n-1) = zerofreq2 ? 0.0 : imag(h);
+        Ra(Ra.n-4) = real(1.0/ginv);
+        Ra(Ra.n-3) = zerofreq ? 0.0 : imag(1.0/ginv);
+        Ra(Ra.n-2) = real(1.0/hinv);
+        Ra(Ra.n-1) = zerofreq2 ? 0.0 : imag(1.0/hinv);
       }
       return Ra;
   }
