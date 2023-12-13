@@ -175,14 +175,15 @@ Mat H(J);
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), gqPM(J.n, mpirank == 0 ? 1 : 0), glPM(mpirank == 0 ? 1 : 0, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Mat Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 
-real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
+real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
-      real[int] Ra, R = vR(0, XMh, tgv = -1);
+      R = vR(0, XMh, tgv = -1);
+      real[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
@@ -206,13 +207,12 @@ real[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeNumbering(J, uma[], qma, inverse = true);
       updatelambda(param, lambda + eps);
       real[int] Jl = vR(0, XMh, tgv = -1);
-      real[int] Hl = vJ(0, XMh, tgv = -10);
+      real[int] tempP(J.n), Hl = vJ(0, XMh, tgv = -10);
       updatelambda(param, lambda);
-      real[int] tempP, a0 = vR(0, XMh, tgv = -1);
-      Jl -= a0;
+      Jl -= R;
       Jl /= eps;
-      a0 = vJ(0, XMh, tgv = -10);
-      Hl -= a0;
+      R = vJ(0, XMh, tgv = -10);
+      Hl -= R;
       Hl /= eps;
       ChangeNumbering(J, Jl, tempP); // FreeFEM to PETSc
       matrix tempPms = [[tempP]]; // dense array to sparse matrix
@@ -240,8 +240,8 @@ if (fileext != "fold" && fileext != "foho"){
   updatelambda(param, lambda + eps);
   real[int] Jl = vR(0, XMh, tgv = -1);
   updatelambda(param, lambda);
-  real[int] a0 = vR(0, XMh, tgv = -1);
-  Jl -= a0;
+  R = vR(0, XMh, tgv = -1);
+  Jl -= R;
   Jl /= eps;
   J = vJ(XMh, XMh, tgv = -1);
   um[] = J^-1*Jl;

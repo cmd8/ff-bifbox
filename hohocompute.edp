@@ -296,7 +296,7 @@ include "eqns.idp"
 // Build bordered block matrix from only Mat components
 Mat<complex> JlPM(J.n, mpirank == 0 ? 4 : 0), gqPM(J.n, mpirank == 0 ? 4 : 0), glPM(mpirank == 0 ? 4 : 0, mpirank == 0 ? 4 : 0); // Initialize Mat objects for bordered matrix
 Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
-complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J.n), q2P(J.n);
+complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J.n), q2P(J.n);
 // FUNCTIONS
   func complex[int] funcRa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
@@ -312,7 +312,8 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       broadcast(processor(0), omega2);
       updatelambda(param, lambda1);
       updatelambda(param2, lambda2);
-      complex[int] Ra, R = vR(0, XMh, tgv = -1);
+      R = vR(0, XMh, tgv = -1);
+      complex[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       iomega = 1i*omega1;
       ik = 1i*real(sym1);
@@ -383,29 +384,28 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
       ik = 1i*real(sym2);
       iomega = 1i*omega2;
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-      complex[int] Kl2 = vJ(0, XMh, tgv = -10);
+      complex[int] temp1(J.n), temp2(J.n), temp3(J.n), temp4(J.n), Kl2 = vJ(0, XMh, tgv = -10);
       updatelambda(param2, lambda2);
-      complex[int] a0 = vR(0, XMh, tgv = -1);
-      Jl1 -= a0;
-      Jl2 -= a0;
+      Jl1 -= R;
+      Jl2 -= R;
       Jl1 /= eps;
       Jl2 /= eps2;
       sym = sym1;
       ik = 1i*real(sym1);
       iomega = 1i*omega1;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-      complex[int] temp1(J.n), temp2(J.n), bm = vJ(0, XMh, tgv = -10);
-      Hl1 -= bm;
-      Hl2 -= bm;
+      R = vJ(0, XMh, tgv = -10);
+      Hl1 -= R;
+      Hl2 -= R;
       Hl1 /= eps;
       Hl2 /= eps2;
       sym = sym2;
       ik = 1i*real(sym2);
       iomega = 1i*omega2;
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-      complex[int] temp3(J.n), temp4(J.n), cm = vJ(0, XMh, tgv = -10);
-      Kl1 -= cm;
-      Kl2 -= cm;
+      R = vJ(0, XMh, tgv = -10);
+      Kl1 -= R;
+      Kl2 -= R;
       Kl1 /= eps;
       Kl2 /= eps2;
       ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
@@ -426,8 +426,8 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
         ik = 1i*real(sym1);
         iomega = 1i*omega1;
         ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-        bm = vM(0, XMh, tgv = -10);
-        gw = J(uma[], bm);
+        R = vM(0, XMh, tgv = -10);
+        gw = J(uma[], R);
       }
       if (zerofreq2) {
         hw = 1.0;
@@ -439,8 +439,8 @@ complex[int] q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J
         ik = 1i*real(sym2);
         iomega = 1i*omega2;
         ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-        cm = vM(0, XMh, tgv = -10);
-        hw = J(um3[], cm);
+        R = vM(0, XMh, tgv = -10);
+        hw = J(um3[], R);
       }
       tempPms = [[real(gl1), -imag(gw), real(gl2),  0        ],
                  [imag(gl1),  real(gw), imag(gl2),  0        ],

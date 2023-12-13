@@ -307,7 +307,7 @@ include "eqns.idp"
 // Build bordered block matrix from only Mat components
 Mat<complex> JlPM(J.n, mpirank == 0 ? 2 : 0), gqPM(J.n, mpirank == 0 ? 2 : 0), glPM(mpirank == 0 ? 2 : 0, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
 Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
-complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
+complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
 // FUNCTIONS
   func complex[int] funcRa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
@@ -318,7 +318,8 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       broadcast(processor(0), lambda);
       broadcast(processor(0), omega);
       updatelambda(param, lambda);
-      complex[int] Ra, R = vR(0, XMh, tgv = -1);
+      R = vR(0, XMh, tgv = -1);
+      complex[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       sym = sym1;
       iomega = 1i*omega;
@@ -352,13 +353,12 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       iomega = 1i*omega;
       updatelambda(param, lambda + eps);
       complex[int] Jl = vR(0, XMh, tgv = -1);
-      complex[int] Hl = vJ(0, XMh, tgv = -10);
+      complex[int] temp1(J.n), temp2(J.n), Hl = vJ(0, XMh, tgv = -10);
       updatelambda(param, lambda);
-      complex[int] temp1(J.n), temp2(J.n), bm = vR(0, XMh, tgv = -1);
-      Jl -= bm;
+      Jl -= R;
       Jl /= eps;
-      bm = vJ(0, XMh, tgv = -10);
-      Hl -= bm;
+      R = vJ(0, XMh, tgv = -10);
+      Hl -= R;
       Hl /= eps;
       ChangeNumbering(J, Jl, temp1);
       temp1.im = 0.0;
@@ -375,8 +375,8 @@ complex[int] qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       complex gl = J(uma[], Hl);
       if(zerofreq) tempPms = [[real(gl), 0], [0, 1.0]];
       else {
-        bm = vM(0, XMh, tgv = -10);
-        complex gw = J(uma[], bm);
+        R = vM(0, XMh, tgv = -10);
+        complex gw = J(uma[], R);
         tempPms = [[real(gl), -imag(gw)], [imag(gl), real(gw)]];
       }
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
