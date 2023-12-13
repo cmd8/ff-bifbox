@@ -133,7 +133,7 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
         Ra.resize(J.n+1); // Append 0 to residual vector on proc 0
         Ra(Ra.n-1) = 0.0;
       }
-      res = (Ra'*Ra);
+      res = real(Ra'*Ra);
       mpiAllReduce(res, res, mpiCommWorld, mpiSUM);
       res = sqrt(res);
       string text1;
@@ -149,10 +149,10 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
       }
       else {
         real[int] qdiff = qa - qap;
-        delta = (qdiff'*qdiff);
+        delta = real(qdiff'*qdiff);
         mpiAllReduce(delta, delta, mpiCommWorld, mpiSUM);
         delta = sqrt(delta);
-        real ip1 = (yqP0'*yqP), ip2 = (yqP0'*yqP0), ip3 = (yqP'*yqP);
+        real ip1 = real(yqP0'*yqP), ip2 = real(yqP0'*yqP0), ip3 = real(yqP'*yqP);
         mpiAllReduce(ip1, ip1, mpiCommWorld, mpiSUM);
         mpiAllReduce(ip2, ip2, mpiCommWorld, mpiSUM);
         mpiAllReduce(ip3, ip3, mpiCommWorld, mpiSUM);

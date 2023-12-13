@@ -80,7 +80,7 @@ mpirun -n 4 FreeFem++-mpi -v 0 foldcompute.edp -dir $workdir -fi swirljet100_F.f
 
 7. Continue the neutral fold curve in the (1/Re,S)-plane with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 foldcontinue.edp -dir $workdir -fi swirljet100_B.fold -fo swirljet -mo swirljetfold -adaptto bda -thetamax 1 -param 1/Re -param2 S -h0 4 -scount 5 -maxcount 12
+mpirun -n 4 FreeFem++-mpi -v 0 foldcontinue.edp -dir $workdir -fi swirljet100_B.fold -fo swirljet -mo swirljetfold -adaptto bda -thetamax 1 -param 1/Re -param2 S -h0 4 -scount 4 -maxcount 32
 ```
 
 ### Unsteady 3D dynamics
