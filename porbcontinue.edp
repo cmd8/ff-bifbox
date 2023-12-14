@@ -141,41 +141,9 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, omega0;
       broadcast(processor(0), omega);
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
-      sym = 0;
-      real[int] Rtemp, RPETSc(qPETSc.n), R = vR(0, XMh, tgv = -1);
-      for (int nh = 0; nh < Nh; nh++){
-        um[] = uh(:, nh);
-        um2[] = conj(um[]);
-        ik = 1i*(1+nh)*sym1;
-        ik2 = -ik;
-        complex[int] Rc = vH(0, XMh, tgv = -10);
-        R += Rc.re;
-      }
-      ChangeNumbering(J, R, Rtemp);
-      RPETSc(0:J.n-1) = Rtemp;
-      for (int nh = 0; nh < Nh; ++nh) {
-        complex[int] Rc(ub[].n);
-        sym = (1+nh)*sym1;
-        iomega = 1i*(1+nh)*omega;
-        for (int harm = 0; harm < Nh; harm++){
-          um[] = uh(:, harm);
-          ik = 1i*(1+harm)*sym1;
-          if (harm < nh){
-            um2[] = 0.5*uh(:, nh-harm-1);
-            ik2 = 1i*(nh-harm)*sym1;
-            Rc += vH(0, XMh, tgv = -10);
-          } 
-          else if (harm == nh) Rc += vJ(0, XMh, tgv = -1);
-          else { // if (harm > nh)
-            um2[] = conj(uh(:, harm-nh-1));
-            ik2 = -1i*(harm-nh)*sym1;
-            Rc += vH(0, XMh, tgv = -10);
-          }
-        }
-        ChangeNumbering([J, J], [Rc.re, Rc.im], Rtemp);
-        RPETSc((1+2*nh)*J.n:(3+2*nh)*J.n-1) = Rtemp;
-      }
-      RHB = RPETSc;
+      real[int] RPETSc(qPETSc.n);
+      ResidualHB(RHB, J, ub, uh, sym1, omega);
+      RPETSc = RHB;
       if(mpirank == 0){ 
         if(!zerofreq) RPETSc(RPETSc.n-2) = 0.0;
         RPETSc(RPETSc.n-1) = 0.0;
@@ -201,119 +169,12 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, omega0;
       broadcast(processor(0), omega);
       broadcast(processor(0), lambda);
       updatelambda(param, lambda + eps);
-      sym = 0;
-      real[int] temp, JlHB(RHB.n), R = vR(0, XMh, tgv = -1);
-      for (int nh = 0; nh < Nh; nh++){
-        um[] = uh(:, nh);
-        um2[] = conj(um[]);
-        ik = 1i*(1+nh)*sym1;
-        ik2 = -ik;
-        complex[int] Rc = vH(0, XMh, tgv = -10);
-        R += Rc.re;
-      }
-      ChangeNumbering(J, R, temp);
-      JlHB(0:J.n-1) = temp;
-      for (int nh = 0; nh < Nh; ++nh) {
-        complex[int] Rc(ub[].n);
-        sym = (1+nh)*sym1;
-        iomega = 1i*(1+nh)*omega;
-        for (int harm = 0; harm < Nh; harm++){
-          um[] = uh(:, harm);
-          ik = 1i*(1+harm)*sym1;
-          if (harm < nh){
-            um2[] = 0.5*uh(:, nh-harm-1);
-            ik2 = 1i*(nh-harm)*sym1;
-            Rc += vH(0, XMh, tgv = -10);
-          } 
-          else if (harm == nh) Rc += vJ(0, XMh, tgv = -1);
-          else { // if (harm > nh)
-            um2[] = conj(uh(:, harm-nh-1));
-            ik2 = -1i*(harm-nh)*sym1;
-            Rc += vH(0, XMh, tgv = -10);
-          }
-        }
-        ChangeNumbering([J, J], [Rc.re, Rc.im], temp);
-        JlHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = temp;
-      }
+      real[int] JlHB(RHB.n);
+      ResidualHB(JlHB, J, ub, uh, sym1, omega);
       updatelambda(param, lambda);
       JlHB -= RHB;
       JlHB /= eps;
-      if (it == 1 | refactor >= it) {
-        sym = 0;
-        ik = 0;
-        iomega = 0;
-        matrix<complex> Cmat = vJ(XMh, XMh, tgv = -1);
-        matrix An1r = Cmat.re, An2r, An3r, An1i, An2i, An3i; // mean flow jacobian
-        Mat row1(J), row2, row3, A1(J), A2(J), temp;
-        row1 = An1r;
-        for (int n = 0; n < Nh; n++){
-          um[] = 2.0*uh(:, n);
-          ik = 1i*(1+n)*sym1;
-          ik2 = -1i*(1+n)*sym1;
-          Cmat = vH(XMh, XMh, tgv = -10);
-          An1r = Cmat.re;
-          ChangeOperator(A1, An1r);
-          An2r = Cmat.im;
-          ChangeOperator(A2, An2r);
-          temp = [[row1, A1, A2]];
-          MatConvert(temp, row1);
-        }
-        for (int n = 0; n < Nh; n++){
-          sym = (1+n)*sym1;
-          um[] = uh(:, n);
-          ik = 1i*(1+n)*sym1;
-          ik2 = 0;
-          Cmat = vH(XMh, XMh, tgv = -10);
-          An1r = Cmat.re;
-          ChangeOperator(A1, An1r);
-          MatConvert(A1, row2);
-          An1i = Cmat.im;
-          ChangeOperator(A2, An1i);
-          MatConvert(A2, row3);
-          for (int j = 0; j < Nh; j++){
-            if (j < n){ // subharmonics
-              um[] = uh(:, n-j-1);
-              ik = 1i*(n-j)*sym1;
-              ik2 = 1i*(1+j)*sym1;
-              Cmat = vH(XMh, XMh, tgv = -10);
-            } else if (j == n) { // diagonal
-              iomega = 1i*(1+n)*omega;
-              ik = 1i*(1+n)*sym1;
-              Cmat = vJ(XMh, XMh, tgv = -1);
-            } else { //if (j > n) superharmonics
-              um[] = conj(uh(:, j-n-1));
-              ik = -1i*(j-n)*sym1;
-              ik2 = 1i*(1+j)*sym1;
-              Cmat = vH(XMh, XMh, tgv = -10);
-            }
-            An2r = Cmat.re;
-            An2i = Cmat.im;
-            An3r = -An2i;
-            An3i = Cmat.re;
-            if (1+j+n < Nh) {
-              um[] = uh(:, 1+n+j);
-              ik = 1i*(2+n+j)*sym1;
-              ik2 = -1i*(1+j)*sym1;
-              Cmat = vH(XMh, XMh, tgv = -10);
-              An2r += Cmat.re;
-              An2i += Cmat.im;
-              An3r += Cmat.im;
-              An3i -= Cmat.re;
-            }
-            ChangeOperator(A1, An2r);
-            ChangeOperator(A2, An3r);
-            temp = [[row2, A1, A2]];
-            MatConvert(temp, row2);
-            ChangeOperator(A1, An2i);
-            ChangeOperator(A2, An3i);
-            temp = [[row3, A1, A2]];
-            MatConvert(temp, row3);
-          }
-          temp = [[row1], [row2], [row3]];
-          MatConvert(temp, row1);
-        }
-        JHB = row1;
-      }
+      if (it == 1 | refactor >= it) JacobianHB(JHB, J, ub, uh, sym1, omega);
       if (zerofreq) JHBa = JHB;
       else {
         real[int] Mtemp = 0, MqHB((1+2*Nh)*J.n);
@@ -372,151 +233,13 @@ if(mpirank == 0){
 }
 if (fileext != "hopf" && fileext != "foho" && fileext != "hoho"){
   updatelambda(param, lambda + eps);
-  sym = 0;
-  real[int] Rtemp, Jl(JHB.n), Jltemp(JHB.n), R = vR(0, XMh, tgv = -1);
-  for (int nh = 0; nh < Nh; nh++){
-    um[] = uh(:, nh);
-    um2[] = conj(um[]);
-    ik = 1i*(1+nh)*sym1;
-    ik2 = -ik;
-    complex[int] Rc = vH(0, XMh, tgv = -10);
-    R += Rc.re;
-  }
-  ChangeNumbering(J, R, Rtemp);
-  Jl(0:J.n-1) = Rtemp;
-  for (int nh = 0; nh < Nh; ++nh) {
-    complex[int] Rc(ub[].n);
-    sym = (1+nh)*sym1;
-    iomega = 1i*(1+nh)*omega;
-    for (int harm = 0; harm < Nh; harm++){
-      um[] = uh(:, harm);
-      ik = 1i*(1+harm)*sym1;
-      if (harm < nh){
-        um2[] = 0.5*uh(:, nh-harm-1);
-        ik2 = 1i*(nh-harm)*sym1;
-        Rc += vH(0, XMh, tgv = -10);
-      } 
-      else if (harm == nh) Rc += vJ(0, XMh, tgv = -1);
-      else { // if (harm > nh)
-        um2[] = conj(uh(:, harm-nh-1));
-        ik2 = -1i*(harm-nh)*sym1;
-        Rc += vH(0, XMh, tgv = -10);
-      }
-    }
-    ChangeNumbering([J, J], [Rc.re, Rc.im], Rtemp);
-    Jl((1+2*nh)*J.n:(3+2*nh)*J.n-1) = Rtemp;
-  }
+  real[int] Jl(JHB.n), Jltemp(JHB.n);
+  ResidualHB(Jl, J, ub, uh, sym1, omega);
   updatelambda(param, lambda);
-  sym = 0;
-  R = vR(0, XMh, tgv = -1);
-  for (int nh = 0; nh < Nh; nh++){
-    um[] = uh(:, nh);
-    um2[] = conj(um[]);
-    ik = 1i*(1+nh)*sym1;
-    ik2 = -ik;
-    complex[int] Rc = vH(0, XMh, tgv = -10);
-    R += Rc.re;
-  }
-  ChangeNumbering(J, R, Rtemp);
-  Jltemp(0:J.n-1) = Rtemp;
-  for (int nh = 0; nh < Nh; ++nh) {
-    complex[int] Rc(ub[].n);
-    sym = (1+nh)*sym1;
-    iomega = 1i*(1+nh)*omega;
-    for (int harm = 0; harm < Nh; harm++){
-      um[] = uh(:, harm);
-      ik = 1i*(1+harm)*sym1;
-      if (harm < nh){
-        um2[] = 0.5*uh(:, nh-harm-1);
-        ik2 = 1i*(nh-harm)*sym1;
-        Rc += vH(0, XMh, tgv = -10);
-      } 
-      else if (harm == nh) Rc += vJ(0, XMh, tgv = -1);
-      else { // if (harm > nh)
-        um2[] = conj(uh(:, harm-nh-1));
-        ik2 = -1i*(harm-nh)*sym1;
-        Rc += vH(0, XMh, tgv = -10);
-      }
-    }
-    ChangeNumbering([J, J], [Rc.re, Rc.im], Rtemp);
-    Jltemp((1+2*nh)*J.n:(3+2*nh)*J.n-1) = Rtemp;
-  }
+  ResidualHB(Jltemp, J, ub, uh, sym1, omega);
   Jl -= Jltemp;
   Jl /= eps;
-  sym = 0;
-  ik = 0;
-  iomega = 0;
-  matrix<complex> Cmat = vJ(XMh, XMh, tgv = -1);
-  matrix An1r = Cmat.re, An2r, An3r, An1i, An2i, An3i; // mean flow jacobian
-  Mat row1(J), row2, row3, A1(J), A2(J), temp;
-  row1 = An1r;
-  for (int n = 0; n < Nh; n++){
-    um[] = 2.0*uh(:, n);
-    ik = 1i*(1+n)*sym1;
-    ik2 = -1i*(1+n)*sym1;
-    Cmat = vH(XMh, XMh, tgv = -10);
-    An1r = Cmat.re;
-    ChangeOperator(A1, An1r);
-    An2r = Cmat.im;
-    ChangeOperator(A2, An2r);
-    temp = [[row1, A1, A2]];
-    MatConvert(temp, row1);
-  }
-  for (int n = 0; n < Nh; n++){
-    sym = (1+n)*sym1;
-    um[] = uh(:, n);
-    ik = 1i*(1+n)*sym1;
-    ik2 = 0;
-    Cmat = vH(XMh, XMh, tgv = -10);
-    An1r = Cmat.re;
-    ChangeOperator(A1, An1r);
-    MatConvert(A1, row2);
-    An1i = Cmat.im;
-    ChangeOperator(A2, An1i);
-    MatConvert(A2, row3);
-    for (int j = 0; j < Nh; j++){
-      if (j < n){ // subharmonics
-        um[] = uh(:, n-j-1);
-        ik = 1i*(n-j)*sym1;
-        ik2 = 1i*(1+j)*sym1;
-        Cmat = vH(XMh, XMh, tgv = -10);
-      } else if (j == n) { // diagonal
-        iomega = 1i*(1+n)*omega;
-        ik = 1i*(1+n)*sym1;
-        Cmat = vJ(XMh, XMh, tgv = -1);
-      } else { //if (j > n) superharmonics
-        um[] = conj(uh(:, j-n-1));
-        ik = -1i*(j-n)*sym1;
-        ik2 = 1i*(1+j)*sym1;
-        Cmat = vH(XMh, XMh, tgv = -10);
-      }
-      An2r = Cmat.re;
-      An2i = Cmat.im;
-      An3r = -An2i;
-      An3i = Cmat.re;
-      if (1+j+n < Nh) {
-        um[] = uh(:, 1+n+j);
-        ik = 1i*(2+n+j)*sym1;
-        ik2 = -1i*(1+j)*sym1;
-        Cmat = vH(XMh, XMh, tgv = -10);
-        An2r += Cmat.re;
-        An2i += Cmat.im;
-        An3r += Cmat.im;
-        An3i -= Cmat.re;
-      }       
-      ChangeOperator(A1, An2r);
-      ChangeOperator(A2, An3r);
-      temp = [[row2, A1, A2]];       
-      MatConvert(temp, row2);
-      ChangeOperator(A1, An2i);
-      ChangeOperator(A2, An3i);
-      temp = [[row3, A1, A2]];
-      MatConvert(temp, row3);
-    }
-    temp = [[row1], [row2], [row3]];
-    MatConvert(temp, row1);
-  }
-  JHB = row1;
+  JacobianHB(JHB, J, ub, uh, sym1, omega);
   if (zerofreq) JHBa = JHB;
   else {
     real[int] Mtemp = 0, MqHB((1+2*Nh)*J.n);
