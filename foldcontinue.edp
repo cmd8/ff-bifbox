@@ -186,10 +186,24 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, alpha0, beta0;
       return 0;
   }
 // set up Mat parameters
-set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
-set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa, setup = 1);
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
+set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa);
+func PetscScalar[int] blockSchur(PetscScalar[int]& in) {
+  PetscScalar[int] R1 = in(0:Ja.n-1), out;
+  KSPSolve(Ja, R1, out);
+  PetscScalar yqyq = (yqP'*yqP), yqdq = (yqP'*out);
+  mpiAllReduce(yqyq, yqyq, mpiCommWorld, mpiSUM);
+  mpiAllReduce(yqdq, yqdq, mpiCommWorld, mpiSUM);
+  PetscScalar dlambda = yqdq/(1.0 + yqyq);
+  out -= dlambda*yqP;
+  if (mpirank == 0) {
+    out.resize(in.n);
+    out(out.n-1) = dlambda;
+  }
+  return out;
+}
+set(Jaa, sparams = "-ksp_type preonly -pc_type shell", precon = blockSchur);
 // PREDICTOR
 real[int] qa;
 ChangeNumbering(J, ub[], qa);
@@ -365,10 +379,10 @@ while (!stopflag){
       yqPMa = Adapt4;
       Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
       Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; // make dummy Jacobian
-      set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
-      set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa, setup = 1);
       IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
       set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
+      set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa);
+      set(Jaa, sparams = "-ksp_type preonly -pc_type shell", precon = blockSchur);
       qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
       if(mpirank == 0) {
