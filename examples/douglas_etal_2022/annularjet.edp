@@ -1,0 +1,48 @@
+//
+// annularjet.edp
+// Chris Douglas
+// cdoug@mit.edu
+//
+// This file can be used with FreeFEM to create a mesh for the laminar jet as in
+// [Xavier Garnaud, Ecole Polytechnique PhD Thesis, (2012)].
+//
+
+assert(mpisize == 1); // Must be run with 1 processor
+include "settings.idp"
+real n0 = 25;
+real n1 = 5;
+real n2 = 1;
+real xmin = -4.0;
+real rmax = 40.0;
+real rin = 0.5;
+real rout = 1.0;
+
+string meshout = getARGV("-mo", "swirljet.msh"); // mesh filename
+if(meshout.rfind(".msh") < 0) meshout = meshout + ".msh"; // add extension if not provided
+
+// Define borders
+//              o--..__
+//              |      "-..
+//              7          6
+//              |           \
+//  o-----8-----o            o
+//  1                        |
+//  o-----2-----o            5
+//              3            |
+//              o------4-----o
+border C01(t=0, 1){x=xmin; y=rout - rin*t; label=BCinflow;}
+border C02(t=0, 1){x=xmin*(1-t); y=rin; label=BCpipe;}
+border C03(t=0, 1){x=0; y=rin*(1-t); label=BCwall;}
+border C04(t=0, 1){x=rmax*t; y=0; label=BCaxis;}
+border C05(t=0, 1){x=rmax; y=rout*t; label=BCopen;}
+border C06(t=0, 1){x=rmax*cos(pi/2*t); y=rout+rmax*sin(pi/2*t); label=BCopen;}
+border C07(t=0, 1){x=0; y=rout+rmax*(1-t); label=BCwall;}
+border C08(t=0, 1){x=xmin*t; y=rout; label=BCpipe;}
+// Assemble mesh
+mesh Thg = buildmesh(C01(n1*(rout-rin)) + C02(n0*abs(xmin)) + C03(n0*rin) + C04(n1*rmax) + C05(n2*rout) + C06(n2*rmax*pi/2) + C07(n1*rmax) + C08(n0*abs(xmin)));
+
+plot(Thg,wait=1);
+int[int] meshlabels = labels(Thg);
+cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
+cout << "  Saving mesh '" + meshout + "'." << endl;
+savemesh(Thg, meshout);
