@@ -225,9 +225,9 @@ else { // if output meshfile is given, adapt mesh
   restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
   ub[] = uG[](restu); //restrict global solution to each local mesh
   for (int nh = 0; nh < Nh; nh++) {
-    tempu2[] = uhrG(:, nh);
+    tempu2[] = uhrG2(:, nh);
     um[].re = tempu2[](restu);
-    tempu2[] = uhiG(:, nh);
+    tempu2[] = uhiG2(:, nh);
     um[].im = tempu2[](restu);
     uh(:, nh) = um[];
   }

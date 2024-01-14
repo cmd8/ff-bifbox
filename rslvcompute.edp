@@ -107,7 +107,7 @@ include "eqns.idp"
 M  = vMq(XMh, XMh); // Response Norm
 Mf = vMf(Xh, Xh); // Forcing Norm
 matrix<complex> LocPQ = vP(Xh, XMh); // Forcing/Response Correspondence
-Mat<complex> PQ(M, Mf, LocPQ);
+Mat<complex> PQ(M, Mf, LocPQ, clean = true);
 
 func complex[int] LHSop(complex[int]& inPETSc) {
   complex[int] temp(XMh.ndof), outPETSc(inPETSc.n);
