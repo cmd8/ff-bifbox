@@ -51,7 +51,7 @@
       iomega*(vR*dumR + ubR*(vT*dumT + vdotu(v, dum)))
       + vR*(ugradf(ub, dumR) + ugradf(dum, ubR) + dumR*div(ub) + ubR*div(dum) + beta1(x,y)*dumR)
       + ubR*(ugradu(v, dum, ub) + ugradu(v, ub, dum)) + dumR*ugradu(v, ub, ub) - div(v)*(dumR*ubT + dumT*ubR)/(params["gamma"]*params["Ma"]^2) + beta1(x,y)*vdotu(v, dum) + visc(v , dum )*params["1/Re"]
-      + vT*(ubR*(ugradf(dum, ubT) + ugradf(ub, dumT)) + dumR*ugradf(ub, ubT) + (params["gamma"] - 1.0)*(dumR*ubT*div(ub) + ubR*dumT*div(ub) + ubR*ubT*div(dum)) - params["gamma"]*(params["gamma"] - 1.0)*params["Ma"]^2*(visc(dum, ub) + visc(ub, dum))*params["1/Re"] + beta1(x,y)*dumT) + params["gamma"]*params["1/Pr"]*params["1/Re"]*diff(vT, dumT
+      + vT*(ubR*(ugradf(dum, ubT) + ugradf(ub, dumT)) + dumR*ugradf(ub, ubT) + (params["gamma"] - 1.0)*(dumR*ubT*div(ub) + ubR*dumT*div(ub) + ubR*ubT*div(dum)) - params["gamma"]*(params["gamma"] - 1.0)*params["Ma"]^2*(visc(dum, ub) + visc(ub, dum))*params["1/Re"] + beta1(x,y)*dumT) + params["gamma"]*params["1/Pr"]*params["1/Re"]*diff(vT, dumT)
     )
     + HomBoundaryConditions(sym, dum);
 
