@@ -6,9 +6,9 @@
 // Define KSP parameters
   string KSPparams = "-ksp_type preonly -pc_type lu";
 // term macros ------------------------------------------------------
-  macro beta1(x,y) ((x < -25.0)*abs(1.0 - 1.0/sqrt(params["Ma"]^2))*0.0001*(-25.0-x)
-                  + (x > 80.0)*abs(1.0 + 1.0/sqrt(params["Ma"]^2))*0.0001*(x-80.0)
-                  + (abs(y) > 18.0)*abs(1.0/sqrt(params["Ma"]^2))*0.0001*(abs(y)-18.0))//sponge filter
+  macro beta1(x,y) ((x < -25.0)*abs(1.0 - 1.0/sqrt(params["Ma^2"]))*0.0001*(-25.0-x)
+                  + (x > 80.0)*abs(1.0 + 1.0/sqrt(params["Ma^2"]))*0.0001*(x-80.0)
+                  + (abs(y) > 18.0)*abs(1.0/sqrt(params["Ma^2"]))*0.0001*(abs(y)-18.0))//sponge filter
 
   macro vdotu(v, u) ( v*u + v#y*u#y ) // velocity inner product
   macro div(u) ( dx(u) + dy(u#y) ) // velocity divergence
@@ -34,8 +34,9 @@
   varf vR(defu(dum), defu(v))
     = int2d(Th)(
       vR*(ugradf(ub, ubR) + ubR*div(ub) + beta1(x,y)*(ubR - 1.0))
-      + ubR*ugradu(v, ub, ub) - div(v)*(ubR*ubT - 1.0)/(params["gamma"]*params["Ma"]^2) + beta1(x,y)*(vdotu(v, ub) - v) + visc(v, ub)*params["1/Re"]
-      + vT*(ubR*ugradf(ub, ubT) + (params["gamma"] - 1.0)*(ubR*ubT*div(ub) - params["gamma"]*params["Ma"]^2*params["1/Re"]*visc(ub, ub)) + beta1(x,y)*(ubT - 1.0)) + params["gamma"]*params["1/Pr"]*params["1/Re"]*diff(vT, ubT)
+      + ubR*ugradu(v, ub, ub) - div(v)*ubp + beta1(x,y)*(vdotu(v, ub) - v) + visc(v, ub)*params["1/Re"]
+      + vT*(ubR*ugradf(ub, ubT) + (params["gamma"] - 1.0)*(ubR*ubT*div(ub) - params["gamma"]*params["Ma^2"]*params["1/Re"]*visc(ub, ub)) + beta1(x,y)*(ubT - 1.0)) + params["gamma"]*params["1/Pr"]*params["1/Re"]*diff(vT, ubT)
+      + vp*(params["gamma"]*params["Ma^2"]*ubp + 1.0 - ubR*ubT)
     )
     + BoundaryConditions(dum, ub);
 
@@ -44,14 +45,16 @@
     = int2d(Th)(
       iomega*(vR*umR + ubR*(vT*umT + vdotu(v, um)))
       + vR*(ugradf(ub, umR) + ugradf(um, ubR) + umR*div(ub) + ubR*div(um) + beta1(x,y)*umR)
-      + ubR*(ugradu(v, um, ub) + ugradu(v, ub, um)) + umR*ugradu(v, ub, ub) - div(v)*(umR*ubT + umT*ubR)/(params["gamma"]*params["Ma"]^2) + beta1(x,y)*vdotu(v, um) + visc(v , um )*params["1/Re"]
-      + vT*(ubR*(ugradf(um, ubT) + ugradf(ub, umT)) + umR*ugradf(ub, ubT) + (params["gamma"] - 1.0)*(umR*ubT*div(ub) + ubR*umT*div(ub) + ubR*ubT*div(um)) - params["gamma"]*(params["gamma"] - 1.0)*params["Ma"]^2*(visc(um, ub) + visc(ub, um))*params["1/Re"] + beta1(x,y)*umT) + params["gamma"]*params["1/Pr"]*params["1/Re"]*diff(vT, umT)
+      + ubR*(ugradu(v, um, ub) + ugradu(v, ub, um)) + umR*ugradu(v, ub, ub) - div(v)*ump + beta1(x,y)*vdotu(v, um) + visc(v , um )*params["1/Re"]
+      + vT*(ubR*(ugradf(um, ubT) + ugradf(ub, umT)) + umR*ugradf(ub, ubT) + (params["gamma"] - 1.0)*(umR*ubT*div(ub) + ubR*umT*div(ub) + ubR*ubT*div(um)) - params["gamma"]*(params["gamma"] - 1.0)*params["Ma^2"]*(visc(um, ub) + visc(ub, um))*params["1/Re"] + beta1(x,y)*umT) + params["gamma"]*params["1/Pr"]*params["1/Re"]*diff(vT, umT)
+      + vp*(params["gamma"]*params["Ma^2"]*ump - umR*ubT - ubR*umT)
     )
     + int2d(Th)(
       iomega*(vR*dumR + ubR*(vT*dumT + vdotu(v, dum)))
       + vR*(ugradf(ub, dumR) + ugradf(dum, ubR) + dumR*div(ub) + ubR*div(dum) + beta1(x,y)*dumR)
-      + ubR*(ugradu(v, dum, ub) + ugradu(v, ub, dum)) + dumR*ugradu(v, ub, ub) - div(v)*(dumR*ubT + dumT*ubR)/(params["gamma"]*params["Ma"]^2) + beta1(x,y)*vdotu(v, dum) + visc(v , dum )*params["1/Re"]
-      + vT*(ubR*(ugradf(dum, ubT) + ugradf(ub, dumT)) + dumR*ugradf(ub, ubT) + (params["gamma"] - 1.0)*(dumR*ubT*div(ub) + ubR*dumT*div(ub) + ubR*ubT*div(dum)) - params["gamma"]*(params["gamma"] - 1.0)*params["Ma"]^2*(visc(dum, ub) + visc(ub, dum))*params["1/Re"] + beta1(x,y)*dumT) + params["gamma"]*params["1/Pr"]*params["1/Re"]*diff(vT, dumT)
+      + ubR*(ugradu(v, dum, ub) + ugradu(v, ub, dum)) + dumR*ugradu(v, ub, ub) - div(v)*dump + beta1(x,y)*vdotu(v, dum) + visc(v , dum )*params["1/Re"]
+      + vT*(ubR*(ugradf(dum, ubT) + ugradf(ub, dumT)) + dumR*ugradf(ub, ubT) + (params["gamma"] - 1.0)*(dumR*ubT*div(ub) + ubR*dumT*div(ub) + ubR*ubT*div(dum)) - params["gamma"]*(params["gamma"] - 1.0)*params["Ma^2"]*(visc(dum, ub) + visc(ub, dum))*params["1/Re"] + beta1(x,y)*dumT) + params["gamma"]*params["1/Pr"]*params["1/Re"]*diff(vT, dumT)
+      + vp*(params["gamma"]*params["Ma^2"]*dump - dumR*ubT - ubR*dumT)
     )
     + HomBoundaryConditions(sym, dum);
 
@@ -64,7 +67,7 @@
 // FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
   varf vMq(defu(dum), defu(v))
     = int2d(Th)(
-      0.5*(ubT/(params["gamma"]*params["Ma"]^2*ubR)*vR*dumR + ubR*vdotu(v, dum) + ubR/(params["gamma"]*(params["gamma"] - 1.0)*params["Ma"]^2*ubT)*vT*dumT)
+      0.5*(ubT/(params["gamma"]*params["Ma^2"]*ubR)*vR*dumR + ubR*vdotu(v, dum) + ubR/(params["gamma"]*(params["gamma"] - 1.0)*params["Ma^2"]*ubT)*vT*dumT)
     );
 
   varf vMf(deff(fm), deff(v))
@@ -78,14 +81,16 @@
     = int2d(Th)(
       iomega*um2R*(vT*umT + vdotu(v, um)) + iomega2*umR*(vT*um2T + vdotu(v, um2))
       + vR*(ugradf(um2, umR) + ugradf(um, um2R) + umR*div(um2) + um2R*div(um))
-      + um2R*(ugradu(v, um, ub) + ugradu(v, ub, um)) + ubR*(ugradu(v, um, um2) + ugradu(v, um2, um)) + umR*(ugradu(v, um2, ub) + ugradu(v, ub, um2)) - div(v)*(umR*um2T + umT*um2R)/(params["gamma"]*params["Ma"]^2)
-      + vT*(um2R*(ugradf(um, ubT) + ugradf(ub, umT)) + ubR*(ugradf(um, um2T) + ugradf(um2, umT)) + umR*(ugradf(um2, ubT) + ugradf(ub, um2T)) + (params["gamma"] - 1.0)*(umR*(um2T*div(ub) + ubT*div(um2)) + umT*(um2R*div(ub) + ubR*div(um2)) + (um2R*ubT + ubR*um2T)*div(um)) - params["gamma"]*(params["gamma"] - 1.0)*params["Ma"]^2*(visc(um, um2) + visc(um2, um))*params["1/Re"])
+      + um2R*(ugradu(v, um, ub) + ugradu(v, ub, um)) + ubR*(ugradu(v, um, um2) + ugradu(v, um2, um)) + umR*(ugradu(v, um2, ub) + ugradu(v, ub, um2))
+      + vT*(um2R*(ugradf(um, ubT) + ugradf(ub, umT)) + ubR*(ugradf(um, um2T) + ugradf(um2, umT)) + umR*(ugradf(um2, ubT) + ugradf(ub, um2T)) + (params["gamma"] - 1.0)*(umR*(um2T*div(ub) + ubT*div(um2)) + umT*(um2R*div(ub) + ubR*div(um2)) + (um2R*ubT + ubR*um2T)*div(um)) - params["gamma"]*(params["gamma"] - 1.0)*params["Ma^2"]*(visc(um, um2) + visc(um2, um))*params["1/Re"])
+      - vp*(umR*um2T + um2R*umT)
     )
     + int2d(Th)(
       iomega*dumR*(vT*umT + vdotu(v, um)) + iomega2*umR*(vT*dumT + vdotu(v, dum))
       + vR*(ugradf(dum, umR) + ugradf(um, dumR) + umR*div(dum) + dumR*div(um))
-      + dumR*(ugradu(v, um, ub) + ugradu(v, ub, um)) + ubR*(ugradu(v, um, dum) + ugradu(v, dum, um)) + umR*(ugradu(v, dum, ub) + ugradu(v, ub, dum))- div(v)*(umR*dumT + umT*dumR)/(params["gamma"]*params["Ma"]^2)
-      + vT*(dumR*(ugradf(um, ubT) + ugradf(ub, umT)) + ubR*(ugradf(um, dumT) + ugradf(dum, umT)) + umR*(ugradf(dum, ubT) + ugradf(ub, dumT)) + (params["gamma"] - 1.0)*(umR*(dumT*div(ub) + ubT*div(dum)) + umT*(dumR*div(ub) + ubR*div(dum)) + (dumR*ubT + ubR*dumT)*div(um)) - params["gamma"]*(params["gamma"] - 1.0)*params["Ma"]^2*(visc(um, dum) + visc(dum, um))*params["1/Re"])
+      + dumR*(ugradu(v, um, ub) + ugradu(v, ub, um)) + ubR*(ugradu(v, um, dum) + ugradu(v, dum, um)) + umR*(ugradu(v, dum, ub) + ugradu(v, ub, dum))
+      + vT*(dumR*(ugradf(um, ubT) + ugradf(ub, umT)) + ubR*(ugradf(um, dumT) + ugradf(dum, umT)) + umR*(ugradf(dum, ubT) + ugradf(ub, dumT)) + (params["gamma"] - 1.0)*(umR*(dumT*div(ub) + ubT*div(dum)) + umT*(dumR*div(ub) + ubR*div(dum)) + (dumR*ubT + ubR*dumT)*div(um)) - params["gamma"]*(params["gamma"] - 1.0)*params["Ma^2"]*(visc(um, dum) + visc(dum, um))*params["1/Re"])
+      - vp*(umR*dumT + dumR*umT)
     )
     + HomBoundaryConditions(sym, dum);
 
