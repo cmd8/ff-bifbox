@@ -5,10 +5,10 @@
 //
 // EXAMPLE USAGE:
 //  Continue input file along parameter without mesh adaptation:
-// mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -fi <FILEIN> -param <PARAM>
+// ff-mpirun -np 4 basecontinue.edp -fi <FILEIN> -param <PARAM>
 //
 //  Continue input file along parameter with mesh adaptation:
-// mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -fi <FILEIN> -param <PARAM> -mo <MESHOUT>
+// ff-mpirun -np 4 basecontinue.edp -fi <FILEIN> -param <PARAM> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //

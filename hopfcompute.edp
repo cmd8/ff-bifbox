@@ -5,16 +5,16 @@
 //
 // EXAMPLE USAGE:
 //  Initialize with Hopf guess from base file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -param <PARAM> -fi <FILEIN> -bfi <BASEFILEIN> -fo <FILEOUT>
+// ff-mpirun -np 4 hopfcompute.edp -param <PARAM> -fi <FILEIN> -bfi <BASEFILEIN> -fo <FILEOUT>
 //
 //  Initialize with Hopf from base and mode file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -param <PARAM> -fi <FILEIN> -fo <FILEOUT>
+// ff-mpirun -np 4 hopfcompute.edp -param <PARAM> -fi <FILEIN> -fo <FILEOUT>
 //
 //  Initialize with Hopf guess from file on a mesh from file
-// mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -param <PARAM> -mi <MESHIN> -bfi <BASEFILEIN> -fi <FILEIN> -fo <FILEOUT>
+// ff-mpirun -np 4 hopfcompute.edp -param <PARAM> -mi <MESHIN> -bfi <BASEFILEIN> -fi <FILEIN> -fo <FILEOUT>
 //
 //  Initialize with Hopf from file, adapt mesh/solution
-// mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -param <PARAM> -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
+// ff-mpirun -np 4 hopfcompute.edp -param <PARAM> -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //

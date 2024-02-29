@@ -5,16 +5,16 @@
 //
 // EXAMPLE USAGE:
 //  Initialize without file:
-// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -Re 1 -Pe 1 -Le 1 -mi <FILEIN> -fo <FILEOUT>
+// ff-mpirun -np 4 basecompute.edp -Re 1 -Pe 1 -Le 1 -mi <FILEIN> -fo <FILEOUT>
 //
 //  Initialize with guess from file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -Re 1 -Pe 1 -Le 1 -fi <FILEIN> -fo <FILEOUT>
+// ff-mpirun -np 4 basecompute.edp -Re 1 -Pe 1 -Le 1 -fi <FILEIN> -fo <FILEOUT>
 //
 //  Initialize with guess from file, solve on different mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -mi <MESHIN> -fi <FILEIN> -fo <FILEOUT>
+// ff-mpirun -np 4 basecompute.edp -mi <MESHIN> -fi <FILEIN> -fo <FILEOUT>
 //
 //  Initialize with guess from file, adapt mesh/solution
-// mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
+// ff-mpirun -np 4 basecompute.edp -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //

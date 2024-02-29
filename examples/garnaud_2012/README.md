@@ -43,33 +43,33 @@ The number of processors is set using the `-n` argument from `mpirun`. Here, thi
 ### Laminar base flow
 1. Compute base states on the created mesh at Re = 10 from default guess
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi jet.msh -fo jet -1/Re 0.1
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -mi jet.msh -fo jet -1/Re 0.1
 ```
 
 2. Continue base state along the parameter 1/Re with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi jet.base -fo jet -param 1/Re -h0 -1 -scount 3 -maxcount 15 -mo jet
+ff-mpirun -np 4 basecontinue.edp -v 0 -dir $workdir -fi jet.base -fo jet -param 1/Re -h0 -1 -scount 3 -maxcount 15 -mo jet
 ```
 
 3. Compute base state at Re = 1000 with guess from continuation
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi jet_15.base -fo jet1000 -1/Re 0.001
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi jet_15.base -fo jet1000 -1/Re 0.001
 ```
 
 4. Adapt mesh to Re = 1000 solution and recompute base state, save .vtu file for Paraview
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi jet1000.base -fo jet1000adapt -mo jet1000adapt -pv 1
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi jet1000.base -fo jet1000adapt -mo jet1000adapt -pv 1
 ```
 
 ### Resolvent analysis
 1. Compute gains across 0.1 <= St <= 1.0 frequency range (0.314 < omega < 3.14) in 10 increments
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -so jet1000adapt -omega 0.314159 -omegaf 3.14159 -nomega 10
+ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -so jet1000adapt -omega 0.314159 -omegaf 3.14159 -nomega 10
 ```
 2. Compute forcing/response modes at St = [0.1, 0.48, 0.64, 0.95], save .vtu files for Paraview
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p1 -so "" -omega 0.314159 -pv 1
-mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p48 -so "" -omega 1.50796 -pv 1
-mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p64 -so "" -omega 2.01062 -pv 1
-mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p95 -so "" -omega 2.98451 -pv 1
+ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p1 -so "" -omega 0.314159 -pv 1
+ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p48 -so "" -omega 1.50796 -pv 1
+ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p64 -so "" -omega 2.01062 -pv 1
+ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p95 -so "" -omega 2.98451 -pv 1
 ```

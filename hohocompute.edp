@@ -5,10 +5,10 @@
 //
 // EXAMPLE USAGE:
 //  Initialize with two mode or hopf files, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -param <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fi2 <FILEIN2> -fo <FILEOUT1>
+// ff-mpirun -np 4 hohocompute.edp -param <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fi2 <FILEIN2> -fo <FILEOUT1>
 //
 //  Initialize with hoho from file, adapt mesh to solution
-// mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -param <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fo <FILEOUT1> -mo <MESHOUT>
+// ff-mpirun -np 4 hohocompute.edp -param <PARAM1> -param2 <PARAM2> -fi <FILEIN> -fo <FILEOUT1> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //

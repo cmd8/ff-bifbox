@@ -46,10 +46,10 @@ The number of processors is set using the `-n` argument from `mpirun`. Here, thi
 ### Laminar base flow
 1. Compute a base state on the created mesh at Re = 10, Pr = 0.7, Le = 1, Da = 10, dT = 4, Ze = 1, a = 2/3.
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi jet.msh -fo jet -1/Re 0.1 -1/Pr 1.42857142857142857 -1/Le 1 -Da 10 -dT 4 -Ze 1 -a 0.6666666666666667
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -mi jet.msh -fo jet -1/Re 0.1 -1/Pr 1.42857142857142857 -1/Le 1 -Da 10 -dT 4 -Ze 1 -a 0.6666666666666667
 ```
 
 2. Continue base state along the parameters to the desired conditions. This is a complicated step that takes a significant amount of computations/time and involves a lot of trial and error decisions. It is useful to save the outputs to paraview in order to keep track of how the solution is changing as a function of the parameters.
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi jet.base -fo jet -param 1/Re -h0 -30 -scount 2 -maxcount 10 -mo jet -pv 1
+ff-mpirun -np 4 basecontinue.edp -v 0 -dir $workdir -fi jet.base -fo jet -param 1/Re -h0 -30 -scount 2 -maxcount 10 -mo jet -pv 1
 ```

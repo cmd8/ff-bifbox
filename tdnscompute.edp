@@ -5,10 +5,10 @@
 //
 // EXAMPLE USAGE:
 //  Compute time-domain nonlinear simulation with IC from input file without mesh adaptation:
-// mpirun -n 4 FreeFem++-mpi -v 0 tdnscompute.edp -fi <FILEIN> -fo <FILEOUT>
+// ff-mpirun -np 4 tdnscompute.edp -fi <FILEIN> -fo <FILEOUT>
 //
 //  Compute time-domain nonlinear simulation with IC from input file with mesh adaptation:
-// mpirun -n 4 FreeFem++-mpi -v 0 tdnscompute.edp -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
+// ff-mpirun -np 4 tdnscompute.edp -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //

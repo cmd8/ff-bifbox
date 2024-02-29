@@ -5,10 +5,10 @@
 //
 // EXAMPLE USAGE:
 //  Initialize with hopf file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 fohocompute.edp -param <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fo <FILEOUT>
+// ff-mpirun -np 4 fohocompute.edp -param <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fo <FILEOUT>
 //
 //  Initialize with hopf and fold files, adapt mesh to solution
-// mpirun -n 4 FreeFem++-mpi -v 0 fohocompute.edp -param <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fi2 <FILEIN2> -fo <FILEOUT> -mo <MESHOUT>
+// ff-mpirun -np 4 fohocompute.edp -param <PARAM1> -param2 <PARAM2> -fi1 <FILEIN1> -fi2 <FILEIN2> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //

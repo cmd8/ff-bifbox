@@ -5,10 +5,10 @@
 //
 // EXAMPLE USAGE:
 //  Compute eigenvalues, store specrum without storing eigenvectors:
-// mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -eps_target 0.1+1.0i -eps_nev 10 -fi <FILEIN> -so <VALFILE>
+// ff-mpirun -np 4 modecompute.edp -eps_target 0.1+1.0i -eps_nev 10 -fi <FILEIN> -so <VALFILE>
 //
 //  Compute eigenvalues, store spectrum with eigenvectors:
-// mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -eps_target 0.1+1.0i -eps_nev 4 -fi <FILEIN> -fo <VALFILE>
+// ff-mpirun -np 4 modecompute.edp -eps_target 0.1+1.0i -eps_nev 4 -fi <FILEIN> -fo <VALFILE>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //

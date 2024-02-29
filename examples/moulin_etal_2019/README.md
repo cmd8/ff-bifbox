@@ -42,26 +42,26 @@ The number of processors is set using the `-n` argument from `mpirun`. Here, thi
 ### Steady dynamics
 1. Compute a base state on the mesh at Re = 50 from default guess
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi FlatPlate3D.mesh -fo 3Dwake -1/Re 0.02 -gamma 0.6
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -mi FlatPlate3D.mesh -fo 3Dwake -1/Re 0.02 -gamma 0.6
 ```
 
 2. Continue base state along 1/Re from Re = 50 solution.
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi 3Dwake.base -param 1/Re -h0 -5 -kmax 4 -snes_max_it 20 -scount 2 -maxcount 4
+ff-mpirun -np 4 basecontinue.edp -v 0 -dir $workdir -fi 3Dwake.base -param 1/Re -h0 -5 -kmax 4 -snes_max_it 20 -scount 2 -maxcount 4
 ```
 
 3. Compute a base state on the mesh at Re = 100 with guess from continuation
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi 3Dwake_4.base -fo 3Dwake100 -1/Re 0.01
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi 3Dwake_4.base -fo 3Dwake100 -1/Re 0.01
 ```
 
 ### Unsteady dynamics
 4. Compute leading eigenvalue at Re = 100. This is very slow unless massively parallelized.
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi 3Dwake100.base -fo 3Dwake -so "" -eps_target 0.1+0.6i -eps_nev 5 -eps_ncv 15 -eps_tol 1e-6 -recycle 5 -shiftPrecon 1 -st_ksp_converged_reason -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi 3Dwake100.base -fo 3Dwake -so "" -eps_target 0.1+0.6i -eps_nev 5 -eps_ncv 15 -eps_tol 1e-6 -recycle 5 -shiftPrecon 1 -st_ksp_converged_reason -eps_pos_gen_non_hermitian
 ```
 
 5. Compute optimal resolvent gain at Re = 50. This is very slow unless massively parallelized.
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 rslvcompute.edp -dir $workdir -fi 3Dwake.base -fo 3Dwake -so "" -omega 1 -recycle 5 -shiftPrecon 1 -eps_tol 1e-6
+ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi 3Dwake.base -fo 3Dwake -so "" -omega 1 -recycle 5 -shiftPrecon 1 -eps_tol 1e-6
 ```

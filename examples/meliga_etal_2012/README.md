@@ -44,31 +44,31 @@ The number of processors is set using the `-n` argument from `mpirun`. Here, thi
 ### Steady axisymmetric dynamics
 1. Compute base states on the created mesh at Re = 200 from default guess
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi vortex.msh -fo vortex -1/Re 0.005 -S 0
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -mi vortex.msh -fo vortex -1/Re 0.005 -S 0
 ```
 2. Continue base state along the parameter S with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi vortex.base -fo vortex -param S -h0 1 -scount 4 -maxcount 40 -mo vortexadapt
+ff-mpirun -np 4 basecontinue.edp -v 0 -dir $workdir -fi vortex.base -fo vortex -param S -h0 1 -scount 4 -maxcount 40 -mo vortexadapt
 ```
 
 ### Unsteady 3-D dynamics
 1. Compute base state near the double Hopf point
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi vortex.msh -fo vortexDH -1/Re 0.0139 -S 1
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi vortexDH.base -fo vortexDH -S 1.44
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -mi vortex.msh -fo vortexDH -1/Re 0.0139 -S 1
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi vortexDH.base -fo vortexDH -S 1.44
 ```
 2. Compute near-critical modes
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fo vortexm1 -fi vortexDH.base -sym -1 -eps_target 0+1i -eps_pos_gen_non_hermitian
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fo vortexm2 -fi vortexDH.base -sym -2 -eps_target 0+2i -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fo vortexm1 -fi vortexDH.base -sym -1 -eps_target 0+1i -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fo vortexm2 -fi vortexDH.base -sym -2 -eps_target 0+2i -eps_pos_gen_non_hermitian
 ```
 3. Compute Hopf-Hopf point assuming non-resonant interaction
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -dir $workdir -fo vortexDH -fi vortexm2.mode -fi2 vortexm1.mode -param S -param2 1/Re -nf 0
-mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -dir $workdir -fo vortexDH -fi vortexDH.hoho -param S -param2 1/Re -adaptto bda -mo vortexm1m2adapt
+ff-mpirun -np 4 hohocompute.edp -v 0 -dir $workdir -fo vortexDH -fi vortexm2.mode -fi2 vortexm1.mode -param S -param2 1/Re -nf 0
+ff-mpirun -np 4 hohocompute.edp -v 0 -dir $workdir -fo vortexDH -fi vortexDH.hoho -param S -param2 1/Re -adaptto bda -mo vortexm1m2adapt
 ```
 
 4. Compute Hopf-Hopf point assuming 2:1 resonant interaction
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hohocompute.edp -dir $workdir -fo vortexDH21res -fi vortexDH.hoho -param S -param2 1/Re -res1x 2
+ff-mpirun -np 4 hohocompute.edp -v 0 -dir $workdir -fo vortexDH21res -fi vortexDH.hoho -param S -param2 1/Re -res1x 2
 ```

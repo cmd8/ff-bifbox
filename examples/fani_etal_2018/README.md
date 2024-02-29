@@ -45,46 +45,46 @@ The number of processors is set using the `-n` argument from `mpirun`. Here, thi
 ### Zeroth order
 1. Compute base state on the created mesh at Re = 10 from default guess
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -mi cylinder.msh -fo cylinder -1/Re 0.1 -1/Pr 1.38888888889 -Ma^2 0.04 -gamma 1.4
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -mi cylinder.msh -fo cylinder -1/Re 0.1 -1/Pr 1.38888888889 -Ma^2 0.04 -gamma 1.4
 ```
 
 2. Continue base state along the parameter 1/Re with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecontinue.edp -dir $workdir -fi cylinder.base -fo cylinder -param 1/Re -h0 -1 -scount 2 -maxcount 14 -mo cylinder -thetamax 5
+ff-mpirun -np 4 basecontinue.edp -v 0 -dir $workdir -fi cylinder.base -fo cylinder -param 1/Re -h0 -1 -scount 2 -maxcount 14 -mo cylinder -thetamax 5
 ```
 
 3. Compute base states at Re ~ 50 and Re = 150 with guesses from continuation
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder_8.base -fo cylinder50 -1/Re 0.021
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder_14.base -fo cylinder150 -1/Re 0.0066666666667
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi cylinder_8.base -fo cylinder50 -1/Re 0.021
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi cylinder_14.base -fo cylinder150 -1/Re 0.0066666666667
 ```
 
 4. Adapt mesh to the Re = 150 solution with a maximum triangle size restriction
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 basecompute.edp -dir $workdir -fi cylinder150.base -fo cylinder150 -mo cylinder150 -thetamax 5 -hmax 5 -pv 1
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi cylinder150.base -fo cylinder150 -mo cylinder150 -thetamax 5 -hmax 5 -pv 1
 ```
 
 ### First order
 1. Compute leading direct eigenmode at Re ~ 50 and Re = 150
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder50.base -fo cylinder50 -so "" -eps_target 0.1+0.7i -sym 1 -eps_pos_gen_non_hermitian
-mpirun -n 4 FreeFem++-mpi -v 0 modecompute.edp -dir $workdir -fi cylinder150.base -fo cylinder150 -so "" -eps_target 0.2+0.8i -sym 1 -pv 1 -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi cylinder50.base -fo cylinder50 -so "" -eps_target 0.1+0.7i -sym 1 -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi cylinder150.base -fo cylinder150 -so "" -eps_target 0.2+0.8i -sym 1 -pv 1 -eps_pos_gen_non_hermitian
 ```
 NOTE: Here, the `-sym` argument specifies the asymmetric (1) or symmetric (0) reflective symmetry across the boundary `BCaxis`.
 
 2. Compute the critical point and critical base/direct/adjoint solution
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder50.mode -fo cylinder -param 1/Re -nf 0
+ff-mpirun -np 4 hopfcompute.edp -v 0 -dir $workdir -fi cylinder50.mode -fo cylinder -param 1/Re -nf 0
 ```
 
 3. Adapt the mesh to the critical solution, save .vtu files for Paraview
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcompute.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -param 1/Re -thetamax 5 -pv 1
+ff-mpirun -np 4 hopfcompute.edp -v 0 -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -param 1/Re -thetamax 5 -pv 1
 ```
 
 4. Continue the neutral Hopf curve in the (1/Re,Ma^2)-plane with adaptive remeshing
 ```
-mpirun -n 4 FreeFem++-mpi -v 0 hopfcontinue.edp -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -thetamax 5 -param Ma^2 -param2 1/Re -h0 -1 -scount 3 -maxcount 12
+ff-mpirun -np 4 hopfcontinue.edp -v 0 -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -thetamax 5 -param Ma^2 -param2 1/Re -h0 -1 -scount 3 -maxcount 12
 ```
 
 NOTE: the signs and normalizations of the normal form coefficients used in `hopfcompute.edp` are different than those of the Stuart-Landau coefficients in Sipp and Lebedev JFM (2007).

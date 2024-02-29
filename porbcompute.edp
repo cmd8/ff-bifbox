@@ -5,13 +5,13 @@
 //
 // EXAMPLE USAGE:
 //  Initialize with guess from file, solve on same mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 porbcompute.edp -Re 1 -fi <FILEIN> -fo <FILEOUT> -Nh <N>
+// ff-mpirun -np 4 porbcompute.edp -Re 1 -fi <FILEIN> -fo <FILEOUT> -Nh <N>
 //
 //  Initialize with guess from file, solve on different mesh
-// mpirun -n 4 FreeFem++-mpi -v 0 porbcompute.edp -mi <MESHIN> -fi <FILEIN> -fo <FILEOUT>
+// ff-mpirun -np 4 porbcompute.edp -mi <MESHIN> -fi <FILEIN> -fo <FILEOUT>
 //
 //  Initialize with guess from file, adapt mesh/solution
-// mpirun -n 4 FreeFem++-mpi -v 0 porbcompute.edp -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
+// ff-mpirun -np 4 porbcompute.edp -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
