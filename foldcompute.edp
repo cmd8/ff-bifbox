@@ -188,8 +188,8 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
       KSPSolveTranspose(J, qP, qma);
-      real ginv = (qP'*qm);
-      mpiAllReduce(ginv, ginv, mpiCommWorld, mpiSUM);
+      real ginv, ginvl = (qP'*qm);
+      mpiAllReduce(ginvl, ginv, mpiCommWorld, mpiSUM);
       qm /= ginv;
       qma /= ginv;
       if(mpirank == 0) {

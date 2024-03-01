@@ -305,14 +305,14 @@ else { // if output meshfile is given, adapt mesh
 complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // Build bordered block matrix from only Mat components
-Mat<complex> JlPM(J.n, mpirank == 0 ? 2 : 0), gqPM(J.n, mpirank == 0 ? 2 : 0), glPM(mpirank == 0 ? 2 : 0, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
+Mat<complex> JlPM(J.n, mpirank == 0 ? (2-zerofreq) : 0), gqPM(J.n, mpirank == 0 ? (2-zerofreq) : 0), glPM(mpirank == 0 ? (2-zerofreq) : 0, mpirank == 0 ? (2-zerofreq) : 0); // Initialize Mat objects for bordered matrix
 Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
 // FUNCTIONS
   func complex[int] funcRa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
-        lambda = real(qa(qa.n-2)); // Extract parameter value from state vector on proc 0
+        lambda = real(qa(qa.n-(2-zerofreq))); // Extract parameter value from state vector on proc 0
         omega = zerofreq ? 0.0 : real(qa(qa.n-1)); // Extract frequency value from state vector on proc 0
       }
       broadcast(processor(0), lambda);
@@ -327,14 +327,14 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
       KSPSolveHermitianTranspose(J, qP, qma);
-      complex ginv = (qP'*qm);
-      mpiAllReduce(ginv, ginv, mpiCommWorld, mpiSUM);
+      complex ginv, ginvl = (qP'*qm);
+      mpiAllReduce(ginvl, ginv, mpiCommWorld, mpiSUM);
       qm /= ginv; // rescale direct mode
       qma /= conj(ginv); // rescale adjoint mode
       if(mpirank == 0) {
-        Ra.resize(Ra.n+2); // Append 0 to residual vector on proc 0
-        Ra(Ra.n-2) = real(1.0/ginv);
-        Ra(Ra.n-1) = zerofreq ? 0.0 : imag(1.0/ginv);
+        Ra.resize(Ra.n+(2-zerofreq)); // Append 0 to residual vector on proc 0
+        Ra(Ra.n-(2-zerofreq)) = real(1.0/ginv);
+        if (!zerofreq) Ra(Ra.n-1) = imag(1.0/ginv);
       }
       return Ra;
   }
@@ -342,7 +342,7 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
   func int funcJa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
-        lambda = real(qa(qa.n-2)); // Extract parameter value from state vector on proc 0
+        lambda = real(qa(qa.n-(2-zerofreq))); // Extract parameter value from state vector on proc 0
         omega = zerofreq ? 0.0 : real(qa(qa.n-1)); // Extract frequency value from state vector on proc 0
       }
       broadcast(processor(0), lambda);
@@ -362,7 +362,9 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       Hl /= eps;
       ChangeNumbering(J, Jl, temp1);
       temp1.im = 0.0;
-      matrix<complex> tempPms = [[temp1, 0]]; // dense array to sparse matrix
+      matrix<complex> tempPms;
+      if(zerofreq) tempPms = [[temp1]];
+      else tempPms = [[temp1, 0]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       sym = 0;
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
@@ -370,10 +372,11 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       MatMultHermitianTranspose(H, qma, temp1); // compute (dL/dq*w)'*v
       if(!zerofreq) temp2.re = -temp1.im;
       temp1.im = 0.0;
-      tempPms = [[temp1, temp2]]; // dense array to sparse matrix
+      if(zerofreq) tempPms = [[temp1]];
+      else tempPms = [[temp1, temp2]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       complex gl = J(uma[], Hl);
-      if(zerofreq) tempPms = [[real(gl), 0], [0, 1.0]];
+      if(zerofreq) tempPms = [[real(gl)]];
       else {
         R = vM(0, XMh, tgv = -10);
         complex gw = J(uma[], R);
@@ -395,9 +398,9 @@ set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type sch
 complex[int] qa;
 ChangeNumbering(J, ub[], qa);
 if(mpirank == 0) {
-  qa.resize(qa.n+2);
-  qa(qa.n-2) = lambda;
-  qa(qa.n-1) = omega;
+  qa.resize(qa.n+(2-zerofreq));
+  qa(qa.n-(2-zerofreq)) = lambda;
+  if(!zerofreq) qa(qa.n-1) = omega;
 }
 {
   sym = sym1;
@@ -427,7 +430,7 @@ SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
 if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
   if(mpirank == 0) {
-    lambda = real(qa(qa.n-2));
+    lambda = real(qa(qa.n-(2-zerofreq)));
     omega = zerofreq ? 0.0 : real(qa(qa.n-1)); // Extract frequency value from state vector on proc 0
   }
   broadcast(processor(0), lambda);

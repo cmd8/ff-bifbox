@@ -4,11 +4,14 @@
 // cdoug@mit.edu
 //
 // EXAMPLE USAGE:
-//  Compute eigenvalues, store specrum without storing eigenvectors:
+//  Solve eigenvalue problem, store eigenvalue spectrum without storing eigenvectors:
 // ff-mpirun -np 4 modecompute.edp -eps_target 0.1+1.0i -eps_nev 10 -fi <FILEIN> -so <VALFILE>
 //
-//  Compute eigenvalues, store spectrum with eigenvectors:
-// ff-mpirun -np 4 modecompute.edp -eps_target 0.1+1.0i -eps_nev 4 -fi <FILEIN> -fo <VALFILE>
+//  Solve eigenvalue problem, store eigenvalue spectrum and eigenvectors:
+// ff-mpirun -np 4 modecompute.edp -eps_target 0.1+1.0i -eps_nev 4 -fi <FILEIN> -fo <VECFILE> -so <VALFILE>
+//
+//  Solve eigenvalue problem, store eigenvectors without storing eigenvalue spectrum:
+// ff-mpirun -np 4 modecompute.edp -eps_target 0.1+1.0i -eps_nev 4 -fi <FILEIN> -fo <VECFILE>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
@@ -20,7 +23,7 @@ include "macros_bifbox.idp"
 string meshin = getARGV("-mi", ""); // input meshfile
 string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", "");
-string evalout = getARGV("-so", fileout);
+string evalout = getARGV("-so", "");
 bool adj = getARGV("-adj",0);
 int sym = getARGV("-sym", 0);
 string epstarget = getARGV("-eps_target", "0+0i");

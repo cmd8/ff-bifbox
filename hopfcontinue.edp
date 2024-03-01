@@ -37,8 +37,8 @@ real kappamax = getARGV("-kmax", 1.0);
 real deltamax = getARGV("-dmax", 4.0);
 real anglemax = getARGV("-amax", 30.)*pi/180.0;
 int monotone = getARGV("-mono", 0);
-real eps = getARGV("-eps", 1e-7);
-real eps2 = getARGV("-eps2", 1e-7);
+real eps = getARGV("-eps", 1.0e-7);
+real eps2 = getARGV("-eps2", 1.0e-7);
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 int sym;
@@ -109,8 +109,8 @@ bool adapt = false;
 if(meshout != "") adapt = true;  // if output meshfile is given, adapt mesh
 meshout = meshin; // if no adaptation
 // Build bordered block matrix from only Mat components
-Mat<complex> JlPM(J.n, mpirank == 0 ? 2 : 0), gqPM(J.n, mpirank == 0 ? 2 : 0), glPM(mpirank == 0 ? 2 : 0, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
-Mat<complex> JlPMa(J.n + (mpirank == 0 ? 2 : 0), mpirank == 0 ? 1 : 0), yqPMa(J.n + (mpirank == 0 ? 2 : 0), mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
+Mat<complex> JlPM(J.n, mpirank == 0 ? (2-zerofreq) : 0), gqPM(J.n, mpirank == 0 ? (2-zerofreq) : 0), glPM(mpirank == 0 ? (2-zerofreq) : 0, mpirank == 0 ? (2-zerofreq) : 0); // Initialize Mat objects for bordered matrix
+Mat<complex> JlPMa(J.n + (mpirank == 0 ? (2-zerofreq) : 0), mpirank == 0 ? 1 : 0), yqPMa(J.n + (mpirank == 0 ? (2-zerofreq) : 0), mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]], Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; // make dummy Jacobian
 
 complex[int] R(um[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(Ja.n), yqP0(Ja.n), qap(Jaa.n);
@@ -121,7 +121,7 @@ complex alpha0, beta0;
   func complex[int] funcRa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
-        lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
+        lambda1 = real(qa(qa.n-(3-zerofreq))); // Extract parameter value from state vector on proc 0
         omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
         lambda2 = real(qa(qa.n-1)); // Extract parameter value from state vector on proc 0
       }
@@ -138,14 +138,14 @@ complex alpha0, beta0;
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
       KSPSolveHermitianTranspose(J, qP, qma);
-      complex ginv = (qP'*qm);
-      mpiAllReduce(ginv, ginv, mpiCommWorld, mpiSUM);
+      complex ginv, ginvl = (qP'*qm);
+      mpiAllReduce(ginvl, ginv, mpiCommWorld, mpiSUM);
       qm /= ginv; // rescale direct mode
       qma /= conj(ginv); // rescale adjoint mode
       if(mpirank == 0) {
-        Ra.resize(J.n+3); // Append 0 to residual vector on proc 0
-        Ra(Ra.n-3) = real(1.0/ginv);
-        Ra(Ra.n-2) = imag(1.0/ginv);
+        Ra.resize(J.n+(3-zerofreq)); // Append 0 to residual vector on proc 0
+        Ra(Ra.n-(3-zerofreq)) = real(1.0/ginv);
+        if (!zerofreq) Ra(Ra.n-2) = imag(1.0/ginv);
         Ra(Ra.n-1) = 0.0;
       }
       StepAdaptMonitors(Ra, qa, qap, yqP, yqP0);
@@ -161,7 +161,7 @@ complex alpha0, beta0;
       deltap = delta;
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
-        lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
+        lambda1 = real(qa(qa.n-(3-zerofreq))); // Extract parameter value from state vector on proc 0
         omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
         lambda2 = real(qa(qa.n-1)); // Extract parameter value from state vector on proc 0
       }
@@ -193,7 +193,9 @@ complex alpha0, beta0;
       Hl2 /= eps2;
       ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
       temp1.im = 0.0;
-      matrix<complex> tempPms = [[temp1, 0]]; // dense array to sparse matrix
+      matrix<complex> tempPms;
+      if(zerofreq) tempPms = [[temp1]];
+      else tempPms = [[temp1, 0]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       sym = 0;
       H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
@@ -201,10 +203,11 @@ complex alpha0, beta0;
       MatMultHermitianTranspose(H, qma, temp1); // gqr,i
       if(!zerofreq) temp2.re = -temp1.im;
       temp1.im = 0.0;
-      tempPms = [[temp1, temp2]]; // dense array to sparse matrix
+      if(zerofreq) tempPms = [[temp1]];
+      else tempPms = [[temp1, temp2]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       complex gl1 = J(uma[], Hl1);
-      if(zerofreq) tempPms = [[real(gl1), 0], [0, 1.0]];
+      if(zerofreq) tempPms = [[real(gl1)]];
       else {
         bm = vM(0, XMh, tgv = -10);
         complex gw = J(uma[], bm);
@@ -215,8 +218,8 @@ complex alpha0, beta0;
       yqP(0:J.n-1) = temp1;
       complex gl2 = J(uma[], Hl2);
       if(mpirank == 0) {
-        yqP(yqP.n-2) = real(gl2);
-        yqP(yqP.n-1) = zerofreq ? 0.0 : imag(gl2);
+        yqP(yqP.n-(2-zerofreq)) = real(gl2);
+        if(!zerofreq) yqP(yqP.n-1) = imag(gl2);
       }
       tempPms = [[yqP]]; // dense array to sparse matrix
       ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
@@ -237,9 +240,9 @@ set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsp
 func PetscScalar[int] blockSchur(PetscScalar[int]& in) {
   PetscScalar[int] R1 = in(0:Ja.n-1), out;
   KSPSolve(Ja, R1, out);
-  PetscScalar yqyq = (yqP'*yqP), yqdq = (yqP'*out);
-  mpiAllReduce(yqyq, yqyq, mpiCommWorld, mpiSUM);
-  mpiAllReduce(yqdq, yqdq, mpiCommWorld, mpiSUM);
+  PetscScalar yqyq, yqyql = (yqP'*yqP), yqdq, yqdql = (yqP'*out);
+  mpiAllReduce(yqyql, yqyq, mpiCommWorld, mpiSUM);
+  mpiAllReduce(yqdql, yqdq, mpiCommWorld, mpiSUM);
   PetscScalar dlambda = yqdq/(1.0 + yqyq);
   out -= dlambda*yqP;
   if (mpirank == 0) {
@@ -257,8 +260,8 @@ ChangeNumbering(J, uma[], qma);
 ChangeNumbering(J, uma[], qma, inverse = true);
 if(mpirank == 0) {
   qa.resize(Jaa.n);
-  qa(qa.n-3) = lambda1;
-  qa(qa.n-2) = omega;
+  qa(qa.n-(3-zerofreq)) = lambda1;
+  if(!zerofreq) qa(qa.n-2) = omega;
   qa(qa.n-1) = lambda2;
 }
 {
@@ -286,7 +289,9 @@ if(mpirank == 0) {
   Hl2 /= eps2;
   ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
   temp1.im = 0.0;
-  matrix<complex> tempPms = [[temp1, 0]]; // dense array to sparse matrix
+  matrix<complex> tempPms;
+  if(zerofreq) tempPms = [[temp1]];
+  else tempPms = [[temp1, 0]]; // dense array to sparse matrix
   ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
   sym = 0;
   H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
@@ -294,10 +299,11 @@ if(mpirank == 0) {
   MatMultHermitianTranspose(H, qma, temp1); // gqr,i
   if(!zerofreq) temp2.re = -temp1.im;
   temp1.im = 0.0;
-  tempPms = [[temp1, temp2]]; // dense array to sparse matrix
+  if(zerofreq) tempPms = [[temp1]];
+  else tempPms = [[temp1, temp2]]; // dense array to sparse matrix
   ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
   complex gl1 = J(uma[], Hl1);
-  if (zerofreq) tempPms = [[real(gl1), 0], [0, 1.0]];
+  if (zerofreq) tempPms = [[real(gl1)]];
   else {
     bm = vM(0, XMh, tgv = -10);
     complex gw = J(uma[], bm);
@@ -308,8 +314,8 @@ if(mpirank == 0) {
   yqP(0:J.n-1) = temp1;
   complex gl2 = J(uma[], Hl2);
   if (mpirank == 0) {
-    yqP(yqP.n-2) = real(gl2);
-    yqP(yqP.n-1) = zerofreq ? 0.0 : imag(gl2);
+    yqP(yqP.n-(2-zerofreq)) = real(gl2);
+    if(!zerofreq) yqP(yqP.n-1) = imag(gl2);
   }
   tempPms = [[yqP]]; // dense array to sparse matrix
   ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
@@ -334,13 +340,13 @@ if(mpirank == 0) {
 }
 while (!stopflag){
   complex[int] qa0 = qa;
-  real h = real(yqP'*yqP);
-  mpiAllReduce(h, h, mpiCommWorld, mpiSUM);
+  real h, hl = real(yqP'*yqP);
+  mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
   h = h0/sqrt(h + 1.0);
   qa(0:Ja.n-1) -= (h*yqP);
   if (mpirank == 0) {
     qa(qa.n-1) += h;
-    lambda1 = real(qa(qa.n-3));
+    lambda1 = real(qa(qa.n-(3-zerofreq)));
     omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
     lambda2 = real(qa(qa.n-1));
   }
@@ -370,7 +376,7 @@ while (!stopflag){
       meshout = meshroot + "_" + count + "." + meshext;
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
       if(mpirank == 0) {
-        lambda1 = real(qa(qa.n-3));
+        lambda1 = real(qa(qa.n-(3-zerofreq)));
         omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
         lambda2 = real(qa(qa.n-1));
       }
@@ -384,8 +390,8 @@ while (!stopflag){
       ChangeNumbering(J, yb[], yqP(0:J.n-1), inverse = true);
       complex ylambda1, yomega;
       if(mpirank == 0) {
-        ylambda1 = yqP(yqP.n-2);
-        yomega = yqP(yqP.n-1);
+        ylambda1 = yqP(yqP.n-(2-zerofreq));
+        if(!zerofreq) yomega = yqP(yqP.n-1);
       }
       XMhg defu(uG), defu(umrG), defu(umiG), defu(umarG), defu(umaiG), defu(yG), defu(tempu);
       tempu[](restu) = ub[].re; // populate local portion of global soln
@@ -456,8 +462,8 @@ while (!stopflag){
       um[].im = umiG[](restu);
       uma[].re = umarG[](restu);
       uma[].im = umaiG[](restu);
-      Mat<complex> Adapt0(J), Adapt1(J.n, mpirank == 0 ? 2 : 0), Adapt2(J.n, mpirank == 0 ? 2 : 0); // Initialize Mat objects for bordered matrix
-      Mat<complex> Adapt3(J.n + (mpirank == 0 ? 2 : 0), mpirank == 0 ? 1 : 0), Adapt4(J.n + (mpirank == 0 ? 2 : 0), mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
+      Mat<complex> Adapt0(J), Adapt1(J.n, mpirank == 0 ? (2-zerofreq) : 0), Adapt2(J.n, mpirank == 0 ? (2-zerofreq) : 0); // Initialize Mat objects for bordered matrix
+      Mat<complex> Adapt3(J.n + (mpirank == 0 ? (2-zerofreq) : 0), mpirank == 0 ? 1 : 0), Adapt4(J.n + (mpirank == 0 ? (2-zerofreq) : 0), mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
       H = Adapt0;
       JlPM = Adapt1;
       gqPM = Adapt2;
@@ -472,9 +478,9 @@ while (!stopflag){
       qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
       if(mpirank == 0) {
-        qa.resize(J.n+3);
-        qa(qa.n-3) = lambda1;
-        qa(qa.n-2) = omega;
+        qa.resize(J.n+(3-zerofreq));
+        qa(qa.n-(3-zerofreq)) = lambda1;
+        if(!zerofreq) qa(qa.n-2) = omega;
         qa(qa.n-1) = lambda2;
       }
       qm.resize(J.n);
@@ -495,8 +501,8 @@ while (!stopflag){
       ChangeNumbering(J, yb[], yqP);
       if (mpirank==0) {
         yqP.resize(Ja.n);
-        yqP(yqP.n-2) = ylambda1;
-        yqP(yqP.n-1) = yomega;
+        yqP(yqP.n-(2-zerofreq)) = ylambda1;
+        if(!zerofreq) yqP(yqP.n-1) = yomega;
       }
       yqP0.resize(Ja.n);
       yqP0 = yqP;
@@ -515,7 +521,7 @@ while (!stopflag){
     }
     ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
     if(mpirank == 0) {
-      lambda1 = real(qa(qa.n-3));
+      lambda1 = real(qa(qa.n-(3-zerofreq)));
       omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
       lambda2 = real(qa(qa.n-1));
     }

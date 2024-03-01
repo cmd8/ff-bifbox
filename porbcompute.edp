@@ -97,6 +97,7 @@ else if (fileext == "rslv") {
   uh(:, 0) = loadrslv(fileroot, meshin, fm, sym1, omega, gain);
 }
 else assert(false); // invalid input filetype
+if (zerofreq) omega = 0;
 Nh = max(1, Nh); // Nh must be at least 1, otherwise use basecompute.edp
 if (basefileext == "base") {
   ub[] = loadbase(basefileroot, meshin);
@@ -244,7 +245,7 @@ else JHBa = [[JHB, dwHB],[dwHB',0]];
       ChangeNumbering(J, ub[], qPETSc(0:J.n-1), inverse = true, exchange = true);
       for (int harm = 0; harm < Nh; harm++)
         ChangeNumbering([J, J], [uh(:, harm).re, uh(:, harm).im], qPETSc((1+2*harm)*J.n:(3+2*harm)*J.n-1), inverse = true, exchange = true);
-      if(mpirank == 0 && !zerofreq) omega = zerofreq ? 0.0 : qPETSc(qPETSc.n-1); 
+      if(mpirank == 0 && !zerofreq) omega = qPETSc(qPETSc.n-1); 
       broadcast(processor(0), omega);
       real[int] RPETSc(JHBa.n);
       ResidualHB(RPETSc, J, ub, uh, sym1, omega);
@@ -257,7 +258,7 @@ func int funcJHB(real[int]& qPETSc) {
     ChangeNumbering(J, ub[], qPETSc(0:J.n-1), inverse = true, exchange = true);
     for (int harm = 0; harm < Nh; harm++)
       ChangeNumbering([J, J], [uh(:, harm).re, uh(:, harm).im], qPETSc((1+2*harm)*J.n:(3+2*harm)*J.n-1), inverse = true, exchange = true);
-    if(mpirank == 0 && !zerofreq) omega = zerofreq ? 0.0 : qPETSc(qPETSc.n-1); 
+    if(mpirank == 0 && !zerofreq) omega = qPETSc(qPETSc.n-1); 
     broadcast(processor(0), omega);
     JacobianHB(JHB, J, ub, uh, sym1, omega);
     if (zerofreq) JHBa = JHB;
@@ -276,16 +277,16 @@ func int funcJHB(real[int]& qPETSc) {
     return 0;
 }
 // set up Mat parameters
-real[int] fields(JHB.n);
-fields = 1;
-if(blocks > 1+Nh) blocks = 1+Nh;
-for (int nh = 0; nh < Nh; nh++) fields((1+2*nh)*J.n:(3+2*nh)*J.n-1) = 1+max(0,blocks-nh-1);
+real[int] fieldlabels((1+2*Nh)*J.n);
+fieldlabels(0: J.n-1) = 1.0;
+blocks = min(blocks, 1+Nh);
+for (int nh = 0; nh < Nh; nh++) fieldlabels((1+2*nh)*J.n:(3+2*nh)*J.n-1) = 1.0 + max(0, blocks + nh - Nh);
 string HBKSPparams = KSPparams;
-if (blocks > 1) HBKSPparams = "-ksp_type gmres -ksp_pc_side right -pc_type fieldsplit -pc_fieldsplit_type symmetric_multiplicative -fieldsplit_pc_type lu -fieldsplit_pc_factor_mat_solver_type mumps -ksp_gmres_classicalgramschmidt -ksp_gmres_cgs_refinement_type refine_ifneeded ";
-if (zerofreq) set(JHBa, sparams = HBKSPparams);
+if (blocks > 1) HBKSPparams = "-ksp_type gmres -ksp_pc_side right -pc_type fieldsplit -pc_fieldsplit_type symmetric_multiplicative -fieldsplit_pc_type lu -fieldsplit_pc_factor_mat_solver_type mumps -ksp_gmres_classicalgramschmidt -ksp_gmres_cgs_refinement_type refine_ifneeded";
+if (zerofreq) set(JHBa, sparams = HBKSPparams, fields = fieldlabels);
 else {
-  set(JHB, sparams = "-prefix_push fieldsplit_0_ " + HBKSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = JHBa, fields = fields);
-  set(JHBa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self");
+  set(JHBa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
+  set(JHB, sparams = "-prefix_push fieldsplit_0_ " + HBKSPparams + " -prefix_pop", prefix = "fieldsplit_0_", fields = fieldlabels, parent = JHBa);
 }
 // initialize
 real[int] qHB(JHBa.n);
@@ -312,7 +313,7 @@ if(ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qHB(0:J.n-1), inverse = true);
   for (int harm = 0; harm < Nh; harm++)
     ChangeNumbering([J, J], [uh(:, harm).re, uh(:, harm).im], qHB((1+2*harm)*J.n:(3+2*harm)*J.n-1), inverse = true);
-  if(mpirank == 0 && !zerofreq) omega = zerofreq ? 0.0 : qHB(qHB.n-1); 
+  if(mpirank == 0 && !zerofreq) omega = qHB(qHB.n-1); 
   broadcast(processor(0), omega);
   saveporb(fileout, "", meshout, sym1, omega, Nh, true, true);
 }

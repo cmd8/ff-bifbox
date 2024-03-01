@@ -284,8 +284,8 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, p1P, q1m);
       KSPSolveHermitianTranspose(J, q1P, q1ma);
-      complex ginv = (q1P'*q1m);
-      mpiAllReduce(ginv, ginv, mpiCommWorld, mpiSUM);
+      complex ginv, ginvl = (q1P'*q1m);
+      mpiAllReduce(ginvl, ginv, mpiCommWorld, mpiSUM);
       q1m /= ginv; // rescale direct mode
       q1ma /= conj(ginv); // rescale adjoint mode
       iomega = 0.0;
@@ -296,8 +296,8 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       q2m.im = 0.0;
       KSPSolveTranspose(J, q2P, q2ma);
       q2ma.im = 0.0;
-      real hinv = real(q2P'*q2m);
-      mpiAllReduce(hinv, hinv, mpiCommWorld, mpiSUM);
+      real hinv, hinvl = real(q2P'*q2m);
+      mpiAllReduce(hinvl, hinv, mpiCommWorld, mpiSUM);
       q2m /= hinv; // rescale direct mode
       q2ma /= hinv; // rescale adjoint mode
       if(mpirank == 0) {

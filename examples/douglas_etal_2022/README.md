@@ -87,14 +87,14 @@ ff-mpirun -np 4 foldcontinue.edp -v 0 -dir $workdir -fi annularjet100_B.fold -fo
 ```
 
 ### Steady 3D dynamics
-8. Compute base state at Re = 500 with guess from 1/Re continuation
+8. Compute base state at Re ~ 480 with guess from 1/Re continuation
 ```
 ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi annularjet_10.base -fo annularjet480 -1/Re 0.002095
 ```
 
 9. Compute leading |m| = 1 eigenvalue
 ```
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi annularjet480.base -fo annularjet480m1 -so "" -eps_target 0.1-0i -sym -1 -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi annularjet480.base -fo annularjet480m1 -eps_target 0.1-0i -sym -1 -eps_pos_gen_non_hermitian
 ```
 
 10. Compute zero-Hopf bifurcation point

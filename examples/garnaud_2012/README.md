@@ -68,8 +68,8 @@ ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -so jet
 ```
 2. Compute forcing/response modes at St = [0.1, 0.48, 0.64, 0.95], save .vtu files for Paraview
 ```
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p1 -so "" -omega 0.314159 -pv 1
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p48 -so "" -omega 1.50796 -pv 1
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p64 -so "" -omega 2.01062 -pv 1
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p95 -so "" -omega 2.98451 -pv 1
+ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p1 -omega 0.314159 -pv 1
+ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p48 -omega 1.50796 -pv 1
+ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p64 -omega 2.01062 -pv 1
+ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p95 -omega 2.98451 -pv 1
 ```

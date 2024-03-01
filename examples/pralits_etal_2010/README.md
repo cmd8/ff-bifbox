@@ -84,13 +84,13 @@ NOTE: This will return a guess for the location of the cusp bifurcation as `cyli
 ### Hopf Bifurcations
 8. Compute direct eigenmode at Re = 50, alpha = 0
 ```
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi cylinder50.base -fo cylindermode1 -so "" -eps_target 0.1+0.8i -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi cylinder50.base -fo cylindermode1 -eps_target 0.1+0.8i -eps_pos_gen_non_hermitian
 ```
 
 9. Compute direct eigenmode at Re = 100, alpha = 4.8
 ```
 ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi cylinder100_70.base -fo cylinder4p8 -1/Re 0.01 -alpha 4.8
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi cylinder4p8.base -fo cylindermode2 -so "" -eps_target 0.1+0.2i -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi cylinder4p8.base -fo cylindermode2 -eps_target 0.1+0.2i -eps_pos_gen_non_hermitian
 ```
 
 10. Compute the critical point and critical base/direct/adjoint solution

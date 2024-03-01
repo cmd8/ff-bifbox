@@ -58,10 +58,10 @@ ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi 3Dwake_4.base -fo 3Dwake1
 ### Unsteady dynamics
 4. Compute leading eigenvalue at Re = 100. This is very slow unless massively parallelized.
 ```
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi 3Dwake100.base -fo 3Dwake -so "" -eps_target 0.1+0.6i -eps_nev 5 -eps_ncv 15 -eps_tol 1e-6 -recycle 5 -shiftPrecon 1 -st_ksp_converged_reason -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi 3Dwake100.base -fo 3Dwake -eps_target 0.1+0.6i -eps_nev 5 -eps_ncv 15 -eps_tol 1e-6 -recycle 5 -shiftPrecon 1 -st_ksp_converged_reason -eps_pos_gen_non_hermitian
 ```
 
 5. Compute optimal resolvent gain at Re = 50. This is very slow unless massively parallelized.
 ```
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi 3Dwake.base -fo 3Dwake -so "" -omega 1 -recycle 5 -shiftPrecon 1 -eps_tol 1e-6
+ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi 3Dwake.base -fo 3Dwake -omega 1 -recycle 5 -shiftPrecon 1 -eps_tol 1e-6
 ```

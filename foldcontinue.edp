@@ -118,8 +118,8 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, alpha0, beta0;
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
       KSPSolveTranspose(J, qP, qma);
-      real ginv = (qP'*qm);
-      mpiAllReduce(ginv, ginv, mpiCommWorld, mpiSUM);
+      real ginv, ginvl = (qP'*qm);
+      mpiAllReduce(ginvl, ginv, mpiCommWorld, mpiSUM);
       qm /= ginv;
       qma /= ginv;
       if(mpirank == 0) {
@@ -192,9 +192,9 @@ set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsp
 func PetscScalar[int] blockSchur(PetscScalar[int]& in) {
   PetscScalar[int] R1 = in(0:Ja.n-1), out;
   KSPSolve(Ja, R1, out);
-  PetscScalar yqyq = (yqP'*yqP), yqdq = (yqP'*out);
-  mpiAllReduce(yqyq, yqyq, mpiCommWorld, mpiSUM);
-  mpiAllReduce(yqdq, yqdq, mpiCommWorld, mpiSUM);
+  PetscScalar yqyq, yqyql = (yqP'*yqP), yqdq, yqdql = (yqP'*out);
+  mpiAllReduce(yqyql, yqyq, mpiCommWorld, mpiSUM);
+  mpiAllReduce(yqdql, yqdq, mpiCommWorld, mpiSUM);
   PetscScalar dlambda = yqdq/(1.0 + yqyq);
   out -= dlambda*yqP;
   if (mpirank == 0) {
@@ -262,8 +262,8 @@ if(mpirank == 0) {
 }
 while (!stopflag){
   real[int] qa0 = qa;
-  real h = (yqP'*yqP);
-  mpiAllReduce(h, h, mpiCommWorld, mpiSUM);
+  real h, hl = (yqP'*yqP);
+  mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
   h = h0/sqrt(h + 1.0);
   qa(0:Ja.n-1) -= (h*yqP);
   if (mpirank == 0) {

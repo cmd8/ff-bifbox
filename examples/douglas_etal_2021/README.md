@@ -91,8 +91,8 @@ ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi swirljet100_10.base -fo s
 
 9. Compute leading |m| = 1 and |m| = 2 eigenvalues
 ```
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m1 -so "" -eps_target 0.1-0.8i -sym -1 -eps_pos_gen_non_hermitian
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m2 -so "" -eps_target 0.1+0.4i -sym -2 -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m1 -eps_target 0.1-0.8i -sym -1 -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi swirljet1p8.base -fo swirljet1p8m2 -eps_target 0.1+0.4i -sym -2 -eps_pos_gen_non_hermitian
 ```
 
 10. Compute Hopf bifurcation points

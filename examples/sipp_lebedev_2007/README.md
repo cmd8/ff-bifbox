@@ -69,8 +69,8 @@ ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi cavity_16.base -fo cavity
 ### First & second order
 1. Compute leading direct eigenmode at Re = 50 (cylinder) and Re = 4000 (cavity)
 ```
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi cylinder50.base -fo cylinder50 -so "" -eps_target 0.1+0.8i -sym 1 -eps_pos_gen_non_hermitian
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi cavity4000.base -fo cavity4000 -so "" -eps_target 0.1+8.0i -sym 0 -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi cylinder50.base -fo cylinder50 -eps_target 0.1+0.8i -sym 1 -eps_pos_gen_non_hermitian
+ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi cavity4000.base -fo cavity4000 -eps_target 0.1+8.0i -sym 0 -eps_pos_gen_non_hermitian
 ```
 NOTE: Here, the `-sym` argument specifies the asymmetric (1) or symmetric (0) reflective symmetry across the boundary `BCaxis`.
 
