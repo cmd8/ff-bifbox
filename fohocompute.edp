@@ -259,14 +259,14 @@ else { // if output meshfile is given, adapt mesh
 complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // Build bordered block matrix from only Mat components
-Mat<complex> JlPM(J.n, mpirank == 0 ? 3 : 0), gqPM(J.n, mpirank == 0 ? 3 : 0), glPM(mpirank == 0 ? 3 : 0, mpirank == 0 ? 3 : 0); // Initialize Mat objects for bordered matrix
+Mat<complex> JlPM(J.n, mpirank == 0 ? (3-zerofreq) : 0), gqPM(J.n, mpirank == 0 ? (3-zerofreq) : 0), glPM(mpirank == 0 ? (3-zerofreq) : 0, mpirank == 0 ? (3-zerofreq) : 0); // Initialize Mat objects for bordered matrix
 Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J.n), q2P(J.n);
 // FUNCTIONS
   func complex[int] funcRa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
-        lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
+        lambda1 = real(qa(qa.n-(3-zerofreq))); // Extract parameter value from state vector on proc 0
         omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
         lambda2 = real(qa(qa.n-1)); // Extract parameter value from state vector on proc 0
       }
@@ -301,9 +301,9 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       q2m /= hinv; // rescale direct mode
       q2ma /= hinv; // rescale adjoint mode
       if(mpirank == 0) {
-        Ra.resize(Ra.n+3); // Append 0 to residual vector on proc 0
-        Ra(Ra.n-3) = real(1.0/ginv);
-        Ra(Ra.n-2) = zerofreq ? 0.0 : imag(1.0/ginv);
+        Ra.resize(Ra.n+(3-zerofreq)); // Append 0 to residual vector on proc 0
+        Ra(Ra.n-(3-zerofreq)) = real(1.0/ginv);
+        if(!zerofreq) Ra(Ra.n-2) = imag(1.0/ginv);
         Ra(Ra.n-1) = 1.0/hinv;
       }
       return Ra;
@@ -312,7 +312,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
   func int funcJa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
-        lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
+        lambda1 = real(qa(qa.n-(3-zerofreq))); // Extract parameter value from state vector on proc 0
         omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
         lambda2 = real(qa(qa.n-1)); // Extract parameter value from state vector on proc 0
       }
@@ -372,28 +372,26 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       Kl2 /= eps2;
       ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
       ChangeNumbering(J, Jl2, temp3); // FreeFEM to PETSc
-      matrix<complex> tempPms = [[temp1, 0, temp3]]; // dense array to sparse matrix
+      matrix<complex> tempPms;
+      if (zerofreq) tempPms = [[temp1, temp3]]; // dense array to sparse matrix
+      else tempPms = [[temp1, 0, temp3]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      complex gw, gl1 = J(uma[], Hl1);
+      complex gl1 = J(uma[], Hl1);
       complex gl2 = J(uma[], Hl2);
       real hl1 = real(J(um3[], Kl1));
       real hl2 = real(J(um3[], Kl2));
-      if (zerofreq) {
-        gw = 1.0;
-        gl1 = real(gl1);
-        gl2 = real(gl2);
-      }
+      if (zerofreq) tempPms = [[ real(gl1), real(gl2) ], [ hl1, hl2 ]];
       else {
         sym = sym1;
         ik = 1i*real(sym1);
         iomega = 1i*omega;
         ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
         R = vM(0, XMh, tgv = -10);
-        gw = J(uma[], R);
+        complex gw = J(uma[], R);
+        tempPms = [[ real(gl1), -imag(gw), real(gl2) ],
+                   [ imag(gl1),  real(gw), imag(gl2) ],
+                   [ hl1      ,  0       , hl2       ]];
       }
-      tempPms = [[ real(gl1), -imag(gw), real(gl2) ],
-                 [ imag(gl1),  real(gw), imag(gl2) ],
-                 [ hl1      ,  0       , hl2       ]];
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       sym = 0;
       ik = 1i*real(sym1);
@@ -409,7 +407,8 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       if(!zerofreq) temp2.re = -temp1.im;
       temp1.im = 0.0;
       temp3.im = 0.0;
-      tempPms = [[temp1, temp2, temp3]]; // dense array to sparse matrix
+      if (zerofreq) tempPms = [[temp1, temp3]];
+      else tempPms = [[temp1, temp2, temp3]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       return 0;
   }
@@ -421,9 +420,9 @@ set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type sch
 complex[int] qa;
 ChangeNumbering(J, ub[], qa);
 if(mpirank == 0) {
-  qa.resize(qa.n+3);
-  qa(qa.n-3) = lambda1;
-  qa(qa.n-2) = omega;
+  qa.resize(qa.n+(3-zerofreq));
+  qa(qa.n-(3-zerofreq)) = lambda1;
+  if(!zerofreq) qa(qa.n-2) = omega;
   qa(qa.n-1) = lambda2;
 }
 {
@@ -481,7 +480,7 @@ SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
 if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
   if(mpirank == 0) {
-    lambda1 = real(qa(qa.n-3)); // Extract parameter value from state vector on proc 0
+    lambda1 = real(qa(qa.n-(3-zerofreq))); // Extract parameter value from state vector on proc 0
     omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
     lambda2 = real(qa(qa.n-1)); // Extract parameter value from state vector on proc 0
   }
