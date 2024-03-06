@@ -41,7 +41,7 @@ real eps = getARGV("-eps", 1.0e-7);
 real eps2 = getARGV("-eps2", 1.0e-7);
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
-int sym;
+real sym;
 real omega;
 complex[string] alpha;
 complex beta;
@@ -79,7 +79,7 @@ if (count == 0){
     ub[].re = loadfoho(fileroot, meshin, um[], uma[], q2m, q2ma, sym, omega, alpha, alpha2, beta, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
   }
   else if(fileext == "hoho") {
-    int symN;
+    real symN;
     real omegaN;
     complex[string] alphaN;
     complex betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
@@ -103,7 +103,8 @@ real paramdiff2 = lambda2 - param2target;
 // Create distributed Mat
 Mat<complex> J;
 createMatu(Th, J, Pk);
-complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
+complex ik, ik2 = 0.0, ik3 = 0.0;
+complex iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 bool adapt = false;
 if(meshout != "") adapt = true;  // if output meshfile is given, adapt mesh
@@ -134,7 +135,7 @@ complex alpha0, beta0;
       complex[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       iomega = 1i*omega;
-      ik = 1i*real(sym);
+      ik = 1i*sym;
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
       KSPSolveHermitianTranspose(J, qP, qma);
@@ -171,7 +172,7 @@ complex alpha0, beta0;
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
       int mm = sym;
-      ik = 1i*real(sym);
+      ik = 1i*sym;
       iomega = 1i*omega;
       updatelambda(param, lambda1 + eps);
       updatelambda(param2, lambda2);
@@ -266,7 +267,7 @@ if(mpirank == 0) {
 }
 {
   int mm = sym;
-  ik = 1i*real(sym);
+  ik = 1i*sym;
   iomega = 1i*omega;
   updatelambda(param, lambda1 + eps);
   updatelambda(param2, lambda2);
@@ -592,7 +593,7 @@ while (!stopflag){
       // 3rd-order
       //  A: fundamental modification due to parameter change and quadratic interaction of fundamental with 2nd order modification A.
       sym = mm;
-      ik = 1i*real(sym);
+      ik = 1i*sym;
       ik2 = 0.0;
       iomega = 1i*omega;
       iomega2 = 0.0;
@@ -612,9 +613,9 @@ while (!stopflag){
         }
       }
       //  B: fundamental modification due to cubic self-interaction of fundamental
-      ik = 1i*real(sym);
-      ik2 = 1i*real(sym);
-      ik3 = -1i*real(sym);
+      ik = 1i*sym;
+      ik2 = 1i*sym;
+      ik3 = -1i*sym;
       iomega = 1i*omega;
       iomega2 = 1i*omega;
       iomega3 = -1i*omega;
@@ -623,7 +624,7 @@ while (!stopflag){
       temp = vT(0, XMh, tgv = -10);
       temp *= 0.5; //3.0/6.0
       //  C: fundamental modification due to quadratic interaction of fundamental with 2nd order modification B
-      ik = 1i*real(sym);
+      ik = 1i*sym;
       ik2 = 0.0;
       iomega = 1i*omega;
       iomega2 = 0.0;
@@ -631,8 +632,8 @@ while (!stopflag){
       temp1 = vH(0, XMh, tgv = -10);
       temp += temp1;
       //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
-      ik = -1i*real(sym);
-      ik2 = 2i*real(sym);
+      ik = -1i*sym;
+      ik2 = 2i*sym;
       iomega = -1i*omega;
       iomega2 = 2i*omega;
       um[] = conj(um[]);

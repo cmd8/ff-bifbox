@@ -44,7 +44,7 @@ if (mpirank==0){
   else if (fileext == "mode"){
     XMhg<complex> defu(um);
     restu = 0:XMhg.ndof-1;
-    int sym;
+    real sym;
     complex eigenvalue;
     um[] = loadmode(fileroot, meshin, sym, eigenvalue);
     cout << "  Saving '" + fileout + "_mode.vtu' in '" + workdir + "'." << endl;
@@ -69,7 +69,7 @@ if (mpirank==0){
     XMhg<complex> defu(um);
     restf = 0:Xhg.ndof-1;
     restu = 0:XMhg.ndof-1;
-    int sym;
+    real sym;
     real omega;
     real gain;
     um[] = loadrslv(fileroot, meshin, fm[], sym, omega, gain);
@@ -128,7 +128,7 @@ if (mpirank==0){
     XMhg<complex> defu(um), defu(uma);
     restu = 0:XMhg.ndof-1;
     real omega;
-    int sym;
+    real sym;
     complex[string] alpha;
     complex beta;
     ub[] = loadhopf(fileroot, meshin, um[], uma[], sym, omega, alpha, beta);
@@ -162,7 +162,7 @@ if (mpirank==0){
     XMhg defu(ub), defu(u2m), defu(u2ma);
     XMhg<complex> defu(u1m), defu(u1ma);
     restu = 0:XMhg.ndof-1;
-    int sym;
+    real sym;
     real omega;
     complex[string] alpha1;
     real[string] alpha2;
@@ -210,7 +210,7 @@ if (mpirank==0){
     XMhg<complex> defu(u1m), defu(u1ma), defu(u2m), defu(u2ma);
     restu = 0:XMhg.ndof-1;
     real omega1, omega2;
-    int sym1, sym2;
+    real sym1, sym2;
     complex[string] alpha1, alpha2;
     complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
     ub[] = loadhoho(fileroot, meshin, u1m[], u1ma[], u2m[], u2ma[], sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
@@ -274,7 +274,8 @@ if (mpirank==0){
     XMhg defu(ub);
     XMhg<complex> defu(um);
     restu = 0:XMhg.ndof-1;
-    int sym, Nh=0;
+    real sym;
+    int Nh=0;
     real omega;
     complex[int, int] qh(ub[].n, Nh);
     ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);

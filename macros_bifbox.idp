@@ -1072,7 +1072,7 @@ func string readbasename(string inputfilename) {
   }
   return basefilename;
 }
-func complex readmodeeval(string inputfilename, int & sym) {
+func complex readmodeeval(string inputfilename, real & sym) {
   complex eigenvalue;
   string dummy;
   { ifstream file(inputfilename);
@@ -1183,7 +1183,7 @@ func real[int] loadfold(string inputfilename, string meshfilename, real[int] & q
       return qlocal;
     }
 
-func real[int] loadhopf(string inputfilename, string meshfilename, complex[int] & qmlocal, complex[int] & qmalocal, int & sym, real & omega, complex[string] & alpha, complex & beta) {
+func real[int] loadhopf(string inputfilename, string meshfilename, complex[int] & qmlocal, complex[int] & qmalocal, real & sym, real & omega, complex[string] & alpha, complex & beta) {
       XMhg defu(ubg);
       XMhg<complex> defu(umg), defu(umag);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".hopf' on '" + meshfilename + "' from '" + workdir + "'." << endl;
@@ -1243,7 +1243,7 @@ func real[int] loadhopf(string inputfilename, string meshfilename, complex[int] 
       return qlocal;
     }
 
-func complex[int] loadmode(string inputfilename, string meshfilename, int & sym, complex & eigenvalue) {
+func complex[int] loadmode(string inputfilename, string meshfilename, real & sym, complex & eigenvalue) {
       XMhg<complex> defu(umg);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".mode' over '";
       string filemesh, basefilename, dummy;
@@ -1276,7 +1276,7 @@ func complex[int] loadmode(string inputfilename, string meshfilename, int & sym,
       return qlocal;
     }
 
-func complex[int] loadrslv(string inputfilename, string meshfilename, complex[int] & fmlocal, int & sym, real & omega, real & gain) {
+func complex[int] loadrslv(string inputfilename, string meshfilename, complex[int] & fmlocal, real & sym, real & omega, real & gain) {
       Xhg<complex> deff(fmg);
       XMhg<complex> defu(umg);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".rslv' over '";
@@ -1353,7 +1353,7 @@ func real[int] loadtdns(string inputfilename, string meshfilename, real& time) {
     }
 
 func real[int] loadhoho(string inputfilename, string meshfilename, complex[int] & q1mlocal, complex[int] & q1malocal, complex[int] & q2mlocal, complex[int] & q2malocal,
-                        int & sym1, int & sym2, real & omega1, real & omega2, complex[string] & alpha1, complex[string] & alpha2, complex & beta1, complex & beta2, complex & gamma1, complex & gamma2, complex & gamma12, complex & gamma13, complex & gamma22, complex & gamma23) {
+                        real & sym1, real & sym2, real & omega1, real & omega2, complex[string] & alpha1, complex[string] & alpha2, complex & beta1, complex & beta2, complex & gamma1, complex & gamma2, complex & gamma12, complex & gamma13, complex & gamma22, complex & gamma23) {
       XMhg defu(ubg);
       XMhg<complex> defu(u1mg), defu(u1mag), defu(u2mg), defu(u2mag);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".hoho' on '" + meshfilename + "' from '" + workdir + "'." << endl;
@@ -1423,7 +1423,7 @@ func real[int] loadhoho(string inputfilename, string meshfilename, complex[int] 
     }
 
 func real[int] loadfoho(string inputfilename, string meshfilename, complex[int] & q1mlocal, complex[int] & q1malocal, real[int] & q2mlocal, real[int] & q2malocal,
-                        int & sym, real & omega, complex[string] & alpha1, real[string] & alpha2, complex & beta1, real & beta22, real & beta23, complex & gamma12, complex & gamma13, real & gamma22, real & gamma23) {
+                        real & sym, real & omega, complex[string] & alpha1, real[string] & alpha2, complex & beta1, real & beta22, real & beta23, complex & gamma12, complex & gamma13, real & gamma22, real & gamma23) {
       XMhg defu(ubg), defu(u2mg), defu(u2mag);
       XMhg<complex> defu(u1mg), defu(u1mag);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".foho' on '" + meshfilename + "' from '" + workdir + "'." << endl;
@@ -1492,7 +1492,7 @@ func real[int] loadfoho(string inputfilename, string meshfilename, complex[int] 
       return qlocal;
     }
 
-func real[int] loadporb(string inputfilename, string meshfilename, complex[int,int] & qhlocal, int & sym, real & omega, int & Nh) {
+func real[int] loadporb(string inputfilename, string meshfilename, complex[int,int] & qhlocal, real & sym, real & omega, int & Nh) {
       XMhg defu(ubg);
       XMhg<complex> defu(umg);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".porb' on '" + meshfilename + "' from '" + workdir + "'." << endl;

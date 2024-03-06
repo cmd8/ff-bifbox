@@ -44,7 +44,7 @@ string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
 real eps2 = getARGV("-eps2", 1e-7);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
-int sym, sym1;
+real sym, sym1;
 real omega, beta22, beta23, gamma22, gamma23;
 complex[string] alpha1;
 real[string] alpha2;
@@ -72,7 +72,7 @@ if (fileext2 == "fold") {
   ub[].re = loadfold(fileroot2, meshin, um2[].re, um3[].re, alpha2, beta22);
 }
 else if(fileext2 == "foho") {
-  int sym;
+  real sym;
   real omega;
   complex[string] alpha1;
   complex beta1, gamma1;
@@ -90,7 +90,7 @@ else if (fileext1 == "foho" && fileext2 != "") {
   ub[].re = loadfoho(fileroot1, meshin, um[], uma[], q2m, q2ma, sym1, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if (fileext1 == "hoho") {
-  int symN;
+  real symN;
   real omegaN;
   complex[string] alphaN;
   complex betaN, gammaN, gamma12, gammaM, gamma22, gamma23;
@@ -132,7 +132,7 @@ else if(basefileext == "fold") {
   ub[].re = loadfold(basefileroot, meshin, qm, qma, alpha, beta);
 }
 else if(basefileext == "hopf") {
-  int sym;
+  real sym;
   real omega;
   complex[string] alpha;
   complex beta;
@@ -140,7 +140,7 @@ else if(basefileext == "hopf") {
   ub[].re = loadhopf(basefileroot, meshin, qm, qma, sym, omega, alpha, beta);
 }
 else if(basefileext == "foho") {
-  int sym;
+  real sym;
   real omega;
   complex[string] alpha1;
   complex beta1, gamma12, gamma13;
@@ -151,7 +151,7 @@ else if(basefileext == "foho") {
   ub[].re = loadfoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(basefileext == "hoho") {
-  int sym1, sym2;
+  real sym1, sym2;
   real omega1, omega2;
   complex[string] alpha1, alpha2;
   complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
@@ -163,7 +163,8 @@ else if(basefileext == "tdns") {
   ub[].re = loadtdns(basefileroot, meshin, time);
 }
 else if(basefileext == "porb") {
-  int sym1, Nh=1;
+  real sym1;
+  int Nh=1;
   real omega;
   complex[int,int] qh(um[].n, Nh);
   ub[].re = loadporb(basefileroot, meshin, qh, sym1, omega, Nh);
@@ -256,7 +257,8 @@ else { // if output meshfile is given, adapt mesh
   um2[].re = um2rG[](restu);
   um3[].re = um3rG[](restu);
 }
-complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
+complex ik, ik2 = 0.0, ik3 = 0.0;
+complex iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // Build bordered block matrix from only Mat components
 Mat<complex> JlPM(J.n, mpirank == 0 ? (3-zerofreq) : 0), gqPM(J.n, mpirank == 0 ? (3-zerofreq) : 0), glPM(mpirank == 0 ? (3-zerofreq) : 0, mpirank == 0 ? (3-zerofreq) : 0); // Initialize Mat objects for bordered matrix
@@ -654,7 +656,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
     ChangeNumbering(J, uma[], q1ma, inverse = true);
     sym = sym1;
-    ik = 1i*real(sym);
+    ik = 1i*sym;
     ik2 = 0.0;
     iomega = 1i*omega;
     iomega2 = 0.0;

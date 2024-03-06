@@ -41,7 +41,7 @@ int Nh = getARGV("-Nh", 0); //if 0 will try to get from file, otherwise fail
 int blocks = getARGV("-blocks", 1); //if blocks = 1, use monolithic LU; if blocks = N w/ 2 <= N <= Nh+1, use block preconditioner with N blocks
 int refactor = getARGV("-refact", snesmaxit);
 real paramtarget = getARGV("-paramtarget",1.0);
-int sym, sym1;
+real sym, sym1;
 real omega;
 bool stopflag = false;
 bool forcesave = false;
@@ -90,7 +90,7 @@ if(count == 0) {
     uh(:, 0) = um[];
   }
   else if(fileext == "hoho") {
-    int symN;
+    real symN;
     real omegaN;
     complex[string] alpha, alphaN;
     complex beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
@@ -114,7 +114,8 @@ real paramdiff = lambda - paramtarget;
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
-complex ik, ik2, ik3, iomega, iomega2, iomega3;
+complex ik, ik2, ik3;
+complex iomega, iomega2, iomega3;
 include "eqns.idp"
 bool adapt = false;
 if(meshout != "")  adapt = true;  // if output meshfile is given, adapt mesh

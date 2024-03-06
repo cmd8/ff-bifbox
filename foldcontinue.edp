@@ -67,7 +67,7 @@ if (count == 0){
     ub[] = loadfold(fileroot, meshin, um[], uma[], alpha, beta);
   }
   else if(fileext == "foho") {
-    int sym;
+    real sym;
     real omega, gamma22, gamma23, beta23;
     complex[string] alpha1;
     complex beta1, gamma12, gamma13;
@@ -86,8 +86,9 @@ real paramdiff2 = lambda2 - param2target;
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
-int sym = 0;
-real ik = 0.0, ik2 = 0.0, ik3 = 0.0, iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
+real sym = 0;
+real ik = 0.0, ik2 = 0.0, ik3 = 0.0;
+real iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 bool adapt = false;
 if(meshout != "") adapt = true;  // if output meshfile is given, adapt mesh

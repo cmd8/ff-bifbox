@@ -122,7 +122,7 @@ string param = getARGV("-param", "");
 string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
-int sym, sym1;
+real sym, sym1;
 real omega;
 complex[string] alpha;
 complex beta;
@@ -152,7 +152,7 @@ else if (fileext == "foho") {
   ub[].re = loadfoho(fileroot, meshin, um[], uma[], q2m, q2ma, sym1, omega, alpha, alpha2, beta, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(fileext == "hoho") {
-  int symN;
+  real symN;
   real omegaN;
   complex[string] alphaN;
   complex betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
@@ -191,7 +191,7 @@ else if(basefileext == "fold") {
   ub[].re = loadfold(basefileroot, meshin, qm, qma, alpha, beta);
 }
 else if(basefileext == "hopf") {
-  int sym;
+  real sym;
   real omega;
   complex[string] alpha;
   complex beta;
@@ -199,7 +199,7 @@ else if(basefileext == "hopf") {
   ub[].re = loadhopf(basefileroot, meshin, qm, qma, sym, omega, alpha, beta);
 }
 else if(basefileext == "foho") {
-  int sym;
+  real sym;
   real omega;
   complex[string] alpha1;
   complex beta1, gamma12, gamma13;
@@ -210,7 +210,7 @@ else if(basefileext == "foho") {
   ub[].re = loadfoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(basefileext == "hoho") {
-  int sym1, sym2;
+  real sym1, sym2;
   real omega1, omega2;
   complex[string] alpha1, alpha2;
   complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
@@ -222,7 +222,8 @@ else if(basefileext == "tdns") {
   ub[].re = loadtdns(basefileroot, meshin, time);
 }
 else if(basefileext == "porb") {
-  int sym1, Nh=1;
+  real sym1;
+  int Nh=1;
   real omega;
   complex[int, int] qh(um[].n, Nh);
   ub[].re = loadporb(basefileroot, meshin, qh, sym1, omega, Nh);
@@ -302,7 +303,8 @@ else { // if output meshfile is given, adapt mesh
   uma[].re = umarG[](restu);
   uma[].im = umaiG[](restu);
 }
-complex ik, ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
+complex ik, ik2 = 0.0, ik3 = 0.0;
+complex iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // Build bordered block matrix from only Mat components
 Mat<complex> JlPM(J.n, mpirank == 0 ? (2-zerofreq) : 0), gqPM(J.n, mpirank == 0 ? (2-zerofreq) : 0), glPM(mpirank == 0 ? (2-zerofreq) : 0, mpirank == 0 ? (2-zerofreq) : 0); // Initialize Mat objects for bordered matrix
@@ -323,7 +325,7 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       sym = sym1;
       iomega = 1i*omega;
-      ik = 1i*real(sym);
+      ik = 1i*sym;
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
       KSPSolveHermitianTranspose(J, qP, qma);
@@ -404,7 +406,7 @@ if(mpirank == 0) {
 }
 {
   sym = sym1;
-  ik = 1i*real(sym);
+  ik = 1i*sym;
   iomega = 1i*omega;
   complex[int] Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, um[], qm);
@@ -500,7 +502,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     // 3rd-order
     //  A: fundamental modification due to parameter change and quadratic interaction of fundamental with 2nd order modification A.
     sym = sym1;
-    ik = 1i*real(sym);
+    ik = 1i*sym;
     ik2 = 0.0;
     iomega = 1i*omega;
     iomega2 = 0.0;
@@ -520,9 +522,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       }
     }
     //  B: fundamental modification due to cubic self-interaction of fundamental
-    ik = 1i*real(sym);
-    ik2 = 1i*real(sym);
-    ik3 = -1i*real(sym);
+    ik = 1i*sym;
+    ik2 = 1i*sym;
+    ik3 = -1i*sym;
     iomega = 1i*omega;
     iomega2 = 1i*omega;
     iomega3 = -1i*omega;
@@ -531,7 +533,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     temp = vT(0, XMh, tgv = -10);
     temp *= 0.5; //3.0/6.0
     //  C: fundamental modification due to quadratic interaction of fundamental with 2nd order modification B
-    ik = 1i*real(sym);
+    ik = 1i*sym;
     ik2 = 0.0;
     iomega = 1i*omega;
     iomega2 = 0.0;
@@ -539,8 +541,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     temp1 = vH(0, XMh, tgv = -10);
     temp += temp1;
     //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
-    ik = -1i*real(sym);
-    ik2 = 2i*real(sym);
+    ik = -1i*sym;
+    ik2 = 2i*sym;
     iomega = -1i*omega;
     iomega2 = 2i*omega;
     um[] = conj(um[]);

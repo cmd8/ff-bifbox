@@ -21,7 +21,7 @@ string meshin = getARGV("-mi", ""); // input meshfile
 string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", "");
 string gainout = getARGV("-so", fileout);
-int sym = getARGV("-sym", 0);
+real sym = getARGV("-sym", 0);
 real omega = getARGV("-omega", 1.0);
 int nomega = getARGV("-nomega", 1);
 real omegaf = getARGV("-omegaf", 1.0);
@@ -56,7 +56,7 @@ else if(fileext == "fold") {
   ub[] = loadfold(fileroot, meshin, qm, qma, alpha, beta);
 }
 else if(fileext == "hopf") {
-  int sym;
+  real sym;
   real omega;
   complex[string] alpha;
   complex beta;
@@ -64,7 +64,7 @@ else if(fileext == "hopf") {
   ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega, alpha, beta);
 }
 else if(fileext == "foho") {
-  int sym;
+  real sym;
   real omega;
   complex[string] alpha1;
   real[string] alpha2;
@@ -75,7 +75,7 @@ else if(fileext == "foho") {
   ub[] = loadfoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(fileext == "hoho") {
-  int sym1, sym2;
+  real sym1, sym2;
   real omega1, omega2;
   complex[string] alpha1, alpha2;
   complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
@@ -87,7 +87,8 @@ else if(fileext == "tdns") {
   ub[] = loadtdns(fileroot, meshin, time);
 }
 else if(fileext == "porb") {
-  int sym1, Nh=1;
+  real sym1;
+  int Nh=1;
   real omega;
   complex[int, int] qh(ub[].n, Nh);
   ub[] = loadporb(fileroot, meshin, qh, sym1, omega, Nh);
@@ -101,7 +102,8 @@ Mat<complex> J, Mf;
 createMatu(Th, J, Pk);
 Mat<complex> M(J);
 createMatf(Th, Mf, Pkf);
-complex ik = 1i*real(sym), ik2 = 0.0, ik3 = 0.0, iomega, iomega2 = 0.0, iomega3 = 0.0;
+complex ik = 1i*sym, ik2 = 0.0, ik3 = 0.0;
+complex iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // construct matrices
 M  = vMq(XMh, XMh); // Response Norm
