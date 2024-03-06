@@ -19,7 +19,7 @@
     + on(BCinflow, u = U - tanh(5.0*(1.0 - y)), u#y = U#y)
     + on(BCaxis, u#y = U#y)
   // EOM
-  macro HomBoundaryConditions(sym, u)
+  macro HomBoundaryConditions(u)
     on(BCinflow, BCwall, u = 0, u#y = 0)
     + on(BCaxis, u#y = 0)
   // EOM
@@ -43,13 +43,13 @@
       + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - div(-ik, v)*ump + visc(-ik, v , ik, um )*params["1/Re"]
       - vp*div(ik, um)
     )
-    + HomBoundaryConditions(sym, dum);
+    + HomBoundaryConditions(dum);
 
 // MASS OPERATOR
   varf vM(defu(dum), defu(v))
     = int2d(Th)( vdotu(v, dum) )
     + int2d(Th)( vdotu(v, um) )
-    + HomBoundaryConditions(sym, dum);
+    + HomBoundaryConditions(dum);
 
 // FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
   varf vMq(defu(dum), defu(v))
@@ -69,8 +69,8 @@
     + int2d(Th)(
       ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um)
     )
-    + HomBoundaryConditions(sym, dum);
+    + HomBoundaryConditions(dum);
 
 // TRESSIAN OPERATOR
   varf vT(defu(dum), defu(v))
-    = HomBoundaryConditions(sym, dum);
+    = HomBoundaryConditions(dum);

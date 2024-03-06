@@ -58,7 +58,7 @@ func string listparams(string[int] & paramnames, real[string] & params){
   }
   return stringout;
 }
-// EOM
+
 macro createMatu(th,A,P){
     NewMacro def(u)defu(u) EndMacro
     NewMacro init(i)initu(i) EndMacro

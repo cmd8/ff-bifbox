@@ -27,11 +27,11 @@
     + on(BCslip, u#y = U#y, u#z = U#z)
     + on(BCaxis, u#y = U#y, u#z = U#z)
   // EOM
-  macro HomBoundaryConditions(sym, u)
+  macro HomBoundaryConditions(u)
     on(BCinflow, u = 0, u#y = 0, u#z = 0)
     + on(BCslip, u#y = 0, u#z = 0)
-    + on((abs(sym) != 1)*BCaxis, u#y = 0, u#z = 0)
-    + on((abs(sym) >  0)*BCaxis, u = 0)
+    + on((abs(int(sym)) != 1)*BCaxis, u#y = 0, u#z = 0)
+    + on((abs(int(sym)) >  0)*BCaxis, u = 0)
   // EOM
 // RESIDUAL OPERATOR
   varf vR(defu(dum), defu(v))
@@ -53,13 +53,13 @@
       + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - div(-ik, v)*ump + visc(-ik, v , ik, um )/Retilde
       - vp*div(ik, um)
     )
-    + HomBoundaryConditions(sym, dum);
+    + HomBoundaryConditions(dum);
 
 // MASS OPERATOR
   varf vM(defu(dum), defu(v))
     = int2d(Th)( vdotu(v, dum) )
     + int2d(Th)( vdotu(v, um) )
-    + HomBoundaryConditions(sym, dum);
+    + HomBoundaryConditions(dum);
 
 // FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
   varf vMq(defu(dum), defu(v))
@@ -79,8 +79,8 @@
     + int2d(Th)(
       ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um)
     )
-    + HomBoundaryConditions(sym, dum);
+    + HomBoundaryConditions(dum);
 
 // TRESSIAN OPERATOR
   varf vT(defu(dum), defu(v))
-    = HomBoundaryConditions(sym, dum);
+    = HomBoundaryConditions(dum);

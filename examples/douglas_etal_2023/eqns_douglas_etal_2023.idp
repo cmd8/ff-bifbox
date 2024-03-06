@@ -71,7 +71,7 @@
   + on(BCwall, BCpipe, u = U, u#y = U#y, u#z = U#z, u#T = U#T - 1.0 )
   + on(BCaxis, u#y = U#y, u#z = U#z)
   // EOM
-  macro HomBoundaryConditions(sym, u)
+  macro HomBoundaryConditions(u)
     on(BCinflow, u = 0, u#y = 0, u#z = 0, u#Y = 0, u#T = 0 )
   + on(BCwall, BCpipe, u = 0, u#y = 0, u#z = 0, u#T = 0 )
   + on((abs(int(sym)) != 1)*BCaxis, u#y = 0, u#z = 0 )
@@ -121,13 +121,13 @@ varf vJ(defu(dum), defu(v))
       + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow) (
         vp*dndotgradT1Pe(ub, um)
       )
-      + HomBoundaryConditions(sym, dum);
+      + HomBoundaryConditions(dum);
 
 // MASS OPERATOR
 varf vM(defu(dum), defu(v))
       = int2d(Th)( gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum) )
       + int2d(Th)( gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um) )
-      + HomBoundaryConditions(sym, dum);
+      + HomBoundaryConditions(dum);
 
 // FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
 varf vMq(defu(dum), defu(v))
@@ -165,7 +165,7 @@ varf vH(defu(dum), defu(v))
       + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow) (
         vp*ddndotgradT1Pe(ub, um, dum)
       )
-      + HomBoundaryConditions(sym, dum);
+      + HomBoundaryConditions(dum);
 
 // TRESSIAN OPERATOR (FOR WEAKLY NONLINEAR ANALYSIS)
 
@@ -182,4 +182,4 @@ varf vT(defu(dum), defu(v))
 + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow) (
   vp*dddndotgradT1Pe(ub, um, um2, um3)
 )
-+ HomBoundaryConditions(sym, dum);
++ HomBoundaryConditions(dum);

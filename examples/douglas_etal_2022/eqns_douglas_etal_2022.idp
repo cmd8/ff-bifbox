@@ -45,11 +45,11 @@
     + on(BCpipe, u = U, u#y = U#y, u#z = U#z - 2.0*params["S"]*Y, u#po = U#po)
     + on(BCaxis, u#y = U#y, u#z = U#z)
   // EOM
-  macro HomBoundaryConditions(sym, u)
+  macro HomBoundaryConditions(u)
     on(BCinflow, u = 0, u#z = 0, u#po = 0)
     + on(BCwall, BCpipe, u = 0, u#y = 0, u#z = 0, u#po = 0)
-    + on((abs(sym) != 1)*BCaxis, u#y = 0, u#z = 0)
-    + on((abs(sym) >  0)*BCaxis, u = 0)
+    + on((abs(int(sym)) != 1)*BCaxis, u#y = 0, u#z = 0)
+    + on((abs(int(sym)) >  0)*BCaxis, u = 0)
   // EOM
 // RESIDUAL OPERATOR
   varf vR(defu(dum), defu(v))
@@ -76,8 +76,8 @@
       )
     )
     + int1d(Th, BCopen)(
-      Y*ndotu(v)*dumpo*(sym == 0) - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, dum)*ndotu(ub) + vdotu(v, ub)*ndotu(dum))
-      + vpo*(Y*tdotgrads(dumpo) - 2.0*tmag*ubz*dumz*N.x)*(sym == 0)
+      Y*ndotu(v)*dumpo*(int(sym) == 0) - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, dum)*ndotu(ub) + vdotu(v, ub)*ndotu(dum))
+      + vpo*(Y*tdotgrads(dumpo) - 2.0*tmag*ubz*dumz*N.x)*(int(sym) == 0)
     )
     + int2d(Th)(
       Jinv*(
@@ -87,16 +87,16 @@
       )
     )
     + int1d(Th, BCopen)(
-      Y*ndotu(v)*umpo*(sym == 0) - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(ub) + vdotu(v, ub)*ndotu(um))
-      + vpo*(Y*tdotgrads(umpo) - 2.0*tmag*ubz*umz*N.x)*(sym == 0)
+      Y*ndotu(v)*umpo*(int(sym) == 0) - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(ub) + vdotu(v, ub)*ndotu(um))
+      + vpo*(Y*tdotgrads(umpo) - 2.0*tmag*ubz*umz*N.x)*(int(sym) == 0)
     )
-    + HomBoundaryConditions(sym, dum);
+    + HomBoundaryConditions(dum);
 
 // MASS OPERATOR
   varf vM(defu(dum), defu(v))
     = int2d(Th)( Jinv*vdotu(v, dum) )
     + int2d(Th)( Jinv*vdotu(v, um) )
-    + HomBoundaryConditions(sym, dum);
+    + HomBoundaryConditions(dum);
 
 // FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
   varf vMq(defu(dum), defu(v))
@@ -117,7 +117,7 @@
     )
     + int1d(Th, BCopen)(
       -0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(um2) + vdotu(v, um2)*ndotu(um))
-      - 2.0*tmag*vpo*um2z*umz*N.x*(sym == 0)
+      - 2.0*tmag*vpo*um2z*umz*N.x*(int(sym) == 0)
     )
     + int2d(Th)(
       Jinv*(
@@ -126,10 +126,10 @@
     )
     + int1d(Th, BCopen)(
       -0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(dum) + vdotu(v, dum)*ndotu(um))
-      - 2.0*tmag*vpo*dumz*umz*N.x*(sym == 0)
+      - 2.0*tmag*vpo*dumz*umz*N.x*(int(sym) == 0)
     )
-    + HomBoundaryConditions(sym, dum);
+    + HomBoundaryConditions(dum);
 
 // TRESSIAN OPERATOR
   varf vT(defu(dum), defu(v))
-    = HomBoundaryConditions(sym, dum);
+    = HomBoundaryConditions(dum);
