@@ -122,7 +122,7 @@ string param = getARGV("-param", "");
 string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
-real sym, sym1;
+real[int] sym1(sym.n);
 real omega;
 complex[string] alpha;
 complex beta;
@@ -152,16 +152,15 @@ else if (fileext == "foho") {
   ub[].re = loadfoho(fileroot, meshin, um[], uma[], q2m, q2ma, sym1, omega, alpha, alpha2, beta, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(fileext == "hoho") {
-  real symN;
   real omegaN;
   complex[string] alphaN;
   complex betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
   complex[int] qNm, qNma;
   if(hohoselect == 1){
-    ub[].re = loadhoho(fileroot, meshin, um[], uma[], qNm, qNma, sym1, symN, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+    ub[].re = loadhoho(fileroot, meshin, um[], uma[], qNm, qNma, sym1, sym, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
   }
   else if(hohoselect == 2){
-    ub[].re = loadhoho(fileroot, meshin, qNm, qNma, um[], uma[], symN, sym1, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+    ub[].re = loadhoho(fileroot, meshin, qNm, qNma, um[], uma[], sym, sym1, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
   }
 }
 else if (fileext == "mode") {
@@ -191,7 +190,6 @@ else if(basefileext == "fold") {
   ub[].re = loadfold(basefileroot, meshin, qm, qma, alpha, beta);
 }
 else if(basefileext == "hopf") {
-  real sym;
   real omega;
   complex[string] alpha;
   complex beta;
@@ -199,7 +197,6 @@ else if(basefileext == "hopf") {
   ub[].re = loadhopf(basefileroot, meshin, qm, qma, sym, omega, alpha, beta);
 }
 else if(basefileext == "foho") {
-  real sym;
   real omega;
   complex[string] alpha1;
   complex beta1, gamma12, gamma13;
@@ -210,23 +207,22 @@ else if(basefileext == "foho") {
   ub[].re = loadfoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(basefileext == "hoho") {
-  real sym1, sym2;
+  real[int] sym2(sym.n);
   real omega1, omega2;
   complex[string] alpha1, alpha2;
   complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
   complex[int] q1m, q1ma, q2m, q2ma;
-  ub[].re = loadhoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+  ub[].re = loadhoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
 }
 else if(basefileext == "tdns") {
   real time;
   ub[].re = loadtdns(basefileroot, meshin, time);
 }
 else if(basefileext == "porb") {
-  real sym1;
   int Nh=1;
   real omega;
   complex[int, int] qh(um[].n, Nh);
-  ub[].re = loadporb(basefileroot, meshin, qh, sym1, omega, Nh);
+  ub[].re = loadporb(basefileroot, meshin, qh, sym, omega, Nh);
 }
 real lambda = getlambda(param);
 // Create distributed Mat
@@ -303,7 +299,7 @@ else { // if output meshfile is given, adapt mesh
   uma[].re = umarG[](restu);
   uma[].im = umaiG[](restu);
 }
-complex ik, ik2 = 0.0, ik3 = 0.0;
+complex[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 complex iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // Build bordered block matrix from only Mat components
@@ -325,7 +321,7 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       sym = sym1;
       iomega = 1i*omega;
-      ik = 1i*sym;
+      ik.im = sym1;
       J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(J, pP, qm);
       KSPSolveHermitianTranspose(J, qP, qma);
@@ -351,7 +347,7 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       broadcast(processor(0), omega);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      ik = 1i*real(sym1);
+      ik.im = sym1;
       iomega = 1i*omega;
       updatelambda(param, lambda + eps);
       complex[int] Jl = vR(0, XMh, tgv = -1);
@@ -406,7 +402,7 @@ if(mpirank == 0) {
 }
 {
   sym = sym1;
-  ik = 1i*sym;
+  ik.im = sym1;
   iomega = 1i*omega;
   complex[int] Mq = vM(0, XMh, tgv = -10);
   ChangeNumbering(J, um[], qm);
@@ -474,8 +470,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       }
     }
     //  B: base modification due to quadratic nonlinear interaction
-    ik = 1i*real(sym1);
-    ik2 = -1i*real(sym1);
+    ik.im = sym1;
+    ik2.im = -sym1;
     iomega = 1i*omega;
     iomega2 = -1i*omega;
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
@@ -486,8 +482,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
     KSPSolve(J, tempP, qAAs);
     //  C: harmonic generation due to quadratic nonlinear interaction
-    ik = 1i*real(sym1);
-    ik2 = 1i*real(sym1);
+    ik.im = sym1;
+    ik2.im = sym1;
     iomega = 1i*omega;
     iomega2 = 1i*omega;
     um2[] = um[];
@@ -495,14 +491,14 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     temp = vH(0, XMh, tgv = -10);
     temp *= -0.5; // -1.0/2.0
     ChangeNumbering(J, temp, tempP); // FreeFEM to PETSc
-    ik = 2i*real(sym1);
+    ik.im = 2*sym1;
     iomega = 2i*omega;
     J = vJ(XMh, XMh, tgv = -1);
     KSPSolve(J, tempP, qAA);
     // 3rd-order
     //  A: fundamental modification due to parameter change and quadratic interaction of fundamental with 2nd order modification A.
     sym = sym1;
-    ik = 1i*sym;
+    ik.im = sym1;
     ik2 = 0.0;
     iomega = 1i*omega;
     iomega2 = 0.0;
@@ -522,9 +518,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       }
     }
     //  B: fundamental modification due to cubic self-interaction of fundamental
-    ik = 1i*sym;
-    ik2 = 1i*sym;
-    ik3 = -1i*sym;
+    ik.im = sym1;
+    ik2.im = sym1;
+    ik3.im = -sym1;
     iomega = 1i*omega;
     iomega2 = 1i*omega;
     iomega3 = -1i*omega;
@@ -533,7 +529,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     temp = vT(0, XMh, tgv = -10);
     temp *= 0.5; //3.0/6.0
     //  C: fundamental modification due to quadratic interaction of fundamental with 2nd order modification B
-    ik = 1i*sym;
+    ik.im = sym1;
     ik2 = 0.0;
     iomega = 1i*omega;
     iomega2 = 0.0;
@@ -541,8 +537,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     temp1 = vH(0, XMh, tgv = -10);
     temp += temp1;
     //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
-    ik = -1i*sym;
-    ik2 = 2i*sym;
+    ik.im = -sym1;
+    ik2.im = 2*sym1;
     iomega = -1i*omega;
     iomega2 = 2i*omega;
     um[] = conj(um[]);
@@ -553,18 +549,20 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     if(wnlsave){
       complex[int] val(1);
       XMh<complex>[int] defu(vec)(1);
+      sym = 0;
       val = 0.0;
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
           ChangeNumbering(J, vec[0][], qDa(k, :), inverse = true); // FreeFEM to PETSc
-          savemode(fileout + "_wnl_param" + k, "", fileout + ".hopf", meshout, vec, val, 0, true);
+          savemode(fileout + "_wnl_param" + k, "", fileout + ".hopf", meshout, vec, val, sym, true);
         }
       }
       ChangeNumbering(J, vec[0][], qAAs, inverse = true); // FreeFEM to PETSc
-      savemode(fileout + "_wnl_AAs", "", fileout + ".hopf", meshout, vec, val, 0, true);
+      savemode(fileout + "_wnl_AAs", "", fileout + ".hopf", meshout, vec, val, sym, true);
       ChangeNumbering(J, vec[0][], qAA, inverse = true); // FreeFEM to PETSc
       val = 2i*omega;
-      savemode(fileout + "_wnl_AA", "", fileout + ".hopf", meshout, vec, val, (2.0*sym), true);
+      sym = 2*sym1;
+      savemode(fileout + "_wnl_AA", "", fileout + ".hopf", meshout, vec, val, sym, true);
     }
   } else {
     if(paramnames[0] != ""){
@@ -580,5 +578,5 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   }
   ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
   ChangeNumbering(J, um[], qm, inverse = true);
-  savehopf(fileout, "", meshout, sym, omega, alpha, beta, true, true);
+  savehopf(fileout, "", meshout, sym1, omega, alpha, beta, true, true);
 }

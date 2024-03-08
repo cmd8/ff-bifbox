@@ -67,7 +67,6 @@ else if(fileext == "fold") {
   ub[] = loadfold(fileroot, meshin, um[], uma[], alpha, beta);
 }
 else if(fileext == "foho") {
-  real sym;
   real omega, beta23, gamma22, gamma23;
   complex[string] alpha1;
   complex beta1, gamma12, gamma13;
@@ -75,7 +74,6 @@ else if(fileext == "foho") {
   ub[] = loadfoho(fileroot, meshin, q1m, q1ma, um[], uma[], sym, omega, alpha1, alpha, beta1, beta, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(fileext == "hopf") {
-  real sym;
   real omega;
   complex[string] alpha;
   complex beta;
@@ -83,7 +81,7 @@ else if(fileext == "hopf") {
   ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega, alpha, beta);
 }
 else if(fileext == "hoho") {
-  real sym1, sym2;
+  real[int] sym1(sym.n), sym2(sym.n);
   real omega1, omega2;
   complex[string] alpha1, alpha2;
   complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
@@ -95,7 +93,6 @@ else if(fileext == "tdns") {
   ub[] = loadtdns(fileroot, meshin, time);
 }
 else if(fileext == "porb") {
-  real sym;
   int Nh=1;
   real omega;
   complex[int, int] qh(um[].n, Nh);
@@ -169,8 +166,8 @@ else { // if output meshfile is given, adapt mesh
   uma[] = umaG[](restu); //restrict global solution to each local mesh
 }
 // Build bordered block matrix from only Mat components
-real sym = 0;
-real ik = 0.0, ik2 = 0.0, ik3 = 0.0;
+sym = 0;
+real[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 real iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 Mat H(J);

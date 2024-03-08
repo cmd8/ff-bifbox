@@ -71,7 +71,6 @@ if(count == 0) {
     ub[] = loadfold(fileroot, meshin, qm, qma, alpha, beta);
   }
   else if(fileext == "hopf") {
-    real sym;
     real omega;
     complex[string] alpha;
     complex beta;
@@ -79,7 +78,6 @@ if(count == 0) {
     ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega, alpha, beta);
   }
   else if(fileext == "foho") {
-    real sym;
     real omega;
     complex[string] alpha1;
     complex beta1, gamma12, gamma13;
@@ -90,7 +88,7 @@ if(count == 0) {
     ub[] = loadfoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
   }
   else if(fileext == "hoho") {
-    real sym1, sym2;
+    real[int] sym1(sym.n), sym2(sym.n);
     real omega1, omega2;
     complex[string] alpha1, alpha2;
     complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
@@ -107,8 +105,8 @@ real paramdiff = lambda - paramtarget;
 
 Mat J;
 createMatu(Th, J, Pk);
-real sym = 0;
-real ik = 0.0, ik2 = 0.0, ik3 = 0.0;
+sym = 0;
+real[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 real iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 bool adapt = false;

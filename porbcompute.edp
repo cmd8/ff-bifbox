@@ -31,7 +31,7 @@ string adaptto = getARGV("-adaptto", "0");
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 int Nh = getARGV("-Nh", 0); //if 0 will try to get from file, otherwise fail
 int blocks = getARGV("-blocks", 1); //if blocks = 1, use monolithic LU; if blocks = N w/ 2 <= N <= Nh+1, use block preconditioner with N blocks
-real sym, sym1;
+real[int] sym1(sym.n);
 real omega;
 
 string fileroot, meshroot, basefileroot;
@@ -73,16 +73,15 @@ else if (fileext == "foho") {
   uh(:, 0) = um[];
 }
 else if(fileext == "hoho") {
-  real symN;
   real omegaN;
   complex[string] alpha, alphaN;
   complex beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
   complex[int] qma, qNm, qNma;
   if(hohoselect == 1){
-    ub[] = loadhoho(fileroot, meshin, um[], qma, qNm, qNma, sym1, symN, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+    ub[] = loadhoho(fileroot, meshin, um[], qma, qNm, qNma, sym1, sym, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
   }
   else if(hohoselect == 2){
-    ub[] = loadhoho(fileroot, meshin, qNm, qNma, um[], qma, symN, sym1, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+    ub[] = loadhoho(fileroot, meshin, qNm, qNma, um[], qma, sym, sym1, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
   }
   uh(:, 0) = um[];
 }
@@ -109,7 +108,6 @@ else if(basefileext == "fold") {
   ub[] = loadfold(basefileroot, meshin, qm, qma, alpha, beta);
 }
 else if(basefileext == "hopf") {
-  real sym;
   real omega;
   complex[string] alpha;
   complex beta;
@@ -117,7 +115,6 @@ else if(basefileext == "hopf") {
   ub[] = loadhopf(basefileroot, meshin, qm, qma, sym, omega, alpha, beta);
 }
 else if(basefileext == "foho") {
-  real sym;
   real omega;
   complex[string] alpha1;
   complex beta1, gamma12, gamma13;
@@ -128,12 +125,12 @@ else if(basefileext == "foho") {
   ub[] = loadfoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
 }
 else if(basefileext == "hoho") {
-  real sym1, sym2;
+  real[int] sym2(sym.n);
   real omega1, omega2;
   complex[string] alpha1, alpha2;
   complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
   complex[int] q1m, q1ma, q2m, q2ma;
-  ub[] = loadhoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+  ub[] = loadhoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
 }
 else if(basefileext == "tdns") {
   real time;
@@ -141,7 +138,6 @@ else if(basefileext == "tdns") {
 }
 else if (basefileext == "porb") {
   complex[int,int] qh(um[].n,1);
-  real sym;
   int Nh;
   real omega;
   ub[] = loadporb(basefileroot, meshin, qh, sym, omega, Nh);
@@ -235,7 +231,7 @@ else { // if output meshfile is given, adapt mesh
   }
 }
 
-complex ik, ik2, ik3;
+complex[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 complex iomega, iomega2, iomega3;
 include "eqns.idp" // load equations
 // Build bordered block matrix from only Mat components

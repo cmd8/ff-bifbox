@@ -13,6 +13,8 @@ verbosity = getARGV("-v",0);
 // Define parameter and monitor names
   string[int] paramnames = ["1/Re","1/Pr","1/Le","dT","Ze","Da","a"]; // set parameter names
   string[int] monitornames = ["Lf"]; // set monitor names
+// Declare symmetries
+  real[int] sym(1);
 // Define state vector and FE space
   macro defu(u)[u, u#y, u#z, u#Y, u#T, u#p]//EOM
   macro initu(i)[i, i, i, i, i, i]//EOM

@@ -74,8 +74,8 @@
   macro HomBoundaryConditions(u)
     on(BCinflow, u = 0, u#y = 0, u#z = 0, u#Y = 0, u#T = 0 )
   + on(BCwall, BCpipe, u = 0, u#y = 0, u#z = 0, u#T = 0 )
-  + on((abs(int(sym)) != 1)*BCaxis, u#y = 0, u#z = 0 )
-  + on((abs(int(sym))  > 0)*BCaxis, u = 0, u#Y = 0, u#T = 0 )
+  + on((abs(int(sym(0))) != 1)*BCaxis, u#y = 0, u#z = 0 )
+  + on((abs(int(sym(0)))  > 0)*BCaxis, u = 0, u#Y = 0, u#T = 0 )
   // EOM
 // RESIDUAL OPERATOR
 varf vR(defu(um), defu(v))
@@ -97,26 +97,26 @@ varf vR(defu(um), defu(v))
 varf vJ(defu(dum), defu(v))
       = int2d(Th)(
         iomega*(gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum))
-        + vY*(ugradf(dum, 0, ubY) + ugradf(ub, ik, dumY) +              dDaYexp(ub, dum)                                                          + ddiffdot1Pe(Y, ub, ik, dum)*params["1/Le"]) + ddiff1Pe(vY, Y, ub, ik, dum)*params["1/Le"]
-        + vT*(ugradf(dum, 0, ubT) + ugradf(ub, ik, dumT) - params["dT"]*dDaYexp(ub, dum)                                                          + ddiffdot1Pe(T, ub, ik, dum))                + ddiff1Pe(vT, T, ub, ik, dum)
-        + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum) - div(-ik, v)*(dumT*ubp + ubT*dump) - ugradf(v, ik, dumT)*ubp - ugradf(v, 0, ubT)*dump  + dgfdgu1Re(v, ub, ik, dum)                   + dvisc1Re(v, ub, ik, dum)
-        + vp*( -ubT*div(ik, dum) - dumT*div(0, ub)     + params["dT"]*dDaYexp(ub, dum)                                                          - ddiffdot1Pe(T, ub, ik, dum))                - ddiff1Pe(vp, T, ub, ik, dum)
+        + vY*(ugradf(dum, 0, ubY) + ugradf(ub, ik(0), dumY) +              dDaYexp(ub, dum)                                                          + ddiffdot1Pe(Y, ub, ik(0), dum)*params["1/Le"]) + ddiff1Pe(vY, Y, ub, ik(0), dum)*params["1/Le"]
+        + vT*(ugradf(dum, 0, ubT) + ugradf(ub, ik(0), dumT) - params["dT"]*dDaYexp(ub, dum)                                                          + ddiffdot1Pe(T, ub, ik(0), dum))                + ddiff1Pe(vT, T, ub, ik(0), dum)
+        + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik(0), dum) - div(-ik(0), v)*(dumT*ubp + ubT*dump) - ugradf(v, ik(0), dumT)*ubp - ugradf(v, 0, ubT)*dump  + dgfdgu1Re(v, ub, ik(0), dum)                   + dvisc1Re(v, ub, ik(0), dum)
+        + vp*( -ubT*div(ik(0), dum) - dumT*div(0, ub)     + params["dT"]*dDaYexp(ub, dum)                                                          - ddiffdot1Pe(T, ub, ik(0), dum))                - ddiff1Pe(vp, T, ub, ik(0), dum)
       )
       - int1d(Th, BCopen) (
-        dndotvisc1Re(v, ub, ik, dum)
+        dndotvisc1Re(v, ub, ik(0), dum)
       )
       + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow) (
         vp*dndotgradT1Pe(ub, dum)
       )
       + int2d(Th)(
         iomega*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
-        + vY*(ugradf(um, 0, ubY) + ugradf(ub, ik, umY) +              dDaYexp(ub, um)                                                       + ddiffdot1Pe(Y, ub, ik, um)*params["1/Le"]) + ddiff1Pe(vY, Y, ub, ik, um)*params["1/Le"]
-        + vT*(ugradf(um, 0, ubT) + ugradf(ub, ik, umT) - params["dT"]*dDaYexp(ub, um)                                                       + ddiffdot1Pe(T, ub, ik, um))                + ddiff1Pe(vT, T, ub, ik, um)
-        + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - div(-ik, v)*(umT*ubp + ubT*ump) - ugradf(v, -ik, umT)*ubp - ugradf(v, 0, ubT)*ump + dgfdgu1Re(v, ub, ik, um)                   + dvisc1Re(v, ub, ik, um)
-        + vp*( -ubT*div(ik, um) - umT*div(0, ub)     + params["dT"]*dDaYexp(ub, um)                                                       - ddiffdot1Pe(T, ub, ik, um))                - ddiff1Pe(vp, T, ub, ik, um)
+        + vY*(ugradf(um, 0, ubY) + ugradf(ub, ik(0), umY) +              dDaYexp(ub, um)                                                       + ddiffdot1Pe(Y, ub, ik(0), um)*params["1/Le"]) + ddiff1Pe(vY, Y, ub, ik(0), um)*params["1/Le"]
+        + vT*(ugradf(um, 0, ubT) + ugradf(ub, ik(0), umT) - params["dT"]*dDaYexp(ub, um)                                                       + ddiffdot1Pe(T, ub, ik(0), um))                + ddiff1Pe(vT, T, ub, ik(0), um)
+        + ugradu(v, um, 0, ub) + ugradu(v, ub, ik(0), um) - div(-ik(0), v)*(umT*ubp + ubT*ump) - ugradf(v, -ik(0), umT)*ubp - ugradf(v, 0, ubT)*ump + dgfdgu1Re(v, ub, ik(0), um)                   + dvisc1Re(v, ub, ik(0), um)
+        + vp*( -ubT*div(ik(0), um) - umT*div(0, ub)     + params["dT"]*dDaYexp(ub, um)                                                       - ddiffdot1Pe(T, ub, ik(0), um))                - ddiff1Pe(vp, T, ub, ik(0), um)
       )
       - int1d(Th, BCopen) (
-        dndotvisc1Re(v, ub, ik, um)
+        dndotvisc1Re(v, ub, ik(0), um)
       )
       + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow) (
         vp*dndotgradT1Pe(ub, um)
@@ -142,25 +142,25 @@ varf vP(deff(fm), defu(v))
 // HESSIAN OPERATOR
 varf vH(defu(dum), defu(v))
       = int2d(Th)(
-          vY*(ugradf(um, ik2, um2Y) + ugradf(um2, ik, umY) +              ddDaYexp(ub, um, um2)                                                          + dddiffdot1Pe(Y, ub, ik, um, ik2, um2)*params["1/Le"]) + dddiff1Pe(vY, Y, ub, ik, um, ik2, um2)*params["1/Le"]
-        + vT*(ugradf(um, ik2, um2T) + ugradf(um2, ik, umT) - params["dT"]*ddDaYexp(ub, um, um2)                                                          + dddiffdot1Pe(T, ub, ik, um, ik2, um2))                + dddiff1Pe(vT, T, ub, ik, um, ik2, um2)
-        + ugradu(v, um, ik2, um2) + ugradu(v, um2, ik, um) - div(-ik-ik2, v)*(ump*um2T + um2p*umT) - ugradf(v, ik, umT)*um2p - ugradf(v, ik2, um2T)*ump + ddgfdgu1Re(v, ub, ik, um, ik2, um2)                   + ddvisc1Re(v, ub, ik, um, ik2, um2)
-        + vp*( -um2T*div(ik, um) - umT*div(ik2, um2)     + params["dT"]*ddDaYexp(ub, um, um2)                                                          - dddiffdot1Pe(T, ub, ik, um, ik2, um2))                - dddiff1Pe(vp, T, ub, ik, um, ik2, um2)
+          vY*(ugradf(um, ik2(0), um2Y) + ugradf(um2, ik(0), umY) +              ddDaYexp(ub, um, um2)                                                          + dddiffdot1Pe(Y, ub, ik(0), um, ik2(0), um2)*params["1/Le"]) + dddiff1Pe(vY, Y, ub, ik(0), um, ik2(0), um2)*params["1/Le"]
+        + vT*(ugradf(um, ik2(0), um2T) + ugradf(um2, ik(0), umT) - params["dT"]*ddDaYexp(ub, um, um2)                                                          + dddiffdot1Pe(T, ub, ik(0), um, ik2(0), um2))                + dddiff1Pe(vT, T, ub, ik(0), um, ik2(0), um2)
+        + ugradu(v, um, ik2(0), um2) + ugradu(v, um2, ik(0), um) - div(-ik-ik2(0), v)*(ump*um2T + um2p*umT) - ugradf(v, ik(0), umT)*um2p - ugradf(v, ik2(0), um2T)*ump + ddgfdgu1Re(v, ub, ik(0), um, ik2(0), um2)                   + ddvisc1Re(v, ub, ik(0), um, ik2(0), um2)
+        + vp*( -um2T*div(ik(0), um) - umT*div(ik2(0), um2)     + params["dT"]*ddDaYexp(ub, um, um2)                                                          - dddiffdot1Pe(T, ub, ik(0), um, ik2(0), um2))                - dddiff1Pe(vp, T, ub, ik(0), um, ik2(0), um2)
       )
       - int1d(Th, BCopen) (
-        ddndotvisc1Re(v, ub, ik, um, ik2, um2)
+        ddndotvisc1Re(v, ub, ik(0), um, ik2(0), um2)
       )
       + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow) (
         vp*ddndotgradT1Pe(ub, um, um2)
       )
       + int2d(Th)(
-          vY*(ugradf(um, ik2, dumY) + ugradf(dum, ik, umY) +              ddDaYexp(ub, um, dum)                                                          + dddiffdot1Pe(Y, ub, ik, um, ik2, dum)*params["1/Le"]) + dddiff1Pe(vY, Y, ub, ik, um, ik2, dum)*params["1/Le"]
-        + vT*(ugradf(um, ik2, dumT) + ugradf(dum, ik, umT) - params["dT"]*ddDaYexp(ub, um, dum)                                                          + dddiffdot1Pe(T, ub, ik, um, ik2, dum))                + dddiff1Pe(vT, T, ub, ik, um, ik2, dum)
-        + ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um) - div(-ik-ik2, v)*(ump*dumT + dump*umT) - ugradf(v, ik, umT)*dump - ugradf(v, ik2, dumT)*ump + ddgfdgu1Re(v, ub, ik, um, ik2, dum)                   + ddvisc1Re(v, ub, ik, um, ik2, dum)
-        + vp*( -dumT*div(ik, um) - umT*div(ik2, dum)     + params["dT"]*ddDaYexp(ub, um, dum)                                                          - dddiffdot1Pe(T, ub, ik, um, ik2, dum))                - dddiff1Pe(vp, T, ub, ik, um, ik2, dum)
+          vY*(ugradf(um, ik2(0), dumY) + ugradf(dum, ik(0), umY) +              ddDaYexp(ub, um, dum)                                                          + dddiffdot1Pe(Y, ub, ik(0), um, ik2(0), dum)*params["1/Le"]) + dddiff1Pe(vY, Y, ub, ik(0), um, ik2(0), dum)*params["1/Le"]
+        + vT*(ugradf(um, ik2(0), dumT) + ugradf(dum, ik(0), umT) - params["dT"]*ddDaYexp(ub, um, dum)                                                          + dddiffdot1Pe(T, ub, ik(0), um, ik2(0), dum))                + dddiff1Pe(vT, T, ub, ik(0), um, ik2(0), dum)
+        + ugradu(v, um, ik2(0), dum) + ugradu(v, dum, ik(0), um) - div(-ik-ik2(0), v)*(ump*dumT + dump*umT) - ugradf(v, ik(0), umT)*dump - ugradf(v, ik2(0), dumT)*ump + ddgfdgu1Re(v, ub, ik(0), um, ik2(0), dum)                   + ddvisc1Re(v, ub, ik(0), um, ik2(0), dum)
+        + vp*( -dumT*div(ik(0), um) - umT*div(ik2(0), dum)     + params["dT"]*ddDaYexp(ub, um, dum)                                                          - dddiffdot1Pe(T, ub, ik(0), um, ik2(0), dum))                - dddiff1Pe(vp, T, ub, ik(0), um, ik2(0), dum)
       )
       - int1d(Th, BCopen) (
-        ddndotvisc1Re(v, ub, ik, um, ik2, dum)
+        ddndotvisc1Re(v, ub, ik(0), um, ik2(0), dum)
       )
       + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow) (
         vp*ddndotgradT1Pe(ub, um, dum)
@@ -171,13 +171,13 @@ varf vH(defu(dum), defu(v))
 
 varf vT(defu(dum), defu(v))
 = int2d(Th)(
-    vY*(               dddDaYexp(ub, um, um2, um3) + ddddiffdot1Pe(Y, ub, ik, um, ik2, um2, ik3, um3)*params["1/Le"]) + ddddiff1Pe(vY, Y, ub, ik, um, ik2, um2, ik3, um3)*params["1/Le"]
-  + vT*( -params["dT"]*dddDaYexp(ub, um, um2, um3) + ddddiffdot1Pe(T, ub, ik, um, ik2, um2, ik3, um3))                + ddddiff1Pe(vT, T, ub, ik, um, ik2, um2, ik3, um3)
-                                                   + dddgfdgu1Re(v, ub, ik, um, ik2, um2, ik3, um3)                   + dddvisc1Re(v, ub, ik, um, ik2, um2, ik3, um3)
-  + vp*(  params["dT"]*dddDaYexp(ub, um, um2, um3) - ddddiffdot1Pe(T, ub, ik, um, ik2, um2, ik3, um3))                - ddddiff1Pe(vp, T, ub, ik, um, ik2, um2, ik3, um3)
+    vY*(               dddDaYexp(ub, um, um2, um3) + ddddiffdot1Pe(Y, ub, ik(0), um, ik2(0), um2, ik3(0), um3)*params["1/Le"]) + ddddiff1Pe(vY, Y, ub, ik(0), um, ik2(0), um2, ik3(0), um3)*params["1/Le"]
+  + vT*( -params["dT"]*dddDaYexp(ub, um, um2, um3) + ddddiffdot1Pe(T, ub, ik(0), um, ik2(0), um2, ik3(0), um3))                + ddddiff1Pe(vT, T, ub, ik(0), um, ik2(0), um2, ik3(0), um3)
+                                                   + dddgfdgu1Re(v, ub, ik(0), um, ik2(0), um2, ik3(0), um3)                   + dddvisc1Re(v, ub, ik(0), um, ik2(0), um2, ik3(0), um3)
+  + vp*(  params["dT"]*dddDaYexp(ub, um, um2, um3) - ddddiffdot1Pe(T, ub, ik(0), um, ik2(0), um2, ik3(0), um3))                - ddddiff1Pe(vp, T, ub, ik(0), um, ik2(0), um2, ik3(0), um3)
 )
 - int1d(Th, BCopen) (
-  dddndotvisc1Re(v, ub, ik, um, ik2, um2, ik3, um3)
+  dddndotvisc1Re(v, ub, ik(0), um, ik2(0), um2, ik3(0), um3)
 )
 + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow) (
   vp*dddndotgradT1Pe(ub, um, um2, um3)

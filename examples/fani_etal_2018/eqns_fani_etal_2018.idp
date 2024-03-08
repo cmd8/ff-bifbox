@@ -27,8 +27,8 @@
     on(BCwall, u = 0, u#y = 0 )
     + on(BCslip, u#y = 0 )
     + on(BCinflow, u = 0, u#y = 0, u#T = 0)
-    + on((abs(int(sym)) % 2 == 0)*BCaxis, u#y = 0 )
-    + on((abs(int(sym)) % 2 != 0)*BCaxis, u = 0, u#T = 0)
+    + on((abs(int(sym(0))) % 2 == 0)*BCaxis, u#y = 0 )
+    + on((abs(int(sym(0))) % 2 != 0)*BCaxis, u = 0, u#T = 0)
   // EOM
 // RESIDUAL OPERATOR
   varf vR(defu(dum), defu(v))

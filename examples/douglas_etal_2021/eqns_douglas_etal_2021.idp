@@ -30,8 +30,8 @@
   macro HomBoundaryConditions(u)
     on(BCinflow, u = 0, u#z = 0, u#po = 0)
     + on(BCwall, BCpipe, u = 0, u#y = 0, u#z = 0, u#po = 0)
-    + on((abs(int(sym)) != 1)*BCaxis, u#y = 0, u#z = 0)
-    + on((abs(int(sym)) >  0)*BCaxis, u = 0)
+    + on((abs(int(sym(0))) != 1)*BCaxis, u#y = 0, u#z = 0)
+    + on((abs(int(sym(0))) >  0)*BCaxis, u = 0)
   // EOM
 // RESIDUAL OPERATOR
   varf vR(defu(dum), defu(v))
@@ -49,22 +49,22 @@
   varf vJ(defu(dum), defu(v))
     = int2d(Th)(
       iomega*vdotu(v, dum)
-      + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik, dum) - div(-ik, v)*dump + visc(-ik, v , ik, dum )*params["1/Re"]
-      - vp*div(ik, dum)
+      + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik(0), dum) - div(-ik(0), v)*dump + visc(-ik(0), v , ik(0), dum )*params["1/Re"]
+      - vp*div(ik(0), dum)
       + 1e-10*vpo*dumpo
     )
     + int1d(Th, BCopen)(
-      y*ndotu(v)*dumpo*(int(sym) == 0) - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, dum)*ndotu(ub) + vdotu(v, ub)*ndotu(dum))
-      + vpo*(y*tdotgrads(dumpo) - 2.0*ubz*dumz*N.x)*(int(sym) == 0)
+      y*ndotu(v)*dumpo*(int(sym(0)) == 0) - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, dum)*ndotu(ub) + vdotu(v, ub)*ndotu(dum))
+      + vpo*(y*tdotgrads(dumpo) - 2.0*ubz*dumz*N.x)*(int(sym(0)) == 0)
     )
     + int2d(Th)(
       iomega*vdotu(v, um)
-      + ugradu(v, um, 0, ub) + ugradu(v, ub, ik, um) - div(-ik, v)*ump + visc(-ik, v , ik, um )*params["1/Re"]
-      - vp*div(ik, um)
+      + ugradu(v, um, 0, ub) + ugradu(v, ub, ik(0), um) - div(-ik(0), v)*ump + visc(-ik(0), v , ik(0), um )*params["1/Re"]
+      - vp*div(ik(0), um)
     )
     + int1d(Th, BCopen)(
-      y*ndotu(v)*umpo*(int(sym) == 0) - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(ub) + vdotu(v, ub)*ndotu(um))
-      + vpo*(y*tdotgrads(umpo) - 2.0*ubz*umz*N.x)*(int(sym) == 0)
+      y*ndotu(v)*umpo*(int(sym(0)) == 0) - 0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(ub) + vdotu(v, ub)*ndotu(um))
+      + vpo*(y*tdotgrads(umpo) - 2.0*ubz*umz*N.x)*(int(sym(0)) == 0)
     )
     + HomBoundaryConditions(dum);
 
@@ -87,18 +87,18 @@
 // HESSIAN OPERATOR
   varf vH(defu(dum), defu(v))
     = int2d(Th)(
-      ugradu(v, um, ik2, um2) + ugradu(v, um2, ik, um)
+      ugradu(v, um, ik2(0), um2) + ugradu(v, um2, ik(0), um)
     )
     + int1d(Th, BCopen)(
       -0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(um2) + vdotu(v, um2)*ndotu(um))
-      - 2.0*vpo*um2z*umz*N.x*(int(sym) == 0)
+      - 2.0*vpo*um2z*umz*N.x*(int(sym(0)) == 0)
     )
     + int2d(Th)(
-      ugradu(v, um, ik2, dum) + ugradu(v, dum, ik, um)
+      ugradu(v, um, ik2(0), dum) + ugradu(v, dum, ik(0), um)
     )
     + int1d(Th, BCopen)(
       -0.5*(real(ndotu(ub)) < 0)*(vdotu(v, um)*ndotu(dum) + vdotu(v, dum)*ndotu(um))
-      - 2.0*vpo*dumz*umz*N.x*(int(sym) == 0)
+      - 2.0*vpo*dumz*umz*N.x*(int(sym(0)) == 0)
     )
     + HomBoundaryConditions(dum);
 

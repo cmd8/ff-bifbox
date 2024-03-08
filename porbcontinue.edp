@@ -41,7 +41,7 @@ int Nh = getARGV("-Nh", 0); //if 0 will try to get from file, otherwise fail
 int blocks = getARGV("-blocks", 1); //if blocks = 1, use monolithic LU; if blocks = N w/ 2 <= N <= Nh+1, use block preconditioner with N blocks
 int refactor = getARGV("-refact", snesmaxit);
 real paramtarget = getARGV("-paramtarget",1.0);
-real sym, sym1;
+real[int] sym1(sym.n);
 real omega;
 bool stopflag = false;
 bool forcesave = false;
@@ -90,16 +90,15 @@ if(count == 0) {
     uh(:, 0) = um[];
   }
   else if(fileext == "hoho") {
-    real symN;
     real omegaN;
     complex[string] alpha, alphaN;
     complex beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
     complex[int] qma, qNm, qNma;
     if(hohoselect == 1){
-      ub[] = loadhoho(fileroot, meshin, um[], qma, qNm, qNma, sym1, symN, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+      ub[] = loadhoho(fileroot, meshin, um[], qma, qNm, qNma, sym1, sym, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
     }
     else if(hohoselect == 2){
-      ub[] = loadhoho(fileroot, meshin, qNm, qNma, um[], qma, symN, sym1, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+      ub[] = loadhoho(fileroot, meshin, qNm, qNma, um[], qma, sym, sym1, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
     }
     uh(:, 0) = um[];  
   }
@@ -114,7 +113,7 @@ real paramdiff = lambda - paramtarget;
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
-complex ik, ik2, ik3;
+complex[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 complex iomega, iomega2, iomega3;
 include "eqns.idp"
 bool adapt = false;

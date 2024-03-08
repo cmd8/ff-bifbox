@@ -11,6 +11,8 @@
 // Define parameter and monitor names
   string[int] paramnames = ["1/Re", "1/Pr", "Ma^2", "gamma"]; // set parameter names
   string[int] monitornames = ["uxmin", "Fx", "Fy"]; // set monitor names
+// Declare symmetries
+  real[int] sym(1);
 // Define state vector and FE space
   macro defu(u)[u, u#y, u#T, u#R, u#p]//EOM
   macro initu(i)[i, i, i, i, i]//EOM
