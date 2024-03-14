@@ -5,24 +5,6 @@
 //
 // Define KSP parameters
   string KSPparams = "-ksp_type preonly -pc_type lu";
-// coordinate mapping macros ---------------------------------------------------
-  macro Y() (
-        (y < 0.5)*(params["d"]*y)
-      + ((y >= 0.5) && (y <= 1.0))*(0.5*params["d"] + (1. - params["d"])*(y - 0.5))
-      + (y > 1.0)*(y - 0.5)
-      ) //EOM
-
-  macro dydY() (
-        (y < 0.5)*(1./params["d"])
-      + ((y >= 0.5) && (y <= 1.0))*(1.0/(1. - params["d"]))
-      + (y > 1.0)*(1.0)
-      ) // EOM
-
-  macro dY(a) ( dydY*dy(a) ) //EOM
-
-
-  macro Jinv() (1./dydY) //EOM
-  macro tmag() (sqrt((N.y)^2 + (N.x/dydY)^2)) //EOM
 // term macros ------------------------------------------------------
   macro ndotu(u) (N.x*u/dydY + N.y*u#y) //EOM
 

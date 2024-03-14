@@ -796,7 +796,7 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
       ofstream file(workdir + statsfile + ".hoho.cont", append);
       file.precision(17);
       file << hohofileout + ((dummy.rfind(".") > 0) ? "" : ".hoho") << "\t" << meshfile << "\t";
-      if(sym.n > 0) file << listsym(sym1) << "\t" << listsym(sym2) << "\t" 
+      if(sym.n > 0) file << listsym(sym1) << "\t" << listsym(sym2) << "\t";
       file << omega1 << "\t" << omega2;
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){

@@ -43,6 +43,23 @@
   int BCinflow = 3;
   int BCwall = 4;
   int BCpipe = 5;
+// coordinate mapping macros ---------------------------------------------------
+  macro Y() (
+        (y < 0.5)*(params["d"]*y)
+      + ((y >= 0.5) && (y <= 1.0))*(0.5*params["d"] + (1. - params["d"])*(y - 0.5))
+      + (y > 1.0)*(y - 0.5)
+      ) //EOM
+
+  macro dydY() (
+        (y < 0.5)*(1./params["d"])
+      + ((y >= 0.5) && (y <= 1.0))*(1.0/(1. - params["d"]))
+      + (y > 1.0)*(1.0)
+      ) // EOM
+
+  macro dY(a) ( dydY*dy(a) ) //EOM
+
+  macro Jinv() (1./dydY) //EOM
+  macro tmag() (sqrt((N.y)^2 + (N.x/dydY)^2)) //EOM
 // Define solution monitors to extract:
   macro getmonitors(u){
     fespace Xh1(Thg, P2);
@@ -54,5 +71,5 @@
     for(int i=0, j=0; i<Xh1.ndof; ++i) if(onaxis[i]) {indices[j] = i; ++j;}
     for(int i=0; i<indices.n; ++i) uonaxis[i] = UX[][indices[i]];
     monitors["minux(x,0)"] = uonaxis.min;
-    monitors["S_n"] = int1d(Thg, levelset=x)( y^2*UX*UZ )/int1d(Thg, levelset=x)( y*UX*UX );
+    monitors["S_n"] = int1d(Thg, levelset=x)( Y^2*UX*UZ/dydY )/int1d(Thg, levelset=x)( Y*UX*UX/dydY );
   }// EOM

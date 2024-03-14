@@ -1,0 +1,63 @@
+//
+// settings_marquet_larsson_2015.idp
+// Chris Douglas
+// cdoug@mit.edu
+//
+// Set dimension macro for 'macro_ddm.idp' (3)
+  macro dimension()3//EOM
+// Load hpddm macros
+  include "macro_ddm.idp"
+  verbosity = getARGV("-v",0);
+// Define parameter and monitor names
+  string[int] paramnames = ["1/Re","L"]; // set parameter names
+  string[int] monitornames = ["Cd","minux"]; // set monitor names
+// Declare symmetries
+  real[int] sym(2);
+// Define state vector and FE space
+  macro defu(u)[u, u#y, u#z, u#p]//EOM
+  macro initu(i)[i, i, i, i]//EOM
+  func Pk = [P2, P2, P2, P1];
+// Define forcing vector and FE space (for resolvent analysis)
+  macro deff(f)[f, f#y, f#z]//EOM
+  macro initf(i)[i, i, i]//EOM
+  func Pkf = [P2, P2, P2];
+// Define quantities for mesh adaptation and plotting in Paraview
+  macro adaptu(u)[u, u#y, u#z], u#p//EOM
+  macro adaptf(f)[f, f#y, f#z]//EOM
+// Name and order for real Paraview outputs
+  string ParaviewDataName = "velocity pressure";
+  string ParaviewDataNamef = "momentum";
+  int[int] ParaviewOrder = [1, 1];
+  int[int] ParaviewOrderf = [1];
+// Name and order for complex Paraview outputs
+  string ParaviewDataNamec = "velocity_r pressure_r velocity_i pressure_i";
+  string ParaviewDataNamefc = "momentum_r momentum_i";
+  int[int] ParaviewOrderc = [ParaviewOrder, ParaviewOrder];
+  int[int] ParaviewOrderfc = [ParaviewOrderf, ParaviewOrderf];
+  // Initial conditions (if no file)
+  macro InitialConditions()[1, 0, 0, 0]//EOM
+// Boundary labels
+  int BCnull = 0;
+  int BCwall = 1;
+  int BCinflow = 2;
+  int BClateral1 = 3;
+  int BClateral2 = 4;
+  int BCoutflow = 5;
+  int BCaxis1 = 6;
+  int BCaxis2 = 7;
+// coordinate mapping macros ---------------------------------------------------
+  macro dzdZ() (
+        (z < 1.25)*(2.5/params["L"])
+      + (z >= 1.25)*((30.0 - 2.5)/(30.0 - params["L"]))
+      ) // EOM
+
+  macro dZ(a) ( dzdZ*dz(a) ) //EOM
+
+  macro Jinv() (1./dzdZ) //EOM
+// Define solution monitors to extract:
+  macro getmonitors(u){
+    monitors["Cd"] = 8.0/params["L"]*int2d(Thg, BCwall)(u#p*N.x/dzdZ - params["1/Re"]*(2.0*dx(u  )*N.x/dzdZ + (dx(u#y) + dy(u))*N.y/dzdZ + (dx(u#z) + dZ(u))*N.z));
+    fespace Xh1(Thg, P2);
+    Xh1 UX = u;
+    monitors["minux"] = UX[].min;
+  }// EOM
