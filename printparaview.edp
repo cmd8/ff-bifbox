@@ -5,7 +5,7 @@
 //
 // EXAMPLE USAGE:
 //  Print previously computed solution to .vtu file:
-// mpirun -n 1 FreeFem++-mpi -v 0 printparaview.edp -fi <FILEIN>
+// ff-mpirun -np 1 printparaview.edp -fi <FILEIN>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //

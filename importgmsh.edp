@@ -5,7 +5,7 @@
 //
 // EXAMPLE USAGE:
 //  Load mesh and save in work directory
-// mpirun -n 1 FreeFem++-mpi -v 0 importgmsh.edp -dir <GMSHDIR> -mi <FILEIN>
+// ff-mpirun -np 1 importgmsh.edp -dir <GMSHDIR> -mi <FILEIN>
 //
 // NOTE: Requires Gmsh (https://gmsh.info/) to handle .geo files directly.
 //
