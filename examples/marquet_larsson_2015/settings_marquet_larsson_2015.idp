@@ -47,8 +47,8 @@
   int BCaxis2 = 7;
 // coordinate mapping macros ---------------------------------------------------
   macro dzdZ() (
-        (z < 1.25)*(2.5/params["L"])
-      + (z >= 1.25)*((30.0 - 2.5)/(30.0 - params["L"]))
+        (z < 1.5)*(3.0/params["L"])
+      + (z >= 1.5)*((30.0 - 3.0)/(30.0 - params["L"]))
       ) // EOM
 
   macro dZ(a) ( dzdZ*dz(a) ) //EOM

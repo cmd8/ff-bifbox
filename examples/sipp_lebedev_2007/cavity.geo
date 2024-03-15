@@ -15,9 +15,6 @@ xmax = 2.5;
 rmax = 0.5;
 wcav = 1.0;
 dcav = 1.0;
-Mesh.Algorithm = 5;
-Mesh.MshFileVersion = 2.2;
-Mesh.SaveAll = 0;
 
 // Points
 //  9----------------------------------------------8

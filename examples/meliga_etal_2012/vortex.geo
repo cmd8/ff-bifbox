@@ -12,9 +12,6 @@ n1 = 3;
 n2 = 1;
 xmax = 120.0;
 rmax = 60.0;
-Mesh.Algorithm = 5;
-Mesh.MshFileVersion = 2.2;
-Mesh.SaveAll = 0;
 
 // Points
 //  3-------------------------2

@@ -12,15 +12,11 @@ n1 = 10;
 n2 = 1;
 t = 1.0/6.0;
 W = 1.0;
-L = 2.5;
+L = 3.0;
 xmin = -10.0;
 xmax = 25.0;
 ymax = 7.0;
 zmax = 15.0;
-Mesh.Algorithm = 5;
-Mesh.Format = 1;
-Mesh.MshFileVersion = 2.2;
-Mesh.SaveAll = 0;
 
 Point (1)  = {xmin, 0, 0, 1/n2};
 Point (2)  = {xmin, ymax, 0, 1/n2};

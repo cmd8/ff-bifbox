@@ -14,9 +14,6 @@ xmin = -4.0;
 rmax = 40.0;
 rout = 1.0;
 rin = 0.5;
-Mesh.Algorithm = 5;
-Mesh.MshFileVersion = 2.2;
-Mesh.SaveAll = 0;
 
 // Points
 //              3--..__

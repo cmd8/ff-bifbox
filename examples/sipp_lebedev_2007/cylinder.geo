@@ -14,9 +14,6 @@ xmin = -60.0;
 xmax = 200.0;
 rmax = 30.0;
 rcyl = 0.5;
-Mesh.Algorithm = 5;
-Mesh.MshFileVersion = 2.2;
-Mesh.SaveAll = 0;
 
 // Points
 //  7--------------------------------------6

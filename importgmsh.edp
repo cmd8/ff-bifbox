@@ -24,7 +24,7 @@ IFMACRO(dimension,2)
 if (meshext == "geo") {
   cout << "  Calling GMSH to build .msh file from .geo file." << endl;
   meshout = meshout + ".msh";
-  exec("gmsh " + gmshdir + meshin + " -2 -v " + verbosity + " -o " + workdir + meshout);
+  exec("gmsh " + gmshdir + meshin + " -2 -v " + verbosity + " -format msh22 -o " + workdir + meshout);
   Thg = gmshload(workdir + meshout); // load mesh stored in Gmsh .msh format
 }
 else Thg = gmshload(workdir + meshin); // load mesh stored in Gmsh .msh format
@@ -33,7 +33,7 @@ IFMACRO(dimension,3)
 if (meshext == "geo") {
   cout << "  Calling GMSH to build .msh file from .geo file." << endl;
   meshout = meshout + ".msh";
-  exec("gmsh " + gmshdir + meshin + " -3 -v " + verbosity + " -o " + gmshdir + meshout);
+  exec("gmsh " + gmshdir + meshin + " -3 -v " + verbosity + " -format msh22 -o " + gmshdir + meshout);
   lockOrientation = false;
   mesh3 Th1 = gmshload3(gmshdir + meshout); // load mesh stored in Gmsh .mesh format
   exec("rm " + gmshdir + meshout);
@@ -50,6 +50,6 @@ parsefilename(meshout, meshout); // trim extension from output mesh, if given
 meshout = meshout + ".mesh";
 ENDIFMACRO
 int[int] meshlabels = labels(Thg);
-cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
+cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " elements, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
 cout << "  Saving '" << meshout + "' in '" + workdir + "'." << endl;
 savemesh(Thg, workdir + meshout); // save mesh to FreeFEM directory
