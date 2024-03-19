@@ -59,7 +59,10 @@
   macro dY(a) ( dydY*dy(a) ) //EOM
 
   macro Jinv() (1./dydY) //EOM
+
   macro tmag() (sqrt((N.y)^2 + (N.x/dydY)^2)) //EOM
+
+  macro coordinatetransform() x, Y // EOM
 // Define solution monitors to extract:
   macro getmonitors(u){
     fespace Xh1(Thg, P2);
