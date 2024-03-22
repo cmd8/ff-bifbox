@@ -172,7 +172,7 @@ if (mpirank==0){
     ugi[] = qmapv.im;
     savevtk(workdir + fileout + "_hopf_adjmode.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
   }
-  else if (fileext == "tnds"){
+  else if (fileext == "tdns"){
     XMhg defu(ubg);
     restu = 0:XMhg.ndof-1;
     real time;
