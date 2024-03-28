@@ -4,7 +4,7 @@
 // cdoug@mit.edu
 //
 // This file can be used with Gmsh to create a mesh for the laminar jet as in
-// [Xavier Garnaud, Ecole Polytechnique PhD Thesis, (2012)].
+// [C. Douglas, B. Emerson, & T. Lieuwen. JFM, (2021)].
 //
 
 n0 = 32;

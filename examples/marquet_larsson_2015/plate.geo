@@ -1,10 +1,10 @@
 //
-// cavity.geo
+// plate.geo
 // Chris Douglas
 // cdoug@mit.edu
 //
-// This file can be used with Gmsh to create a mesh for the cavity as in
-// [D. Sipp and A. Lebedev, JFM (2007) DOI:10.1017/S0022112007008907].
+// This file can be used with Gmsh to create a mesh for the flow over a flat plate as in
+// [Marquet and Larsson, Euro. J. Mech. B/Fluids (2015) DOI:10.1016/j.euromechflu.2014.05.005].
 //
 
 n0 = 20;
