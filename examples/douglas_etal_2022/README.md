@@ -46,14 +46,14 @@ FreeFem++-mpi -v 0 examples/douglas_etal_2022/annularjet.edp -mo $workdir/annula
 ## Perform parallel computations using `ff-bifbox`
 The number of processors is set using the `-n` argument from `mpirun`. Here, this value is set to 4.
 ### Steady axisymmetric dynamics
-1. Compute base states on the created mesh at Re = 10 from default guess
+1. Compute base states on the created mesh at Re = 20 from default guess
 ```
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -mi annularjet.msh -fo annularjet -1/Re 0.1 -S 0 -d 0.5
+ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -mi annularjet.msh -fo annularjet -1/Re 0.05 -S 0 -d 0.5
 ```
 
 2. Continue base state along the parameter 1/Re with adaptive remeshing
 ```
-ff-mpirun -np 4 basecontinue.edp -v 0 -dir $workdir -fi annularjet.base -fo annularjet -param 1/Re -h0 -200 -scount 2 -maxcount 10 -mo annularjet -thetamax 1
+ff-mpirun -np 4 basecontinue.edp -v 0 -dir $workdir -fi annularjet.base -fo annularjet -param 1/Re -h0 -100 -scount 2 -maxcount 10 -mo annularjet -thetamax 1
 ```
 
 3. Compute base state at Re = 100 with guess from 1/Re continuation

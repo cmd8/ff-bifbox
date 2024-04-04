@@ -1,0 +1,41 @@
+//
+// duct.edp
+// Chris Douglas
+// cdoug@mit.edu
+//
+// This file can be used with FreeFEM to create a mesh for the Kornilov duct.
+//
+
+assert(mpisize == 1); // Must be run with 1 processor
+include "settings.idp"
+real n0 = getARGV("-n0", 50);
+real n1 = getARGV("-n1", 20);
+real L = getARGV("-L", 1.0);
+real Ld = getARGV("-Ld", 4.0);
+real Lu = getARGV("-Lu", 2.0);
+real Wud = getARGV("-Wud", 2.5);
+
+string meshout = getARGV("-mo", "duct.msh"); // mesh filename
+if(meshout.rfind(".msh") < 0) meshout = meshout + ".msh"; // add extension if not provided
+
+// Define borders
+//  o------7------o   o--------3---------o
+//  |             6   4                  |
+//  8             o-5-o                  2
+//  |                                    |
+//  o------------------1-----------------o
+border C01(t=0, 1){x=-Lu-L+(Ld+L+Lu)*t; y=0; label=BCaxis;}
+border C02(t=0, 1){x=Ld; y=Wud/2.0*t; label=BCout;}
+border C03(t=0, 1){x=Ld*(1-t); y=Wud/2.0; label=BCsym;}
+border C04(t=0, 1){x=0; y=Wud/2.0-(Wud-1.0)/2.0*t; label=BCwall;}
+border C05(t=0, 1){x=-L*t; y=0.5; label=BCwall;}
+border C06(t=0, 1){x=-L; y=0.5+(Wud-1.0)/2.0*t; label=BCwall;}
+border C07(t=0, 1){x=-L-Lu*t; y=Wud/2.0; label=BCsym;}
+border C08(t=0, 1){x=-Lu-L; y=Wud/2.0*(1-t); label=BCin;}
+// Assemble mesh
+mesh Thg = buildmesh(C01(n1*(Ld+L+Lu)) + C02(n1*Wud/2.0) + C03(n1*Ld) + C04(n0*(Wud-1.0)/2.0) + C05(n0*L) + C06(n0*(Wud-1.0)/2.0) + C07(n1*Lu) + C08(n1*Wud/2.0));
+
+int[int] meshlabels = labels(Thg);
+cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
+cout << "  Saving mesh '" + meshout + "'." << endl;
+savemesh(Thg, meshout);

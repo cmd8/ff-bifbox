@@ -47,23 +47,23 @@
   int BCaxis2 = 7;
 // coordinate mapping macros ---------------------------------------------------
   macro Z() (
-        (z < 1.5)*(params["L"]/3.0)*z
-      + (z >= 1.5)*(params["L"]/3.0*1.5 + (30.0 - params["L"])/(30.0 - 3.0)*(z-1.5))
+        (z < 1.5)*params["L"]/3.0*z
+      + (z >= 1.5)*(params["L"]/2.0 + (30.0 - params["L"])/27.0*(z - 1.5))
       ) // EOM
 
-  macro dzdZ() (
-        (z < 1.5)*(3.0/params["L"])
-      + (z >= 1.5)*((30.0 - 3.0)/(30.0 - params["L"]))
+  macro dZdz() (
+        (z < 1.5)*params["L"]/3.0
+      + (z >= 1.5)*(30.0 - params["L"])/27.0
       ) // EOM
 
-  macro dZ(a) ( dzdZ*dz(a) ) //EOM
+  macro dZ(a) ( dz(a)/dZdz ) //EOM
 
-  macro Jinv() (1./dzdZ) //EOM
+  macro Jinv() (dZdz) //EOM
 
   macro coordinatetransform() x, y, Z // EOM
 // Define solution monitors to extract:
   macro getmonitors(u){
-    monitors["Cd"] = 8.0/params["L"]*int2d(Thg, BCwall)(u#p*N.x/dzdZ - params["1/Re"]*(2.0*dx(u  )*N.x/dzdZ + (dx(u#y) + dy(u))*N.y/dzdZ + (dx(u#z) + dZ(u))*N.z));
+    monitors["Cd"] = 8.0/params["L"]*int2d(Thg, BCwall)(u#p*N.x*dZdz - params["1/Re"]*(2.0*dx(u  )*N.x*dZdz + (dx(u#y) + dy(u))*N.y*dZdz + (dx(u#z) + dZ(u))*N.z));
     fespace Xh1(Thg, P2);
     Xh1 UX = u;
     monitors["minux"] = UX[].min;

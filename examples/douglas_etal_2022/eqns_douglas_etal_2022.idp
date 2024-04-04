@@ -6,7 +6,7 @@
 // Define KSP parameters
   string KSPparams = "-ksp_type preonly -pc_type lu";
 // term macros ------------------------------------------------------
-  macro ndotu(u) (N.x*u/dydY + N.y*u#y) //EOM
+  macro ndotu(u) (N.x*u*dYdy + N.y*u#y) //EOM
 
   macro tdotgrads(s) ( -N.y*dx(s) + N.x*dy(s) ) //EOM NOTE: grid scaling factors cancel
 
