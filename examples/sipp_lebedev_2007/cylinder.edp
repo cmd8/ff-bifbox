@@ -36,6 +36,6 @@ border C06(t=0, 1){x=xmax+(xmin-xmax)*t; y=rmax; label=BCslip;}
 mesh Thg = buildmesh(C01(n2*rmax) + C02(n1*(0.5-xmin)) + C03(n0*pi*rcyl) + C04(n1*(xmax-0.5)) + C05(n2*rmax) + C06(n2*(xmax-xmin)));
 
 int[int] meshlabels = labels(Thg);
-cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
+cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " elements, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
 cout << "  Saving mesh '" + meshout + "'." << endl;
 savemesh(Thg, meshout);

@@ -7,10 +7,6 @@
   string KSPparams = "-ksp_type preonly -pc_type lu";
 // term macros ------------------------------------------------------
   macro ndotgrads(s) ( y*( N.x*dx(s) + N.y*dy(s))) // EOM
-  macro ndotgradT1Pe(U) ( U#T^(params["a"]+1.0)*ndotgrads(U#T)*params["1/Re"]*params["1/Pr"] )// EOM
-  macro dndotgradT1Pe(U, u) ( (U#T^(params["a"]+1.0)*ndotgrads(u#T) + (params["a"]+1.0)*U#T^(params["a"])*u#T*ndotgrads(U#T))*params["1/Re"]*params["1/Pr"] ) // EOM
-  macro ddndotgradT1Pe(U, u, uu) ( (params["a"]+1.0)*U#T^(params["a"]-1.0)*(U#T*(uu#T*ndotgrads(u#T) + u#T*ndotgrads(uu#T)) + params["a"]*u#T*uu#T*ndotgrads(U#T))*params["1/Re"]*params["1/Pr"] ) // EOM
-  macro dddndotgradT1Pe(U, u, uu, uuu) ( (params["a"]+1.0)*params["a"]*(U#T^(params["a"]-1.0)*(uuu#T*(uu#T*ndotgrads(u#T) + u#T*ndotgrads(uu#T)) + u#T*uu#T*ndotgrads(uuu#T)) + (params["a"]-1.0)*U#T^(params["a"]-2.0)*u#T*uu#T*uuu#T*ndotgrads(U#T))*params["1/Re"]*params["1/Pr"] ) // EOM
 
   macro gdotf(f, g) ( y*g*f )//EOM
 
@@ -18,120 +14,99 @@
 
   macro div(ik, u) ( y*(dx(u) + dy(u#y)) + u#y + (ik)*u#z ) // velocity divergence
 
-  macro ndotvisc(v, ik, u) (N.x*(y*(v*dx(u  ) + v#y*dy(u  )) + v#z*(ik)*u ) + N.y*(y*(v*dx(u#y) + v#y*dy(u#y)) + v#z*((ik)*u#y - u#z) )) //EOM
-  macro ndotvisc1Re(v, U) ( U#T^(params["a"]+1.0)*ndotvisc(v, 0, U)*params["1/Re"] )// EOM
-  macro dndotvisc1Re(v, U, ik, u) ( (U#T^(params["a"]+1.0)*ndotvisc(v, ik, u) + (params["a"]+1.0)*U#T^(params["a"])*u#T*ndotvisc(v, 0, U))*params["1/Re"] ) // EOM
-  macro ddndotvisc1Re(v, U, ik, u, ikk, uu) ( (params["a"]+1.0)*U#T^(params["a"]-1.0)*(U#T*(uu#T*ndotvisc(v, ik, u) + u#T*ndotvisc(v, ikk, uu)) + params["a"]*u#T*uu#T*ndotvisc(v, 0, U))*params["1/Re"] ) // EOM
-  macro dddndotvisc1Re(v, U, ik, u, ikk, uu, ikkk, uuu) ( (params["a"]+1.0)*params["a"]*(U#T^(params["a"]-1.0)*(uuu#T*(uu#T*ndotvisc(v, ik, u) + u#T*ndotvisc(v, ikk, uu)) + u#T*uu#T*ndotvisc(v, ikkk, uuu)) + (params["a"]-1.0)*U#T^(params["a"]-2.0)*u#T*uu#T*uuu#T*ndotvisc(v, 0, U))*params["1/Re"] ) // EOM
+  macro ndotvisc(v, ik, u) (  N.x*(y*(v*dx(u  ) + v#y*dy(u  )) + v#z*(ik)*u ) 
+                            + N.y*(y*(v*dx(u#y) + v#y*dy(u#y)) + v#z*((ik)*u#y - u#z) )) //EOM
 
   macro ugradu(v, U, ik, u) ( v  *(y*(U*dx(u  ) + U#y*dy(u  )) + (ik)*U#z*u )
                             + v#y*(y*(U*dx(u#y) + U#y*dy(u#y)) + (ik)*U#z*u#y - U#z*u#z )
                             + v#z*(y*(U*dx(u#z) + U#y*dy(u#z)) + (ik)*U#z*u#z + U#z*u#y) ) // scaled convection term
 
-  macro gfdgu(v, ij, f, ik, u) (  v  *( 2.*y*dx(f)*dx(u  )              +    y*dy(f)*(dx(u#y) + dy(u  ))          +    (ij)*f*( dx(u#z) + (ik)/y*u))
-                                + v#y*(    y*dx(f)*(dx(u#y) + dy(u  ))  + 2.*y*dy(f)*dy(u#y)                      +    (ij)*f*(((ik)*u#y - u#z)/y + dy(u#z) ))
-                                + v#z*(      dx(f)*((ik)*u + y*dx(u#z)) +      dy(f)*((ik)*u#y - u#z + y*dy(u#z)) + 2.*(ij)*f*((ik)*u#z + u#y)/y ) ) // EOM
-  macro gfdgu1Re(v, U) ( U#T^(params["a"])*gfdgu(v, 0, U#T, 0, U)*params["1/Re"] )// EOM
-  macro dgfdgu1Re(v, U, ik, u) ( (U#T^(params["a"])*(gfdgu(v, ik, u#T, 0, U) + gfdgu(v, 0, U#T, ik, u)) + params["a"]*U#T^(params["a"]-1.0)*u#T*gfdgu(v, 0, U#T, 0, U))*params["1/Re"] )// EOM
-  macro ddgfdgu1Re(v, U, ik, u, ikk, uu) ( ( U#T^(params["a"])*(gfdgu(v, ik, u#T, ikk, uu) + gfdgu(v, ikk, uu#T, ik, u)) + params["a"]*U#T^(params["a"]-1.0)*(uu#T*(gfdgu(v, ik, u#T, 0, U) + gfdgu(v, 0, U#T, ik, u)) + u#T*(gfdgu(v, ikk, uu#T, 0, U) + gfdgu(v, 0, U#T, ikk, uu))) + params["a"]*(params["a"]-1.0)*U#T^(params["a"]-2.0)*u#T*uu#T*gfdgu(v, 0, U#T, 0, U) )*params["1/Re"] )// EOM
-  macro dddgfdgu1Re(v, U, ik, u, ikk, uu, ikkk, uuu) ( ( params["a"]*U#T^(params["a"]-1.0)*(uuu#T*(gfdgu(v, ik, u#T, ikk, uu) + gfdgu(v, ikk, uu#T, ik, u)) + uu#T*(gfdgu(v, ik, u#T, ikkk, uuu) + gfdgu(v, ikkk, uuu#T, ik, u)) + u#T*(gfdgu(v, ikk, uu#T, ikkk, uuu) + gfdgu(v, ikkk, uuu#T, ikk, uu)))
-    + params["a"]*(params["a"]-1.0)*U#T^(params["a"]-2.0)*(uuu#T*(uu#T*(gfdgu(v, ik, u#T, 0, U) + gfdgu(v, 0, U#T, ik, u)) + u#T*(gfdgu(v, ikk, uu#T, 0, U) + gfdgu(v, 0, U#T, ikk, uu))) + u#T*uu#T*(gfdgu(v, ikkk, uuu#T, 0, U) + gfdgu(v, 0, U#T, ikkk, uuu))) + params["a"]*(params["a"]-1.0)*(params["a"]-2.0)*U#T^(params["a"]-3.0)*u#T*uu#T*uuu#T*gfdgu(v, 0, U#T, 0, U) )*params["1/Re"] )// EOM
-
   macro visc(ij, v, ik, u) ( 2.*y*dx(v  )*dx(u  )              +    y*dy(v  )*(dx(u#y) + dy(u  ))          +     (ij)*v         *( dx(u#z) + (ik)/y*u)
                               + y*dx(v#y)*(dx(u#y) + dy(u  ))  + 2.*y*dy(v#y)*dy(u#y)                      +    ((ij)*v#y - v#z)*(((ik)*u#y - u#z)/y + dy(u#z) )
                               +   dx(v#z)*((ik)*u + y*dx(u#z)) +      dy(v#z)*((ik)*u#y - u#z + y*dy(u#z)) + 2.*((ij)*v#z + v#y)*((ik)*u#z + u#y)/y ) // EOM
-  macro visc1Re(v, U) ( U#T^(params["a"]+1.0)*visc(0, v, 0, U)*params["1/Re"] )// EOM
-  macro dvisc1Re(v, U, ik, u) ( (U#T^(params["a"]+1.0)*visc(-ik, v, ik, u) + (params["a"]+1.0)*U#T^(params["a"])*u#T*visc(-ik, v, 0, U))*params["1/Re"] ) // EOM
-  macro ddvisc1Re(v, U, ik, u, ikk, uu) ( (params["a"]+1.0)*U#T^(params["a"]-1.0)*(U#T*(uu#T*visc(-ik-ikk, v, ik, u) + u#T*visc(-ik-ikk, v, ikk, uu)) + params["a"]*u#T*uu#T*visc(-ik-ikk, v, 0, U))*params["1/Re"] ) // EOM
-  macro dddvisc1Re(v, U, ik, u, ikk, uu, ikkk, uuu) ( (params["a"]+1.0)*params["a"]*(U#T^(params["a"]-1.0)*(uuu#T*(uu#T*visc(-ik-ikk-ikkk, v, ik, u) + u#T*visc(-ik-ikk-ikkk, v, ikk, uu)) + u#T*uu#T*visc(-ik-ikk-ikkk, v, ikkk, uuu)) + (params["a"]-1.0)*U#T^(params["a"]-2.0)*u#T*uu#T*uuu#T*visc(-ik-ikk-ikkk, v, 0, U))*params["1/Re"] ) // EOM
 
   macro diff(ij, g, ik, f) ( y*(dx(g)*dx(f) + dy(g)*dy(f)) + (ij)*(ik)*g*f/y ) // EOM
-  macro diff1Pe(v, q, U) ( U#T^(params["a"]+1.0)*diff(0, v, 0, U#q)*params["1/Re"]*params["1/Pr"] )// EOM
-  macro ddiff1Pe(v, q, U, ik, u) ( (U#T^(params["a"]+1.0)*diff(-ik, v, ik, u#q) + (params["a"]+1.0)*U#T^(params["a"])*u#T*diff(-ik, v, 0, U#q))*params["1/Re"]*params["1/Pr"] ) // EOM
-  macro dddiff1Pe(v, q, U, ik, u, ikk, uu) ( (params["a"]+1.0)*U#T^(params["a"]-1.0)*(U#T*(uu#T*diff(-ik-ikk, v, ik, u#q) + u#T*diff(-ik-ikk, v, ikk, uu#q)) + params["a"]*u#T*uu#T*diff(-ik-ikk, v, 0, U#q))*params["1/Re"]*params["1/Pr"] ) // EOM
-  macro ddddiff1Pe(v, q, U, ik, u, ikk, uu, ikkk, uuu) ( (params["a"]+1.0)*params["a"]*(U#T^(params["a"]-1.0)*(uuu#T*(uu#T*diff(-ik-ikk-ikkk, v, ik, u#q) + u#T*diff(-ik-ikk-ikkk, v, ikk, uu#q)) + u#T*uu#T*diff(-ik-ikk-ikkk, v, ikkk, uuu#q)) + (params["a"]-1.0)*U#T^(params["a"]-2.0)*u#T*uu#T*uuu#T*diff(-ik-ikk-ikkk, v, 0, U#q))*params["1/Re"]*params["1/Pr"] ) // EOM
-
-  macro diffdot1Pe(q, U) ( U#T^(params["a"])*diff(0, U#T, 0, U#q)*params["1/Re"]*params["1/Pr"] )// EOM
-  macro ddiffdot1Pe(q, U, ik, u) ( (U#T^(params["a"])*diff(0, U#T, ik, u#q) + U#T^(params["a"])*diff(ik, u#T, 0, U#q) + params["a"]*U#T^(params["a"]-1.0)*u#T*diff(0, U#T, 0, U#q))*params["1/Re"]*params["1/Pr"] )// EOM
-  macro dddiffdot1Pe(q, U, ik, u, ikk, uu) ( (U#T^(params["a"])*(diff(ikk, uu#T, ik, u#q) + diff(ik, u#T, ikk, uu#q)) + params["a"]*U#T^(params["a"]-1.0)*(uu#T*(diff(0, U#T, ik, u#q) + diff(ik, u#T, 0, U#q)) + u#T*(diff(ikk, uu#T, 0, U#q) + diff(0, U#T, ikk, uu#q))) + params["a"]*(params["a"]-1.0)*U#T^(params["a"]-2.0)*uu#T*u#T*diff(0, U#T, 0, U#q) )*params["1/Re"]*params["1/Pr"] )// EOM
-  macro ddddiffdot1Pe(q, U, ik, u, ikk, uu, ikkk, uuu) ( (params["a"]*U#T^(params["a"]-1.0)*(uuu#T*(diff(ikk, uu#T, ik, u#q) + diff(ik, u#T, ikk, uu#q)) + uu#T*(diff(ikkk, uuu#T, ik, u#q) + diff(ik, u#T, ikkk, uuu#q)) + u#T*(diff(ikk, uu#T, ikkk, uuu#q) + diff(ikkk, uuu#T, ikk, uu#q)))
-     + params["a"]*(params["a"]-1.0)*U#T^(params["a"]-2.0)*(uuu#T*(uu#T*(diff(0, U#T, ik, u#q) + diff(ik, u#T, 0, U#q)) + u#T*(diff(ikk, uu#T, 0, U#q) + diff(0, U#T, ikk, uu#q))) + uu#T*u#T*(diff(ikkk, uuu#T, 0, U#q) + diff(0, U#T, ikkk, uuu#q))) + params["a"]*(params["a"]-1.0)*(params["a"]-2.0)*U#T^(params["a"]-3.0)*uuu#T*uu#T*u#T*diff(0, U#T, 0, U#q) )*params["1/Re"]*params["1/Pr"] )// EOM
 
   macro ugradf(U, ik, f) ( y*(U*dx(f) + U#y*dy(f)) + (ik)*U#z*f ) // EOM
 
-  macro Daexp(u) ( y*params["Da"]*exp(params["Ze"]*(1.0 + 1.0/params["dT"])*(1.0 - (1.0 + params["dT"])/u#T)) ) // EOM
-  macro DaYexp(U) ( U#Y*Daexp(U) ) // EOM
-  macro dDaYexp(U, u) ( (u#Y + params["Ze"]/params["dT"]*(1.0 + params["dT"])^2.*U#Y*u#T/U#T^2.)*Daexp(U) ) // EOM
-  macro ddDaYexp(U, u, uu) ( params["Ze"]/params["dT"]*(1.0 + params["dT"])^2./U#T^2.*((u#Y*uu#T + uu#Y*u#T) - 2.0*U#Y*u#T*uu#T/U#T + params["Ze"]/params["dT"]*(1.0 + params["dT"])^2.*U#Y*u#T*uu#T/U#T^2.)*Daexp(U) ) // EOM
-  macro dddDaYexp(U, u, uu, uuu) ( params["Ze"]/params["dT"]*(1.0 + params["dT"])^2.*((u#Y*uu#T + uu#Y*u#T)*uuu#T/U#T^3.*(params["Ze"]/params["dT"]*(1.0 + params["dT"])^2./U#T - 2.0) - 2.0*u#T*uu#T/U#T^3.*(uuu#Y + U#Y*uuu#T/U#T*(params["Ze"]/params["dT"]*(1.0 + params["dT"])^2./U#T - 3.0)) + params["Ze"]/params["dT"]*(1.0 + params["dT"])^2.*u#T*uu#T/U#T^4.*(uuu#Y + U#Y*uuu#T/U#T*(params["Ze"]/params["dT"]*(1.0 + params["dT"])^2./U#T - 4.0)))*Daexp(U) ) // EOM
+// Arrhenius reaction rate macro
+  macro ubArr() ( params["Da"]*exp(params["Ze"]*(1. + 1./params["dT"])*(1. - (1. + params["dT"])/ubT)) ) // EOM
+  macro dubArrdT() ( (params["Ze"]/params["dT"]*(1. + params["dT"])^2./ubT^2.)*ubArr ) // EOM
+  macro d2ubArrdT2() ( (-2.*params["Ze"]/params["dT"]*(1. + params["dT"])^2./ubT^3. + (params["Ze"]/params["dT"]*(1. + params["dT"])^2./ubT^2.)^2.)*ubArr ) // EOM
+  macro d3ubArrdT3() ( (6.*params["Ze"]/params["dT"]*(1. + params["dT"])^2./ubT^4. + (params["Ze"]/params["dT"]*(1. + params["dT"])^2./ubT^2.)^3. + 3.*(params["Ze"]/params["dT"]*(1. + params["dT"])^2./ubT^2.)*(-2.*params["Ze"]/params["dT"]*(1. + params["dT"])^2./ubT^3.))*ubArr ) // EOM
+// power-law viscosity macro
+  macro ubmu() ( ubT^(params["a"]) ) // EOM
+  macro dubmudT() ( params["a"]*ubT^(params["a"] - 1.) ) // EOM
+  macro d2ubmudT2() ( params["a"]*(params["a"] - 1.)*ubT^(params["a"] - 2.) ) // EOM
+  macro d3ubmudT3() ( params["a"]*(params["a"] - 1.)*(params["a"] - 2.)*ubT^(params["a"] - 3.) ) // EOM
 
 // Boundary conditions
   macro BoundaryConditions(u, U)
-    on(BCinflow, u = U - (2.0 - 8.0*y^2), u#y = U#y, u#z = U#z, u#Y = U#Y - 1.0, u#T = U#T - 1.0 )
-  + on(BCwall, BCpipe, u = U, u#y = U#y, u#z = U#z, u#T = U#T - 1.0 )
+    on(BCinflow, u = U - (2. - 8.*y^2), u#y = U#y, u#z = U#z, u#Y = U#Y - 1., u#T = U#T - 1. )
+  + on(BCwall, u = U, u#y = U#y, u#z = U#z, u#T = U#T - 1. )
   + on(BCaxis, u#y = U#y, u#z = U#z)
   // EOM
   macro HomBoundaryConditions(u)
     on(BCinflow, u = 0, u#y = 0, u#z = 0, u#Y = 0, u#T = 0 )
-  + on(BCwall, BCpipe, u = 0, u#y = 0, u#z = 0, u#T = 0 )
+  + on(BCwall, u = 0, u#y = 0, u#z = 0, u#T = 0 )
   + on((abs(int(sym(0))) != 1)*BCaxis, u#y = 0, u#z = 0 )
   + on((abs(int(sym(0)))  > 0)*BCaxis, u = 0, u#Y = 0, u#T = 0 )
   // EOM
 // RESIDUAL OPERATOR
 varf vR(defu(um), defu(v))
       = int2d(Th)(
-          vY*(ugradf(ub, 0, ubY) +              DaYexp(ub)                  + diffdot1Pe(Y, ub)*params["1/Le"]) + diff1Pe(vY, Y, ub)*params["1/Le"]
-        + vT*(ugradf(ub, 0, ubT) - params["dT"]*DaYexp(ub)                  + diffdot1Pe(T, ub))                + diff1Pe(vT, T, ub)
-        + ugradu(v, ub, 0, ub)   - (div(0, v)*ubT + ugradf(v, 0, ubT))*ubp + gfdgu1Re(v, ub)                   + visc1Re(v, ub)
-        + vp*( -ubT*div(0, ub)  + params["dT"]*DaYexp(ub)                  - diffdot1Pe(T, ub))                - diff1Pe(vp, T, ub)
+          vY*(ugradf(ub, 0, ubY) + ubY*ubArr)/ubT + ubmu*diff(0, vY, 0, ubY)/(params["Re"]*params["Pr"]*params["Le"])
+        + vT*(ugradf(ub, 0, ubT) - params["dT"]*ubY*ubArr)/ubT + ubmu*diff(0, vT, 0, ubT)/(params["Re"]*params["Pr"])
+        + ugradu(v, ub, 0, ub)/ubT - div(0, v)*ubp + ubmu*visc(0, v, 0, ub)/params["Re"]
+        + vp*(div(0, ub) - params["dT"]*ubY*ubArr/ubT) + ubmu*diff(0, vp, 0, ubT)/(params["Re"]*params["Pr"])
       )
-      - int1d(Th, BCopen) (
-        ndotvisc1Re(v, ub)
+      - int1d(Th, BCopen)(
+        ubmu*ndotvisc(v, 0, ub)/params["Re"]
       )
-      + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow) (
-        vp*ndotgradT1Pe(ub)
+      - int1d(Th, BCaxis, BCopen, BCwall, BCinflow)(
+        vp*ubmu*ndotgrads(ubT)/(params["Re"]*params["Pr"])
       )
       + BoundaryConditions(um, ub);
 
 // JACOBIAN OPERATOR
 varf vJ(defu(dum), defu(v))
       = int2d(Th)(
-        iomega*(gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum))
-        + vY*(ugradf(dum, 0, ubY) + ugradf(ub, ik(0), dumY) +              dDaYexp(ub, dum)                                                          + ddiffdot1Pe(Y, ub, ik(0), dum)*params["1/Le"]) + ddiff1Pe(vY, Y, ub, ik(0), dum)*params["1/Le"]
-        + vT*(ugradf(dum, 0, ubT) + ugradf(ub, ik(0), dumT) - params["dT"]*dDaYexp(ub, dum)                                                          + ddiffdot1Pe(T, ub, ik(0), dum))                + ddiff1Pe(vT, T, ub, ik(0), dum)
-        + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik(0), dum) - div(-ik(0), v)*(dumT*ubp + ubT*dump) - ugradf(v, ik(0), dumT)*ubp - ugradf(v, 0, ubT)*dump  + dgfdgu1Re(v, ub, ik(0), dum)                   + dvisc1Re(v, ub, ik(0), dum)
-        + vp*( -ubT*div(ik(0), dum) - dumT*div(0, ub)     + params["dT"]*dDaYexp(ub, dum)                                                          - ddiffdot1Pe(T, ub, ik(0), dum))                - ddiff1Pe(vp, T, ub, ik(0), dum)
+        iomega*(gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum))/ubT
+        + vY*((ugradf(dum, 0, ubY) + ugradf(ub, ik(0), dumY) + dumY*ubArr + ubY*dubArrdT*dumT)/ubT - (ugradf(ub, 0, ubY) + ubY*ubArr)/ubT^2.*dumT) + (dubmudT*dumT*diff(-ik(0), vY, 0, ubY) + ubmu*diff(-ik(0), vY, ik(0), dumY))/(params["Re"]*params["Pr"]*params["Le"])
+        + vT*((ugradf(dum, 0, ubT) + ugradf(ub, ik(0), dumT) - params["dT"]*(dumY*ubArr + ubY*dubArrdT*dumT))/ubT - (ugradf(ub, 0, ubT) - params["dT"]*ubY*ubArr)/ubT^2.*dumT) + (dubmudT*dumT*diff(-ik(0), vT, 0, ubT) + ubmu*diff(-ik(0), vT, ik(0), dumT))/(params["Re"]*params["Pr"])
+        + (ugradu(v, dum, 0, ub) + ugradu(v, ub, ik(0), dum))/ubT - ugradu(v, ub, 0, ub)/ubT^2.*dumT - div(-ik(0), v)*dump + (dubmudT*dumT*visc(-ik(0), v, 0, ub) + ubmu*visc(-ik(0), v, ik(0), dum))/params["Re"]
+        + vp*(div(ik(0), dum) - params["dT"]*((dumY*ubArr + ubY*dubArrdT*dumT)/ubT - ubY*ubArr/ubT^2.*dumT)) + (dubmudT*dumT*diff(-ik(0), vp, 0, ubT) + ubmu*diff(-ik(0), vp, ik(0), dumT))/(params["Re"]*params["Pr"])
       )
-      - int1d(Th, BCopen) (
-        dndotvisc1Re(v, ub, ik(0), dum)
+      - int1d(Th, BCopen)(
+        (dubmudT*dumT*ndotvisc(v, 0, ub) + ubmu*ndotvisc(v, ik(0), dum))/params["Re"]
       )
-      + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow) (
-        vp*dndotgradT1Pe(ub, dum)
+      - int1d(Th, BCaxis, BCopen, BCwall, BCinflow)(
+        vp*(dubmudT*dumT*ndotgrads(ubT) + ubmu*ndotgrads(dumT))/(params["Re"]*params["Pr"])
       )
       + int2d(Th)(
-        iomega*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))
-        + vY*(ugradf(um, 0, ubY) + ugradf(ub, ik(0), umY) +              dDaYexp(ub, um)                                                       + ddiffdot1Pe(Y, ub, ik(0), um)*params["1/Le"]) + ddiff1Pe(vY, Y, ub, ik(0), um)*params["1/Le"]
-        + vT*(ugradf(um, 0, ubT) + ugradf(ub, ik(0), umT) - params["dT"]*dDaYexp(ub, um)                                                       + ddiffdot1Pe(T, ub, ik(0), um))                + ddiff1Pe(vT, T, ub, ik(0), um)
-        + ugradu(v, um, 0, ub) + ugradu(v, ub, ik(0), um) - div(-ik(0), v)*(umT*ubp + ubT*ump) - ugradf(v, -ik(0), umT)*ubp - ugradf(v, 0, ubT)*ump + dgfdgu1Re(v, ub, ik(0), um)                   + dvisc1Re(v, ub, ik(0), um)
-        + vp*( -ubT*div(ik(0), um) - umT*div(0, ub)     + params["dT"]*dDaYexp(ub, um)                                                       - ddiffdot1Pe(T, ub, ik(0), um))                - ddiff1Pe(vp, T, ub, ik(0), um)
+        iomega*(gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))/ubT
+        + vY*((ugradf(um, 0, ubY) + ugradf(ub, ik(0), umY) + umY*ubArr + ubY*dubArrdT*umT)/ubT - (ugradf(ub, 0, ubY) + ubY*ubArr)/ubT^2.*umT) + (dubmudT*umT*diff(-ik(0), vY, 0, ubY) + ubmu*diff(-ik(0), vY, ik(0), umY))/(params["Re"]*params["Pr"]*params["Le"])
+        + vT*((ugradf(um, 0, ubT) + ugradf(ub, ik(0), umT) - params["dT"]*(umY*ubArr + ubY*dubArrdT*umT))/ubT - (ugradf(ub, 0, ubT) - params["dT"]*ubY*ubArr)/ubT^2.*umT) + (dubmudT*umT*diff(-ik(0), vT, 0, ubT) + ubmu*diff(-ik(0), vT, ik(0), umT))/(params["Re"]*params["Pr"])
+        + (ugradu(v, um, 0, ub) + ugradu(v, ub, ik(0), um))/ubT - ugradu(v, ub, 0, ub)/ubT^2.*umT - div(-ik(0), v)*ump + (dubmudT*umT*visc(-ik(0), v, 0, ub) + ubmu*visc(-ik(0), v, ik(0), um))/params["Re"]
+        + vp*(div(ik(0), um) - params["dT"]*((umY*ubArr + ubY*dubArrdT*umT)/ubT - ubY*ubArr/ubT^2.*umT)) + (dubmudT*umT*diff(-ik(0), vp, 0, ubT) + ubmu*diff(-ik(0), vp, ik(0), umT))/(params["Re"]*params["Pr"])
       )
-      - int1d(Th, BCopen) (
-        dndotvisc1Re(v, ub, ik(0), um)
+      - int1d(Th, BCopen)(
+        (dubmudT*umT*ndotvisc(v, 0, ub) + ubmu*ndotvisc(v, ik(0), um))/params["Re"]
       )
-      + int1d(Th, BCaxis, BCopen, BCwall, BCpipe, BCinflow) (
-        vp*dndotgradT1Pe(ub, um)
+      - int1d(Th, BCaxis, BCopen, BCwall, BCinflow)(
+        vp*(dubmudT*umT*ndotgrads(ubT) + ubmu*ndotgrads(umT))/(params["Re"]*params["Pr"])
       )
       + HomBoundaryConditions(dum);
 
 // MASS OPERATOR
 varf vM(defu(dum), defu(v))
-      = int2d(Th)( gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum) )
-      + int2d(Th)( gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um) )
+      = int2d(Th)( (gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum))/ubT )
+      + int2d(Th)( (gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))/ubT )
       + HomBoundaryConditions(dum);
 
 // FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
 varf vMq(defu(dum), defu(v))
-      = int2d(Th)( gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum) );
+      = int2d(Th)( (gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum))/ubT );
 
 varf vMf(deff(dum), deff(v))
       = int2d(Th)( vdotu(v, dum)/ubT );
@@ -140,7 +115,7 @@ varf vP(deff(fm), defu(v))
       = int2d(Th)( vdotu(v, fm) );
 
 // HESSIAN OPERATOR
-varf vH(defu(dum), defu(v))
+/*varf vH(defu(dum), defu(v))
       = int2d(Th)(
           vY*(ugradf(um, ik2(0), um2Y) + ugradf(um2, ik(0), umY) +              ddDaYexp(ub, um, um2)                                                          + dddiffdot1Pe(Y, ub, ik(0), um, ik2(0), um2)*params["1/Le"]) + dddiff1Pe(vY, Y, ub, ik(0), um, ik2(0), um2)*params["1/Le"]
         + vT*(ugradf(um, ik2(0), um2T) + ugradf(um2, ik(0), umT) - params["dT"]*ddDaYexp(ub, um, um2)                                                          + dddiffdot1Pe(T, ub, ik(0), um, ik2(0), um2))                + dddiff1Pe(vT, T, ub, ik(0), um, ik2(0), um2)
@@ -183,3 +158,4 @@ varf vT(defu(dum), defu(v))
   vp*dddndotgradT1Pe(ub, um, um2, um3)
 )
 + HomBoundaryConditions(dum);
+*/

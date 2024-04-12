@@ -44,6 +44,6 @@ mesh Thg = buildmesh(C01(n2*rmax) + C02(n1*(0.4-xmin)) + C03(n0*0.4)
                      + C07(n1*(xmax-wcav)) + C08(n1*rmax) + C09(n1*(xmax-xmin)));
 plot(Thg);
 int[int] meshlabels = labels(Thg);
-cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
+cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " elements, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
 cout << "  Saving mesh '" + meshout + "'." << endl;
 savemesh(Thg, meshout);

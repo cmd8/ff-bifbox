@@ -19,9 +19,10 @@ The commands below illustrate how to perform a bifurcation analysis of a premixe
 ```
 cd ~/your/path/to/ff-bifbox/
 ```
-2. Export working directory for easy reference.
+2. Export working directory and number of processors for easy reference.
 ```
 export workdir=examples/douglas_etal_2023/data
+export nproc=4
 ```
 3. Create symbolic links for governing equations and solver settings.
 ```
@@ -42,14 +43,22 @@ FreeFem++-mpi -v 0 examples/douglas_etal_2023/jet.edp -mo $workdir/jet
 ```
 
 ## Perform parallel computations using `ff-bifbox`
-The number of processors is set using the `-n` argument from `mpirun`. Here, this value is set to 4.
 ### Laminar base flow
-1. Compute a base state on the created mesh at Re = 10, Pr = 0.7, Le = 1, Da = 10, dT = 4, Ze = 1, a = 2/3.
+1. Compute a base state on the created mesh at Re = 10, Pr = 0.7, Le = 1, Da = 1, dT = 4, Ze = 0, a = 2/3.
 ```
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -mi jet.msh -fo jet -1/Re 0.1 -1/Pr 1.42857142857142857 -1/Le 1 -Da 10 -dT 4 -Ze 1 -a 0.6666666666666667
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -mi jet.msh -fo ignite_0 -Re 10 -Pr 0.7 -Le 1 -Da 1 -dT 4 -Ze 0 -a 0.6666666666666667
 ```
 
-2. Continue base state along the parameters to the desired conditions. This is a complicated step that takes a significant amount of computations/time and involves a lot of trial and error decisions. It is useful to save the outputs to paraview in order to keep track of how the solution is changing as a function of the parameters.
+2. Increase Re to 1000 with adaptive remeshing.
 ```
-ff-mpirun -np 4 basecontinue.edp -v 0 -dir $workdir -fi jet.base -fo jet -param 1/Re -h0 -30 -scount 2 -maxcount 10 -mo jet -pv 1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_0.base -fo ignite_1 -Re 50
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_1.base -fo ignite_2 -Re 120
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_2.base -fo ignite_3 -Re 300
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_3.base -fo ignite_4 -Re 700
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_4.base -fo ignite_5 -Re 1000 -mo ignite_5
+```
+
+3. Continue base state along the parameters to the desired conditions. This is a complicated step that takes a significant amount of computations/time and involves a lot of trial and error decisions. It is useful to save the outputs to paraview in order to keep track of how the solution is changing as a function of the parameters.
+```
+ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi ignite_5.base -fo ignite -param Ze -h0 10 -count 5 -scount 5 -maxcount 100 -mo ignite -pv 1
 ```

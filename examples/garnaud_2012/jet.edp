@@ -38,6 +38,6 @@ border C06(t=0, 1){x=xmin*t; y=rpipe; label=BCwall;}
 mesh Thg = buildmesh(C01(n0*rpipe) + C02(n1*(xmax-xmin)) + C03(n2*rmax) + C04(n2*xmax) + C05(n1*(rmax-rpipe)) + C06(n0*abs(xmin)));
 
 int[int] meshlabels = labels(Thg);
-cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
+cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " elements, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
 cout << "  Saving mesh '" + meshout + "'." << endl;
 savemesh(Thg, meshout);

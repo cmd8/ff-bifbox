@@ -37,11 +37,10 @@ Line (ii) = {ii-1, ii};
 EndFor
 
 // Labels
+Physical Line ("INFLOW") = {1};
 Physical Line ("AXIS") = {2};
 Physical Line ("OUTFLOW") = {3,4};
-Physical Line ("WALL") = {5};
-Physical Line ("INFLOW") = {1};
-Physical Line ("PIPE") = {6};
+Physical Line ("WALL") = {5,6};
 
 // Surfaces
 Line Loop(1) = {1:6};

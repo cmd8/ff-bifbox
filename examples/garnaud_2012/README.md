@@ -16,9 +16,10 @@ The commands below illustrate how to perform a resolvent analysis of an incompre
 ```
 cd ~/your/path/to/ff-bifbox/
 ```
-2. Export working directory for easy reference.
+2. Export working directory and number of processors for easy reference.
 ```
 export workdir=examples/garnaud_2012/data
+export nproc=4
 ```
 3. Create symbolic links for governing equations and solver settings.
 ```
@@ -39,37 +40,36 @@ FreeFem++-mpi -v 0 examples/garnaud_2012/jet.edp -mo $workdir/jet
 ```
 
 ## Perform parallel computations using `ff-bifbox`
-The number of processors is set using the `-n` argument from `mpirun`. Here, this value is set to 4.
 ### Laminar base flow
 1. Compute base states on the created mesh at Re = 10 from default guess
 ```
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -mi jet.msh -fo jet -1/Re 0.1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -mi jet.msh -fo jet -1/Re 0.1
 ```
 
 2. Continue base state along the parameter 1/Re with adaptive remeshing
 ```
-ff-mpirun -np 4 basecontinue.edp -v 0 -dir $workdir -fi jet.base -fo jet -param 1/Re -h0 -1 -scount 3 -maxcount 15 -mo jet
+ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi jet.base -fo jet -param 1/Re -h0 -1 -scount 3 -maxcount 15 -mo jet
 ```
 
 3. Compute base state at Re = 1000 with guess from continuation
 ```
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi jet_15.base -fo jet1000 -1/Re 0.001
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi jet_15.base -fo jet1000 -1/Re 0.001
 ```
 
 4. Adapt mesh to Re = 1000 solution and recompute base state, save .vtu file for Paraview
 ```
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi jet1000.base -fo jet1000adapt -mo jet1000adapt -pv 1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi jet1000.base -fo jet1000adapt -mo jet1000adapt -pv 1
 ```
 
 ### Resolvent analysis
 1. Compute gains across 0.1 <= St <= 1.0 frequency range (0.314 < omega < 3.14) in 10 increments
 ```
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -so jet1000adapt -omega 0.314159 -omegaf 3.14159 -nomega 10
+ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -so jet1000adapt -omega 0.314159 -omegaf 3.14159 -nomega 10
 ```
 2. Compute forcing/response modes at St = [0.1, 0.48, 0.64, 0.95], save .vtu files for Paraview
 ```
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p1 -omega 0.314159 -pv 1
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p48 -omega 1.50796 -pv 1
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p64 -omega 2.01062 -pv 1
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p95 -omega 2.98451 -pv 1
+ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p1 -omega 0.314159 -pv 1
+ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p48 -omega 1.50796 -pv 1
+ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p64 -omega 2.01062 -pv 1
+ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi jet1000adapt.base -fo jet1000_St0p95 -omega 2.98451 -pv 1
 ```

@@ -17,9 +17,10 @@ The commands below illustrate how to analyze a 2D reacting compressible flow thr
 ```
 cd ~/your/path/to/ff-bifbox/
 ```
-2. Export working directory for easy reference.
+2. Export working directory and number of processors for easy reference.
 ```
 export workdir=examples/brokof_etal_2024/data
+export nproc=4
 ```
 3. Create symbolic links for governing equations and solver settings.
 ```
@@ -39,71 +40,70 @@ FreeFem++-mpi -v 0 examples/brokof_etal_2024/duct.edp -mo $workdir/duct
 ```
 
 ## Perform parallel computations using `ff-bifbox`
-The number of processors is set using the `-n` argument from `mpirun`. Here, this value is set to 4.
 ### Zeroth order
-1. Compute the cold base state at Re = 200 on the created mesh from default guess
+1. Compute an initial base state at Re = 200 on the created mesh from default guess
 ```
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -mi duct.msh -fo cold -Re 200 -Pe 70 -Ma 0.01 -gamma 1.4 -dT 5.67 -Da 1 -Ze 0 -L 1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -mi duct.msh -fo ignite_0 -Re 200 -Pe 70 -Ma 0.01 -gamma 1.4 -dT 5.67 -Da 1 -Ze 0 -L 1
 ```
 
-2. Ignite the base flow via continuation of Da and Ze. (slow!)
+2. Gradually ignite the base flow via continuation of Da and Ze. (slow!)
 ```
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi cold.base -fo ignite_1 -Ze 1 -mo ignite_1
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi ignite_1.base -fo ignite_2 -Ze 2 -Da 2 -mo ignite_2
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi ignite_2.base -fo ignite_3 -Ze 4 -Da 4 -mo ignite_3
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi ignite_3.base -fo ignite_4 -Ze 4.2 -Da 10 -mo ignite_4
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi ignite_4.base -fo ignite_5 -Ze 4.5 -Da 20 -mo ignite_5
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi ignite_5.base -fo ignite_6 -Ze 5 -Da 30 -mo ignite_6
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi ignite_6.base -fo ignite_7 -Ze 6 -Da 50 -mo ignite_7
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi ignite_7.base -fo ignite_8 -Ze 7 -Da 70 -mo ignite_8
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi ignite_8.base -fo ignite_9 -Ze 8 -Da 80 -mo ignite_9
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi ignite_9.base -fo ignite_10 -Ze 10 -Da 100 -mo ignite_10
-ff-mpirun -np 4 basecontinue.edp -v 0 -dir $workdir -fi ignite_10.base -fo ignite -param Da -count 10 -h0 10 -maxcount -1 -scount 5 -mo ignite -paramtarget 1700 -dmax 10
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_0.base -fo ignite_1 -Ze 1 -mo ignite_1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_1.base -fo ignite_2 -Ze 2 -Da 2 -mo ignite_2
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_2.base -fo ignite_3 -Ze 4 -Da 4 -mo ignite_3
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_3.base -fo ignite_4 -Ze 4.2 -Da 10 -mo ignite_4
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_4.base -fo ignite_5 -Ze 4.5 -Da 20 -mo ignite_5
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_5.base -fo ignite_6 -Ze 5 -Da 30 -mo ignite_6
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_6.base -fo ignite_7 -Ze 6 -Da 50 -mo ignite_7
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_7.base -fo ignite_8 -Ze 7 -Da 70 -mo ignite_8
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_8.base -fo ignite_9 -Ze 8 -Da 80 -mo ignite_9
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_9.base -fo ignite_10 -Ze 10 -Da 100 -mo ignite_10
+ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi ignite_10.base -fo ignite -param Da -count 10 -h0 10 -maxcount -1 -scount 5 -mo ignite -paramtarget 1700 -dmax 10
 ```
 
 3. Compute Re = 200, 500, 800 base flow fields at L = 0.5, 1, 5.0. (Change `ignite_190.base` to `ignite_xxx.base` where `xxx` is the highest count value from the continuation.)
 ```
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi ignite_190.base -fo Re200L1 -Da 1700 -mo Re200L1 -hmax 0.1
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi Re200L1.base -fo Re500L1 -Re 500 -mo Re500L1 -hmax 0.1
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi Re500L1.base -fo Re800L1 -Re 800 -mo Re800L1 -hmax 0.1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_190.base -fo Re200L1 -Da 1700 -mo Re200L1 -hmax 0.1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re200L1.base -fo Re500L1 -Re 500 -mo Re500L1 -hmax 0.1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re500L1.base -fo Re800L1 -Re 800 -mo Re800L1 -hmax 0.1
 
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi Re200L1.base -fo Re200L0p5 -L 0.5 -mo Re200L0p5 -hmax 0.1
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -fo Re500L0p5 -Re 500 -mo Re500L0p5 -hmax 0.1
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -fo Re800L0p5 -Re 800 -mo Re800L0p5 -hmax 0.1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re200L1.base -fo Re200L0p5 -L 0.5 -mo Re200L0p5 -hmax 0.1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -fo Re500L0p5 -Re 500 -mo Re500L0p5 -hmax 0.1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -fo Re800L0p5 -Re 800 -mo Re800L0p5 -hmax 0.1
 
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi Re200L1.base -fo Re200L5 -L 5.0 -mo Re200L5 -hmax 0.1
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi Re200L5.base -fo Re500L5 -Re 500 -mo Re500L5 -hmax 0.1
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi Re500L5.base -fo Re800L5 -Re 800 -mo Re800L5 -hmax 0.1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re200L1.base -fo Re200L5 -L 5.0 -mo Re200L5 -hmax 0.1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re200L5.base -fo Re500L5 -Re 500 -mo Re500L5 -hmax 0.1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re500L5.base -fo Re800L5 -Re 800 -mo Re800L5 -hmax 0.1
 ```
 
 ### First order
 1. Compute the eigenspectra at Re = 200, 500, 800 for L = 0.5 for various Rout values. Note that, according to the settings file, the sym argument activates the acoustic characteristic BC in this setup (it does not influence the modes' symmetry).
 ```
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -fo Re200L0p5 -mo Re200L0p5 -hmax 0.05
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout 0 -sym 1 -eps_target 0.5+6i -eps_nev 50
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -0.25 -sym 1 -eps_target 0.5+6i -eps_nev 50
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -0.5 -sym 1 -eps_target 0.5+6i -eps_nev 50
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -0.75 -sym 1 -eps_target 0.5+6i -eps_nev 50
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -1 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -fo Re200L0p5 -mo Re200L0p5 -hmax 0.05
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout 0 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -0.25 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -0.5 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -0.75 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -1 -sym 1 -eps_target 0.5+6i -eps_nev 50
 
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -fo Re500L0p5 -mo Re500L0p5 -hmax 0.05
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout 0 -sym 1 -eps_target 0.5+6i -eps_nev 50
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -0.25 -sym 1 -eps_target 0.5+6i -eps_nev 50
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -0.5 -sym 1 -eps_target 0.5+6i -eps_nev 50
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -0.75 -sym 1 -eps_target 0.5+6i -eps_nev 50
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -1 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -fo Re500L0p5 -mo Re500L0p5 -hmax 0.05
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout 0 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -0.25 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -0.5 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -0.75 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -1 -sym 1 -eps_target 0.5+6i -eps_nev 50
 
-ff-mpirun -np 4 basecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -fo Re800L0p5 -mo Re800L0p5 -hmax 0.05
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout 0 -sym 1 -eps_target 0.5+6i -eps_nev 50
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -0.25 -sym 1 -eps_target 0.5+6i -eps_nev 50
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -0.5 -sym 1 -eps_target 0.5+6i -eps_nev 50
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -0.75 -sym 1 -eps_target 0.5+6i -eps_nev 50
-ff-mpirun -np 4 modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -1 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -fo Re800L0p5 -mo Re800L0p5 -hmax 0.05
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout 0 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -0.25 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -0.5 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -0.75 -sym 1 -eps_target 0.5+6i -eps_nev 50
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -1 -sym 1 -eps_target 0.5+6i -eps_nev 50
 ```
 
 2. Perform resolvent analysis at Re = 200, 500, 800 for L = 0.5 for tuned Rout values where sigma ~ -0.45.
 ```
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -0.24125 -sym 1 -omega 0.1 -omegaf 12.5 -nomega 125
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -0.70125 -sym 1 -omega 0.1 -omegaf 12.5 -nomega 125
-ff-mpirun -np 4 rslvcompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -0.92 -sym 1 -omega 0.1 -omegaf 12.5 -nomega 125
+ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -0.24125 -sym 1 -omega 0.1 -omegaf 12.5 -nomega 125
+ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -0.70125 -sym 1 -omega 0.1 -omegaf 12.5 -nomega 125
+ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -0.92 -sym 1 -omega 0.1 -omegaf 12.5 -nomega 125
 ```

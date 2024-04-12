@@ -11,7 +11,7 @@ macro dimension()2//EOM
 include "macro_ddm.idp"
 verbosity = getARGV("-v",0);
 // Define parameter and monitor names
-  string[int] paramnames = ["1/Re","1/Pr","1/Le","dT","Ze","Da","a"]; // set parameter names
+  string[int] paramnames = ["Re","Pr","Le","dT","Ze","Da","a"]; // set parameter names
   string[int] monitornames = ["Lf"]; // set monitor names
 // Declare symmetries
   real[int] sym(1);
@@ -41,16 +41,15 @@ verbosity = getARGV("-v",0);
   macro InitialConditions()[0, 0, 0, 1, 1, 0]//EOM
 // Boundary labels
   int BCnull = 0;
-  int BCaxis = 1;
-  int BCopen = 2;
-  int BCwall = 3;
-  int BCinflow = 4;
-  int BCpipe = 5;
+  int BCinflow = 1;
+  int BCaxis = 2;
+  int BCopen = 3;
+  int BCwall = 4;
 // Define solution monitors to extract
 macro getmonitors(u){
   fespace Xh1(Thg, P2);
   Xh1 RR = u#Y/(u#T + (u#T == 0.0))*exp(params["Ze"]*(1.0 + 1.0/params["dT"])*(1.0 - (1.0 + params["dT"])/(u#T + (u#T == 0.0)))), Xpoints = x;
-  varf Onaxis(RR, VX) = int2d(Th)(0*RR*VX) + on(BCaxis, RR = 1);
+  varf Onaxis(RR, VX) = on(BCaxis, RR = 1);
   real[int] onaxis = Onaxis(0, Xh1, tgv = 1);
   int[int] indices(onaxis.sum);
   for(int i=0, j=0; i<Xh1.ndof; ++i) if(onaxis[i]) {indices[j] = i; ++j;}

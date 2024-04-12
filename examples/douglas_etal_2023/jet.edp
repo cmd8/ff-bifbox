@@ -32,11 +32,11 @@ border C02(t=0, 1){x=xmin+(xmax-xmin)*t; y=0; label=BCaxis;}
 border C03(t=0, 1){x=xmax; y=rmax*t; label=BCopen;}
 border C04(t=0, 1){x=xmax*(1-t); y=rmax; label=BCopen;}
 border C05(t=0, 1){x=0; y=rmax-(rmax-rpipe)*t; label=BCwall;}
-border C06(t=0, 1){x=xmin*t; y=rpipe; label=BCpipe;}
+border C06(t=0, 1){x=xmin*t; y=rpipe; label=BCwall;}
 // Assemble mesh
 mesh Thg = buildmesh(C01(n0*rpipe) + C02(n1*(xmax-xmin)) + C03(n2*rmax) + C04(n2*xmax) + C05(n1*(rmax-rpipe)) + C06(n0*abs(xmin)));
 
 int[int] meshlabels = labels(Thg);
-cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " triangles, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
+cout << "\tMesh: " << Thg.nv << " vertices, " << Thg.nt << " elements, " << Thg.nbe << " boundary elements, " << meshlabels.n << " labeled boundaries." << endl;
 cout << "  Saving mesh '" + meshout + "'." << endl;
 savemesh(Thg, meshout);
