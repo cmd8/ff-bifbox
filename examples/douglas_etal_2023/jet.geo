@@ -12,7 +12,6 @@ n2 = 2;
 xmin = -5.0;
 xmax = 50.0;
 rmax = 15.0;
-rpipe = 0.5;
 
 // Points
 //              4--------------------------------------3
@@ -27,8 +26,8 @@ Point (1)  = {xmin, 0, 0, 1/n1};
 Point (2)  = {xmax, 0, 0, 1/n1};
 Point (3)  = {xmax, rmax, 0, 1/n2};
 Point (4)  = {0, rmax, 0, 1/n2};
-Point (5)  = {0, rpipe, 0, 1/n0};
-Point (6)  = {xmin, rpipe, 0, 1/n0};
+Point (5)  = {0, 0.5, 0, 1/n0};
+Point (6)  = {xmin, 0.5, 0, 1/n0};
 
 // Lines
 Line (1) = {6,1};
