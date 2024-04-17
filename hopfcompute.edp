@@ -127,15 +127,14 @@ real omega;
 complex[string] alpha;
 complex beta;
 
-string fileroot, meshroot, basefileroot;
-string fileext = parsefilename(filein, fileroot); //extract file name and extension
+// Load mesh, make FE basis
+string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
 if((fileext == "mode" || fileext == "rslv") && basefilein == "") basefilein = readbasename(workdir + filein);
-string basefileext = parsefilename(basefilein, basefileroot);
+string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
-string meshext = parsefilename(meshin, meshroot);
+string meshroot, meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshout); // trim extension from output mesh, if given
-// Load mesh, make FE basis
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);

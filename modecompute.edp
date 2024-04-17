@@ -30,8 +30,10 @@ string epstarget = getARGV("-eps_target", "0+0i");
 int epsnev = getARGV("-eps_nev", 1);
 bool strictnev = getARGV("-strict", 0);
 
-string fileroot;
-string fileext = parsefilename(filein, fileroot); //extract file name and extension
+int sepcharind = max(epstarget.rfind("+"), epstarget.rfind("-"));
+complex shift = atof(epstarget(0:sepcharind)) + 1i*atof(epstarget(sepcharind:epstarget.length-2));
+// Load mesh, make FE basis
+string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(evalout, evalout); // trim extension from output file, if given
 parsefilename(fileout, fileout); // trim extension from output file, if given
 if(fileext == "mode" || fileext == "rslv"){
@@ -39,10 +41,6 @@ if(fileext == "mode" || fileext == "rslv"){
   fileext = parsefilename(filein, fileroot);
 }
 if(filein != "" && meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
-
-int sepcharind = max(epstarget.rfind("+"), epstarget.rfind("-"));
-complex shift = atof(epstarget(0:sepcharind)) + 1i*atof(epstarget(sepcharind:epstarget.length-2));
-// Load mesh, make FE basis
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);

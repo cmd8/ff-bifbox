@@ -28,8 +28,8 @@ real omegaf = getARGV("-omegaf", 1.0);
 int epsnev = getARGV("-eps_nev", 1);
 bool strictnev = getARGV("-strict", 1);
 
-string fileroot;
-string fileext = parsefilename(filein, fileroot); //extract file name and extension
+// Load mesh, make FE basis
+string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(gainout, gainout); // trim extension from output file, if given
 parsefilename(fileout, fileout); // trim extension from output file, if given
 if(fileext == "mode" || fileext == "rslv"){
@@ -37,8 +37,6 @@ if(fileext == "mode" || fileext == "rslv"){
   fileext = parsefilename(filein, fileroot);
 }
 if(filein != "" && meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
-
-// Load mesh, make FE basis
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);

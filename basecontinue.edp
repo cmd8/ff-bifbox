@@ -41,15 +41,14 @@ bool stopflag = false;
 bool forcesave = false;
 
 // Load mesh, make FE basis
-string fileroot, meshroot;
-string fileext = parsefilename(filein, fileroot); //extract file name and extension
+string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
 if(fileext == "mode" || fileext == "rslv") {
   filein = readbasename(workdir + filein);
   fileext = parsefilename(filein, fileroot);
 }
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
-string meshext = parsefilename(meshin, meshroot);
+string meshroot, meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshroot); // trim extension from output mesh, if given
 if(count > 0) {
   fileroot = fileroot(0:fileroot.rfind("_" + count)-1); // get file root

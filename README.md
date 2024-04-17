@@ -56,12 +56,12 @@ ff-bifbox is a package of scalable and cross-compatible FreeFEM scripts designed
 <!-- GETTING STARTED -->
 ## Getting Started
 ### Prerequisites
-Make sure you have access to a recent [FreeFEM](https://freefem.org/) installation (version 4.12 or above), compiled with the `PETSc` and `PETSc-complex` **(with SLEPc)** plugins. A guide for compiling FreeFEM correctly with PETSc can be found in [this tutorial](https://joliv.et/FreeFem-tutorial/) by Pierre Jolivet. More details about the [PETSc](https://petsc.org/release/docs/manual/) and [SLEPc](http://slepc.upv.es/documentation/slepc.pdf) options used in the solvers may be found in their respective manuals.
+Make sure you have access to a recent [FreeFEM](https://freefem.org/) installation (version 4.14 or above), compiled with the `PETSc` and `PETSc-complex` **(with SLEPc)** plugins. Guides for compiling FreeFEM with PETSc can be found on the [FreeFEM GitHub page](https://github.com/FreeFem/FreeFem-sources) or in [this tutorial](https://joliv.et/FreeFem-tutorial/) by Pierre Jolivet. More details about the [PETSc](https://petsc.org/release/docs/manual/) and [SLEPc](http://slepc.upv.es/documentation/slepc.pdf) options used in the solvers may be found in their respective manuals.
 
 ### Installation
 
 1. Clone the repo
-   ```sh
+   ```bash
    git clone https://github.com/cmd8/ff-bifbox.git
    ```
 2. Add `ff-bifbox` to FreeFEM's filepath

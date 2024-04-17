@@ -29,15 +29,14 @@ string filein = getARGV("-fi", ""); // input file with extension
 string fileout = getARGV("-fo", ""); // output file without extension
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 
-string fileroot, meshroot;
-string fileext = parsefilename(filein, fileroot); //extract file name and extension
+string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
 if(fileext == "mode" || fileext == "rslv"){
   filein = readbasename(workdir + filein);
   fileext = parsefilename(filein, fileroot);
 }
 if(filein != "" && meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
-string meshext = parsefilename(meshin, meshroot);
+string meshroot, meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshout); // trim extension from output mesh, if given
 // Load mesh
 Th = readmeshN(workdir + meshin);

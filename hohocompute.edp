@@ -51,16 +51,14 @@ real omega, omega1, omega2;
 complex[string] alpha1, alpha2;
 complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
 // Load mesh, make FE basis
-string fileroot1, fileroot2, meshroot, basefileroot;
-string fileext1 = parsefilename(filein, fileroot1); //extract file name and extension
-string fileext2 = parsefilename(filein2, fileroot2); //extract file name and extension
+string fileroot1, fileext1 = parsefilename(filein, fileroot1); //extract file name and extension
+string fileroot2, fileext2 = parsefilename(filein2, fileroot2); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
 if((fileext1 == "mode" || fileext1 == "rslv") && basefilein == "") basefilein = readbasename(workdir + filein);
-string basefileext = parsefilename(basefilein, basefileroot);
+string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
-string meshext = parsefilename(meshin, meshroot);
+string meshroot, meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshroot); // trim extension from output mesh, if given
-// Load mesh, make FE basis
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
