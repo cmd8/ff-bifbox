@@ -101,3 +101,10 @@ ff-mpirun -np $nproc porbcompute.edp -v 0 -dir $workdir -fi cylinderNh2_10.porb 
 ff-mpirun -np $nproc porbcompute.edp -v 0 -dir $workdir -fi cavityNh2_8.porb -fo cavity5000Nh3 -Nh 3 -1/Re 0.0002 -blocks 3
 ```
 NOTE: Sipp & Lebedev do not perform harmonic balance analysis. See Fabre et al., Appl. Mech. Rev. 2018 and Meliga, JFM, 2017 for reference results from the cylinder and cavity geometries, respectively.
+
+
+### Time-domain nonlinear simulation
+1. Compute time series over first 10 time units for cavity case after step increase in Reynolds number, adapt mesh to solution, export files to Paraview. 
+```
+ff-mpirun -np $nproc tdnscompute.edp -v 0 -dir $workdir -fi cavity4000.base -fo cavity -1/Re 0.0002 -tsdt 0.01 -mo cavitytimeseries -scount 5 -maxcount 1000 -pv 1
+```

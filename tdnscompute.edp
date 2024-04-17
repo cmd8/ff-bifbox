@@ -24,19 +24,21 @@ string fileout = getARGV("-fo", filein);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
-real dt = getARGV("-dt", 0.01);
+string tstype = getARGV("-ts_type", "beuler");
+int tsmaxsnesfailures = getARGV("-ts_max_snes_failures", -1);
+real tsdt = getARGV("-ts_dt", 0.01);
+string tsadapttype = getARGV("-ts_adapt_type", "none");
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 
 // Load mesh, make FE basis
-string fileroot, meshroot;
-string fileext = parsefilename(filein, fileroot); //extract file name and extension
+string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
 if(fileext == "mode" || fileext == "rslv"){
   filein = readbasename(workdir + filein);
   fileext = parsefilename(filein, fileroot);
 }
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
-string meshext = parsefilename(meshin, meshroot);
+string meshroot, meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshroot); // trim extension from output mesh, if given
 if(count > 0) {
   fileroot = fileroot(0:fileroot.rfind("_" + count)-1); // get file root
@@ -108,21 +110,20 @@ Mat J;
 createMatu(Th, J, Pk);
 sym = 0;
 real[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
-real iomega = 1.0/dt, iomega2 = 0.0, iomega3 = 0.0;
+real iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp" // load equations
 bool adapt = false;
-if(meshout != "")  adapt = true;  // if output meshfile is given, adapt mesh
-meshout = meshin; // if no adaptation
+if(meshout == "") meshout = meshin; // if no adaptation
+else adapt = true;  // if output meshfile is given, adapt mesh
+int adaptflag;
 // initialize
 real[int] q, qp;
 ChangeNumbering(J, ub[], q);
 ChangeNumbering(J, ub[], qp);
 // Function to build residual "F(t,u,\dot{u})" operator in PETSc numbering
-func real[int] funcF(real[int]& qPETSc) {
+func real[int] funcF(real t, real[int]& qPETSc, real[int]& qdotPETSc) {
     ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
-    ChangeNumbering(J, um[], qp, inverse = true, exchange = true);
-    um[] -= ub[]; // -dq
-    um[] /= -dt; // -dq/-dt = dq/dt
+    ChangeNumbering(J, um[], qdotPETSc, inverse = true, exchange = true);
     real[int] FPETSc, F = vR(0, XMh, tgv = -1);
     real[int] M = vM(0, XMh, tgv = -10);
     F += M;
@@ -130,10 +131,25 @@ func real[int] funcF(real[int]& qPETSc) {
     return FPETSc;
 }
 // Function to build Jacobian operator in PETSc numbering
-func int funcJ(real[int]& qPETSc) {
+func int funcJ(real t, real[int]& qPETSc, real[int]& qdotPETSc, real a) {
     ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
-    iomega = 1.0/dt;
+    iomega = a;
     J = vJ(XMh, XMh, tgv = -1);
+    return 0;
+}
+// Function to monitor solution progress
+func int funcMon(int s, real t, real[int]& in) {
+    if(s > 0){
+      tsdt = t - time;
+      count++;
+      if(mpirank == 0) cout << "  " << ((adapt && adaptflag) ? "A" : "") << count + ":\tdt = " + tsdt + ",\ttime = " + t << endl;
+      if( adapt ? (adaptflag ? false : (count % savecount != 0)) : true){
+        qp = in;
+        ChangeNumbering(J, ub[], in, inverse = true);
+        savetdns(fileout + "_" + count, ((savecount > 0) ? fileout : ""), meshout, filein, t, (count % savecount == 0), true)
+      }
+    }
+    time = t;
     return 0;
 }
 // set up Mat parameters
@@ -141,74 +157,82 @@ IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams);
 while (count < maxcount){
   int ret;
+  adaptflag = 0;
   // solve nonlinear problem with TS
-  SNESSolve(J, funcJ, funcF, q, reason = ret,
-            sparams = "-snes_linesearch_type " + sneslinesearchtype + " -options_left no -snes_converged_reason"); // solve nonlinear problem with SNES
-  if(ret > 0) { // Save solution if solver converged and output file is given
-    count++;
-    time += dt;
-    if(adapt && (count % savecount == 0)) { // if output meshfile is given, adapt mesh
-      ChangeNumbering(J, ub[], q, inverse = true);
-      ChangeNumbering(J, um[], qp, inverse = true);
-      meshout = meshroot + "_" + count + "." + meshext;
-      XMhg defu(uG), defu(umG), defu(tempu); // create private global FE functions
-      tempu[](restu) = ub[]; // populate local portion of global soln
-      mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
-      tempu[](restu) = um[]; // populate local portion of prev. global soln
-      mpiAllReduce(tempu[], umG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
-      if(mpirank == 0) { // Perform mesh adaptation (serially) on processor 0
-        IFMACRO(dimension,2)
-          Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
-        ENDIFMACRO
-        IFMACRO(dimension,3)
-          cout << "NOTE: 3D mesh adaptation is still under development." << endl;
-          load "mshmet"
-          load "mmg"
-          real anisomax = getARGV("-anisomax",1.0);
-          real[int] met = mshmet(Thg, adaptu(uG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0), hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
-          if(anisomax > 1.0) {
-            load "aniso"
-            boundaniso(6, met, anisomax);
-          }
-          Thg = mmg3d(Thg, metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1, verbose = verbosity-(verbosity==0));
-        ENDIFMACRO
-      }
-      broadcast(processor(0), Thg); // broadcast global mesh to all processors
-      defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
-      defu(umG) = defu(umG); //interpolate global solution from old mesh to new mesh
-      Th = Thg; //Reinitialize local mesh with global mesh
-      Mat Adapt;
-      createMatu(Th, Adapt, Pk); // Partition new mesh and update the PETSc numbering
-      J = Adapt;
-      IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
-      set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams);
-      defu(ub) = initu(0.0); // set local values to zero
-      defu(um) = initu(0.0); // set local values to zero
-      restu.resize(ub[].n); // Change size of restriction operator
-      restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
-      ub[] = uG[](restu); //restrict global solution to each local mesh
-      um[] = umG[](restu); //restrict global solution to each local mesh
-      Mat Adapt0(J);
-      q.resize(J.n);  // Resize state vector
-      qp.resize(J.n);  // Resize state vector
-      ChangeNumbering(J, ub[], q);
-      ChangeNumbering(J, um[], qp);
-      SNESSolve(J, funcJ, funcF, q, reason = ret,
-                sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_converged_reason -options_left no"); // solve nonlinear problem with SNES
-      assert(ret > 0);
-      if(mpirank == 0) { // Save adapted mesh
-        cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
-        savemesh(Thg, workdir + meshout);
-      }
+  TSSolve(J, funcJ, funcF, q, monitor = funcMon, reason = ret, sparams = " -ts_init_time " + time
+                                                       + " -ts_type " + tstype
+                                                       + " -ts_max_snes_failures " + tsmaxsnesfailures
+                                                       + " -ts_dt " + tsdt
+                                                       + " -ts_max_steps " + (adapt ? min(maxcount-count,savecount-(count % (savecount))) : (maxcount-count))
+                                                       + " -ts_adapt_type " + tsadapttype
+                                                       + " -snes_linesearch_type " + sneslinesearchtype
+                                                       + " -options_left no "
+                                                       );
+  if (ret > 0 && adapt && (count % savecount == 0)) { // if output meshfile is given and solver converged, adapt mesh
+    ChangeNumbering(J, ub[], q, inverse = true);
+    ChangeNumbering(J, um[], qp, inverse = true);
+    meshout = meshroot + "_" + count + "." + meshext;
+    XMhg defu(uG), defu(umG), defu(tempu); // create private global FE functions
+    tempu[](restu) = ub[]; // populate local portion of global soln
+    mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
+    tempu[](restu) = um[]; // populate local portion of prev. global soln
+    mpiAllReduce(tempu[], umG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
+    if(mpirank == 0) { // Perform mesh adaptation (serially) on processor 0
+      IFMACRO(dimension,2)
+        Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+      ENDIFMACRO
+      IFMACRO(dimension,3)
+        cout << "NOTE: 3D mesh adaptation is still under development." << endl;
+        load "mshmet"
+        load "mmg"
+        real anisomax = getARGV("-anisomax",1.0);
+        real[int] met = mshmet(Thg, adaptu(uG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0), hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+        if(anisomax > 1.0) {
+          load "aniso"
+          boundaniso(6, met, anisomax);
+        }
+        Thg = mmg3d(Thg, metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1, verbose = verbosity-(verbosity==0));
+      ENDIFMACRO
     }
+    broadcast(processor(0), Thg); // broadcast global mesh to all processors
+    defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
+    defu(umG) = defu(umG); //interpolate global solution from old mesh to new mesh
+    Th = Thg; //Reinitialize local mesh with global mesh
+    Mat Adapt;
+    createMatu(Th, Adapt, Pk); // Partition new mesh and update the PETSc numbering
+    J = Adapt;
+    IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
+    set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams);
+    defu(ub) = initu(0.0); // set local values to zero
+    defu(um) = initu(0.0); // set local values to zero
+    restu.resize(ub[].n); // Change size of restriction operator
+    restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
+    ub[] = uG[](restu); //restrict global solution to each local mesh
+    um[] = umG[](restu); //restrict global solution to each local mesh
+    Mat Adapt0(J);
+    q.resize(J.n);  // Resize state vector
+    qp.resize(J.n);  // Resize state vector
+    ChangeNumbering(J, um[], q);
+    adaptflag = 1;
+    count--;
+    time -= tsdt;
+    TSSolve(J, funcJ, funcF, q, monitor = funcMon, reason = ret, sparams = " -ts_init_time " + time
+                                                       + " -ts_type " + tstype
+                                                       + " -ts_max_snes_failures " + tsmaxsnesfailures
+                                                       + " -ts_dt " + tsdt
+                                                       + " -ts_max_steps 1 "
+                                                       + " -ts_adapt_type " + tsadapttype
+                                                       + " -snes_linesearch_type " + sneslinesearchtype
+                                                       + " -options_left no "
+                                                       );
+    assert(ret > 0);
+    if(mpirank == 0) { // Save adapted mesh
+      cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
+      savemesh(Thg, workdir + meshout);
+    }
+    qp = q;
     ChangeNumbering(J, ub[], q, inverse = true);
     savetdns(fileout + "_" + count, (savecount > 0 ? fileout : ""), meshout, filein, time, (count % savecount == 0), true);
-    qp = q;
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
-  }
-  else {
-    if(mpirank == 0) cout << "\tConvergence failed. Reattempting with halved time step." << endl;
-    q = qp;
-    dt /= 2.0;
   }
 }
