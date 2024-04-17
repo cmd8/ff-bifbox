@@ -36,7 +36,7 @@ string basefilein = getARGV("-bfi", "");
 string fileout = getARGV("-fo", "");
 bool normalform = getARGV("-nf", 1);
 bool wnlsave = getARGV("-wnl", 0);
-int hohoselect = getARGV("-hoho", 1);
+int select = getARGV("-select", 1);
 bool zerofreq = getARGV("-zero", 0);
 string param = getARGV("-param", "");
 string param2 = getARGV("-param2", "");
@@ -91,10 +91,10 @@ else if (fileext1 == "hoho") {
   complex[string] alphaN;
   complex betaN, gammaN, gamma12, gammaM, gamma22, gamma23;
   complex[int] qNm, qNma;
-  if(hohoselect == 1){
+  if(select == 1){
     ub[].re = loadhoho(fileroot1, meshin, um[], uma[], qNm, qNma, sym1, sym, omega, omegaN, alpha1, alphaN, beta1, betaN, gamma13, gammaN, gamma12, gammaM, gamma22, gamma23);
   }
-  else if(hohoselect == 2){
+  else if(select == 2){
     ub[].re = loadhoho(fileroot1, meshin, qNm, qNma, um[], uma[], sym, sym1, omegaN, omega, alphaN, alpha1, betaN, beta1, gammaN, gamma13, gamma12, gammaM, gamma22, gamma23);
   }
 }

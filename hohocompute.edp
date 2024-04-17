@@ -35,8 +35,8 @@ string basefilein = getARGV("-bfi", "");
 string fileout = getARGV("-fo", "");
 bool normalform = getARGV("-nf", 1);
 bool wnlsave = getARGV("-wnl", 0);
-int hohoselect = getARGV("-hoho", 1);
-int hohoselect2 = getARGV("-hoho2", 1);
+int select = getARGV("-select", 1);
+int select2 = getARGV("-select2", 1);
 bool zerofreq = getARGV("-zero", 0);
 bool zerofreq2 = getARGV("-zero2", 0);
 int res1x = getARGV("-res1x", 0);
@@ -79,10 +79,10 @@ else if (fileext2 == "hoho") {
   complex[string] alphaN;
   complex betaN, gammaN, gamma12, gamma13, gamma22, gamma23;
   complex[int] qNm, qNma;
-  if(hohoselect2 == 1){
+  if(select2 == 1){
     ub[].re = loadhoho(fileroot2, meshin, um2[], um3[], qNm, qNma, sym2, sym, omega2, omegaN, alpha2, alphaN, beta2, betaN, gammaN, gamma2, gamma12, gamma13, gamma22, gamma23);
   }
-  else if(hohoselect2 == 2){
+  else if(select2 == 2){
     ub[].re = loadhoho(fileroot2, meshin, qNm, qNma, um2[], um3[], sym, sym2, omegaN, omega2, alphaN, alpha2, betaN, beta2, gamma2, gammaN, gamma12, gamma13, gamma22, gamma23);
   }
 }
@@ -111,10 +111,10 @@ else if (fileext1 == "hoho" && fileext2 != "") {
   complex[string] alphaN;
   complex betaN, gammaN, gamma12, gamma13, gamma22, gamma23;
   complex[int] qNm, qNma;
-  if(hohoselect == 1){
+  if(select == 1){
     ub[].re = loadhoho(fileroot1, meshin, um[], uma[], qNm, qNma, sym1, sym, omega1, omegaN, alpha1, alphaN, beta1, betaN, gamma1, gammaN, gamma12, gamma13, gamma22, gamma23);
   }
-  else if(hohoselect == 2){
+  else if(select == 2){
     ub[].re = loadhoho(fileroot1, meshin, qNm, qNma, um[], uma[], sym, sym1, omegaN, omega1, alphaN, alpha1, betaN, beta1, gammaN, gamma1, gamma12, gamma13, gamma22, gamma23);
   }
 }

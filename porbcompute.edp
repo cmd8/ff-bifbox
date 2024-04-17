@@ -25,7 +25,7 @@ string meshout = getARGV("-mo", ""); // output mesh without extension
 string filein = getARGV("-fi", ""); // input file with extension
 string basefilein = getARGV("-bfi", "");
 string fileout = getARGV("-fo", ""); // output file without extension
-int hohoselect = getARGV("-hoho", 1);
+int select = getARGV("-select", 1);
 bool zerofreq = getARGV("-zero", 0);
 string adaptto = getARGV("-adaptto", "0");
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
@@ -76,10 +76,10 @@ else if(fileext == "hoho") {
   complex[string] alpha, alphaN;
   complex beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
   complex[int] qma, qNm, qNma;
-  if(hohoselect == 1){
+  if(select == 1){
     ub[] = loadhoho(fileroot, meshin, um[], qma, qNm, qNma, sym1, sym, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
   }
-  else if(hohoselect == 2){
+  else if(select == 2){
     ub[] = loadhoho(fileroot, meshin, qNm, qNma, um[], qma, sym, sym1, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
   }
   uh(:, 0) = um[];

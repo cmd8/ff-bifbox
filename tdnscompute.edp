@@ -20,7 +20,12 @@ include "macros_bifbox.idp"
 string meshin = getARGV("-mi", ""); // input meshfile with extension
 string meshout = getARGV("-mo", "");
 string filein = getARGV("-fi", "");
+string basefilein = getARGV("-bfi", "");
 string fileout = getARGV("-fo", filein);
+bool adj = getARGV("-adj", 0);
+real amplitude = getARGV("-amp", 0.0);
+real phase = getARGV("-phase", 0.0);
+int select = getARGV("-select", 1);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
@@ -33,10 +38,11 @@ string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 // Load mesh, make FE basis
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if(fileext == "mode" || fileext == "rslv"){
+if((fileext == "mode" || fileext == "rslv") && basefilein == ""){
   filein = readbasename(workdir + filein);
   fileext = parsefilename(filein, fileroot);
 }
+string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshroot, meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshroot); // trim extension from output mesh, if given
@@ -57,15 +63,20 @@ if (count == 0){
   else if(fileext == "fold") {
     real[string] alpha;
     real beta;
-    real[int] qm, qma;
+    real[int] qm(um[].n), qma(um[].n);
     ub[] = loadfold(fileroot, meshin, qm, qma, alpha, beta);
+    if(adj) qm = qma;
+    um[] = qm;
   }
   else if(fileext == "hopf") {
     real omega;
     complex[string] alpha;
     complex beta;
-    complex[int] qm, qma;
+    complex[int] qm(um[].n), qma(um[].n);
     ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega, alpha, beta);
+    if(adj) qm = qma;
+    qm *= exp(1i*phase);
+    um[] = 2.0*qm.re;
   }
   else if(fileext == "foho") {
     real omega;
@@ -73,17 +84,31 @@ if (count == 0){
     real[string] alpha2;
     complex beta1, gamma12, gamma13;
     real beta22, beta23, gamma22, gamma23;
-    complex[int] q1m, q1ma;
-    real[int] q2m, q2ma;
+    complex[int] q1m(um[].n), q1ma(um[].n);
+    real[int] q2m(um[].n), q2ma(um[].n);
     ub[] = loadfoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
+    if (select == 1){
+      if(adj) q1m = q1ma;
+      q1m *= exp(1i*phase);
+      um[] = 2.0*q1m.re;
+    }
+    else if(select == 2){
+      if(adj) q2m = q2ma;
+      um[] = q2m;
+    }
   }
   else if(fileext == "hoho") {
     real[int] sym1(sym.n), sym2(sym.n);
     real omega1, omega2;
     complex[string] alpha1, alpha2;
     complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
-    complex[int] q1m, q1ma, q2m, q2ma;
+    complex[int] q1m(um[].n), q1ma(um[].n), q2m(um[].n), q2ma(um[].n);
     ub[] = loadhoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+    if(select == 1 && adj) q1m = q1ma;
+    else if (select == 2 && !adj) q1m = q2m;
+    else if (select == 2 && adj) q1m = q2ma;
+    q1m *= exp(1i*phase);
+    um[] = 2.0*q1m.re;
   }
   else if(fileext == "tdns") {
     real time;
@@ -94,12 +119,58 @@ if (count == 0){
     real omega;
     complex[int, int] qh(um[].n, Nh);
     ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);
-    for (int nh = 0; nh < Nh; nh++) ub[] += (2.0*qh(:,nh).re);
+    for (int nh = 0; nh < Nh; nh++) um[] += (2.0*qh(:,nh).re);
   }
   else {
     defu(ub) = InitialConditions;
     setparams(paramnames, params);
   }
+  if (basefileext == "base") {
+    ub[] = loadbase(basefileroot, meshin);
+  }
+  else if(basefileext == "fold") {
+    real[string] alpha;
+    real beta;
+    real[int] qm, qma;
+    ub[] = loadfold(basefileroot, meshin, qm, qma, alpha, beta);
+  }
+  else if(basefileext == "hopf") {
+    real omega;
+    complex[string] alpha;
+    complex beta;
+    complex[int] qm, qma;
+    ub[] = loadhopf(basefileroot, meshin, qm, qma, sym, omega, alpha, beta);
+  }
+  else if(basefileext == "foho") {
+    real omega;
+    complex[string] alpha1;
+    complex beta1, gamma12, gamma13;
+    real[string] alpha2;
+    real beta22, beta23, gamma22, gamma23;
+    complex[int] q1m, q1ma;
+    real[int] q2m, q2ma;
+    ub[] = loadfoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
+  }
+  else if(basefileext == "hoho") {
+    real[int] sym2(sym.n);
+    real omega1, omega2;
+    complex[string] alpha1, alpha2;
+    complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
+    complex[int] q1m, q1ma, q2m, q2ma;
+    ub[] = loadhoho(basefileroot, meshin, q1m, q1ma, q2m, q2ma, sym, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+  }
+  else if(basefileext == "tdns") {
+    real time;
+    ub[] = loadtdns(basefileroot, meshin, time);
+  }
+  else if(basefileext == "porb") {
+    int Nh=1;
+    real omega;
+    complex[int, int] qh(um[].n, Nh);
+    ub[] = loadporb(basefileroot, meshin, qh, sym, omega, Nh);
+  }
+  um[] *= amplitude;
+  ub[] += um[];
   savetdns(filein, (savecount > 0 ? fileout : ""), meshin, filein, time, false, false);
 }
 else {
