@@ -268,10 +268,12 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
 
 // FUNCTIONS -------------------------------------------------------------------
 macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
-  XMhg defu(tempu), defu(ubg);
-  tempu[](restu) = ub[];
-  mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-  if(monitorflag) getmonitors(ubg);
+  IFMACRO(getmonitors) 
+    XMhg defu(tempu), defu(ubg);
+    tempu[](restu) = ub[];
+    mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    if(monitorflag) getmonitors(ubg);
+  ENDIFMACRO
   if(mpirank == 0 && monitorflag) {
     if(paramnames[0] != "") cout << "\t" << listparams(paramnames, params);
     if(monitornames[0] != "") cout << ", " << listparams(monitornames, monitors);
@@ -297,41 +299,48 @@ macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
       file << endl;
     }
   }
-  if (saveflag && mpirank == 0 && basefileout != ""){
-    cout << "  Saving '" + basefileout + ".base' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    {
-      ofstream file(workdir + basefileout + ".base", binary);
-      file.precision(17);
-      file << "mesh\t" << meshfile << endl;
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+  if (saveflag && basefileout != ""){
+    IFMACRO(!getmonitors) 
+      XMhg defu(tempu), defu(ubg);
+      tempu[](restu) = ub[];
+      mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    ENDIFMACRO
+    if(mpirank == 0){
+      cout << "  Saving '" + basefileout + ".base' on '" + meshfile + "' in '" + workdir + "'." << endl;
+      {
+        ofstream file(workdir + basefileout + ".base", binary);
+        file.precision(17);
+        file << "mesh\t" << meshfile << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+          }
         }
-      }
-      if(monitornames[0] != ""){
-        for (int k = 0; k < monitornames.n; ++k){
-          file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+        if(monitornames[0] != ""){
+          for (int k = 0; k < monitornames.n; ++k){
+            file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+          }
         }
+        file << ubg[] << endl;
       }
-      file << ubg[] << endl;
-    }
-    if (paraviewflag > 0){
-      cout << "  Saving '" + basefileout + "_base.vtu' in '" + workdir + "'." << endl;
-      meshN Thgpv;
-      real[int] qpv = ubg[];
-      if (paraviewflag > 1){
-        meshN Thgs = trunc(Thg, 1, split = paraviewflag);
-        fespace XMhs(Thgs, Pk);
-        XMhs defu(us) = defu(ubg);
-        qpv.resize(us[].n);
-        qpv = us[];
-        Thgpv = movemesh(Thgs, [coordinatetransform]);
+      if (paraviewflag > 0){
+        cout << "  Saving '" + basefileout + "_base.vtu' in '" + workdir + "'." << endl;
+        meshN Thgpv;
+        real[int] qpv = ubg[];
+        if (paraviewflag > 1){
+          meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+          fespace XMhs(Thgs, Pk);
+          XMhs defu(us) = defu(ubg);
+          qpv.resize(us[].n);
+          qpv = us[];
+          Thgpv = movemesh(Thgs, [coordinatetransform]);
+        }
+        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        fespace XMhgpv(Thgpv, Pk);
+        XMhgpv defu(ugr);
+        ugr[] = qpv;
+        savevtk(workdir + basefileout + "_base.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
       }
-      else Thgpv = movemesh(Thg, [coordinatetransform]);
-      fespace XMhgpv(Thgpv, Pk);
-      XMhgpv defu(ugr);
-      ugr[] = qpv;
-      savevtk(workdir + basefileout + "_base.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
     }
   }
 }//EOM
@@ -367,14 +376,14 @@ macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, sym, sa
           file << endl;
         }
       }
-  if(saveflag){
+  if(saveflag && modefileout != ""){
     XMhg<complex> defu(tempu), defu(umg);
     for (int ii = 0; ii < evals.n; ++ii){
       um[] = evecs[ii][];
       tempu[](restu) = um[];
       mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
       string modefileout0 = modefileout + ((ii > 0) ? ("_" + ii) : "");
-      if (mpirank == 0 && modefileout != ""){
+      if (mpirank == 0){
         cout << "  Saving '" + modefileout0 + ".mode' over '" + basefile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
         {
           ofstream file(workdir + modefileout0 + ".mode", binary);
@@ -446,7 +455,7 @@ macro saverslv(rslvfileout, gainsfile, basefile, meshfile, fvecs, uvecs, gains, 
       file << endl;
     }
   }
-  if(saveflag){
+  if(saveflag && rslvfileout != ""){
     Xhg<complex> deff(tempf), deff(fmg);
     XMhg<complex> defu(tempu), defu(umg);
     for (int ii = 0; ii < gains.n; ++ii){
@@ -457,7 +466,7 @@ macro saverslv(rslvfileout, gainsfile, basefile, meshfile, fvecs, uvecs, gains, 
       tempf[](restf) = fm[];
       mpiAllReduce(tempf[], fmg[], mpiCommWorld, mpiSUM);
       string fileout = rslvfileout + ((ii > 0) ? ("_" + ii) : "");
-      if (mpirank == 0 && rslvfileout != ""){
+      if (mpirank == 0){
         cout << "  Saving '" + fileout + ".rslv' over '" + basefile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
         {
           ofstream file(workdir + fileout + ".rslv", binary);
@@ -509,14 +518,12 @@ macro saverslv(rslvfileout, gainsfile, basefile, meshfile, fvecs, uvecs, gains, 
 }//EOM
 
 macro savefold(foldfileout, statsfile, meshfile, alpha, beta, saveflag, monitorflag){
-  XMhg defu(tempu), defu(ubg), defu(umg), defu(umag);
-  tempu[](restu) = ub[];
-  mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-  tempu[](restu) = um[];
-  mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
-  tempu[](restu) = uma[];
-  mpiAllReduce(tempu[], umag[], mpiCommWorld, mpiSUM);
-  if(monitorflag) getmonitors(ubg);
+  IFMACRO(getmonitors)
+    XMhg defu(tempu), defu(ubg), defu(umg), defu(umag);
+    tempu[](restu) = ub[];
+    mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    if(monitorflag) getmonitors(ubg);
+  ENDIFMACRO
   if(mpirank == 0 && monitorflag){
     cout << "\t";
     if(paramnames[0] != ""){
@@ -555,73 +562,81 @@ macro savefold(foldfileout, statsfile, meshfile, alpha, beta, saveflag, monitorf
       file << endl;
     }
   }
-  if (saveflag && mpirank == 0 && foldfileout != ""){
-    cout << "  Saving '" + foldfileout + ".fold' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    {
-      ofstream file(workdir + foldfileout + ".fold", binary);
-      file.precision(17);
-      file << "mesh\t" << meshfile << endl;
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          file << "alpha[" + paramnames[k] + "]\t" << alpha[paramnames[k]] << endl;
+  if (saveflag && foldfileout != ""){
+    IFMACRO(!getmonitors)
+      XMhg defu(tempu), defu(ubg), defu(umg), defu(umag);
+      tempu[](restu) = ub[];
+      mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    ENDIFMACRO
+    tempu[](restu) = um[];
+    mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
+    tempu[](restu) = uma[];
+    mpiAllReduce(tempu[], umag[], mpiCommWorld, mpiSUM);
+    if(mpirank == 0){
+      cout << "  Saving '" + foldfileout + ".fold' on '" + meshfile + "' in '" + workdir + "'." << endl;
+      {
+        ofstream file(workdir + foldfileout + ".fold", binary);
+        file.precision(17);
+        file << "mesh\t" << meshfile << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << "alpha[" + paramnames[k] + "]\t" << alpha[paramnames[k]] << endl;
+          }
         }
-      }
-      file << "beta\t" << beta << endl;
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+        file << "beta\t" << beta << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+          }
         }
-      }
-      if(monitornames[0] != ""){
-        for (int k = 0; k < monitornames.n; ++k){
-          file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+        if(monitornames[0] != ""){
+          for (int k = 0; k < monitornames.n; ++k){
+            file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+          }
         }
+        file << ubg[] << endl;
+        file << umg[] << endl;
+        file << umag[] << endl;
       }
-      file << ubg[] << endl;
-      file << umg[] << endl;
-      file << umag[] << endl;
-    }
-    if (paraviewflag > 0){
-      cout << "  Saving '" + foldfileout + "_fold_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
-      meshN Thgpv;
-      real[int] qpv = ubg[], qmpv = umg[], qmapv = umag[];
-      if (paraviewflag > 1){
-        meshN Thgs = trunc(Thg, 1, split = paraviewflag);
-        fespace XMhs(Thgs, Pk);
-        XMhs defu(us) = defu(ubg);
-        qpv.resize(us[].n);
-        qmpv.resize(us[].n);
-        qmapv.resize(us[].n);
-        qpv = us[];
-        defu(us) = defu(umg);
-        qmpv = us[];
-        defu(us) = defu(umag);
-        qmapv = us[];
-        Thgpv = movemesh(Thgs, [coordinatetransform]);
+      if (paraviewflag > 0){
+        cout << "  Saving '" + foldfileout + "_fold_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
+        meshN Thgpv;
+        real[int] qpv = ubg[], qmpv = umg[], qmapv = umag[];
+        if (paraviewflag > 1){
+          meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+          fespace XMhs(Thgs, Pk);
+          XMhs defu(us) = defu(ubg);
+          qpv.resize(us[].n);
+          qmpv.resize(us[].n);
+          qmapv.resize(us[].n);
+          qpv = us[];
+          defu(us) = defu(umg);
+          qmpv = us[];
+          defu(us) = defu(umag);
+          qmapv = us[];
+          Thgpv = movemesh(Thgs, [coordinatetransform]);
+        }
+        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        fespace XMhgpv(Thgpv, Pk);
+        XMhgpv defu(ugr);
+        ugr[] = qpv;
+        savevtk(workdir + foldfileout + "_fold_base.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
+        ugr[] = qmpv;
+        savevtk(workdir + foldfileout + "_fold_dirmode.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
+        ugr[] = qmapv;
+        savevtk(workdir + foldfileout + "_fold_adjmode.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
       }
-      else Thgpv = movemesh(Thg, [coordinatetransform]);
-      fespace XMhgpv(Thgpv, Pk);
-      XMhgpv defu(ugr);
-      ugr[] = qpv;
-      savevtk(workdir + foldfileout + "_fold_base.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
-      ugr[] = qmpv;
-      savevtk(workdir + foldfileout + "_fold_dirmode.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
-      ugr[] = qmapv;
-      savevtk(workdir + foldfileout + "_fold_adjmode.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
     }
   }
 }//EOM
 
 macro savehopf(hopffileout, statsfile, meshfile, sym, omega, alpha, beta, saveflag, monitorflag){
-  XMhg defu(tempu), defu(ubg);
-  XMhg<complex> defu(cplxu), defu(umg), defu(umag);
-  tempu[](restu) = ub[].re;
-  mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-  cplxu[](restu) = um[];
-  mpiAllReduce(cplxu[], umg[], mpiCommWorld, mpiSUM);
-  cplxu[](restu) = uma[];
-  mpiAllReduce(cplxu[], umag[], mpiCommWorld, mpiSUM);
-  if(monitorflag) getmonitors(ubg);
+  IFMACRO(getmonitors) 
+    XMhg defu(tempu), defu(ubg);
+    tempu[](restu) = ub[].re;
+    mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    if(monitorflag) getmonitors(ubg);
+  ENDIFMACRO
   if(mpirank == 0 && monitorflag){
     cout << "\t";
     if(sym.n > 0) cout << "sym = " + listsym(sym) + ", ";
@@ -664,73 +679,167 @@ macro savehopf(hopffileout, statsfile, meshfile, sym, omega, alpha, beta, savefl
       file << endl;
     }
   }
-  if(saveflag && mpirank == 0 && hopffileout != ""){
-    cout << "  Saving '" + hopffileout + ".hopf' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    {
-      ofstream file(workdir + hopffileout + ".hopf", binary);
-      file.precision(17);
-      file << "mesh\t" << meshfile << endl;
-      if(sym.n > 0) file << "sym\t" << listsym(sym) << endl;
-      file << "omega\t" << omega << endl;
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          file << "alpha[" + paramnames[k] + "]\t" << alpha[paramnames[k]] << endl;
+  if(saveflag && hopffileout != ""){
+    IFMACRO(!getmonitors)
+      XMhg defu(tempu), defu(ubg);
+      tempu[](restu) = ub[].re;
+      mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    ENDIFMACRO
+    XMhg<complex> defu(cplxu), defu(umg), defu(umag);
+    cplxu[](restu) = um[];
+    mpiAllReduce(cplxu[], umg[], mpiCommWorld, mpiSUM);
+    cplxu[](restu) = uma[];
+    mpiAllReduce(cplxu[], umag[], mpiCommWorld, mpiSUM);
+    if(mpirank == 0){
+      cout << "  Saving '" + hopffileout + ".hopf' on '" + meshfile + "' in '" + workdir + "'." << endl;
+      {
+        ofstream file(workdir + hopffileout + ".hopf", binary);
+        file.precision(17);
+        file << "mesh\t" << meshfile << endl;
+        if(sym.n > 0) file << "sym\t" << listsym(sym) << endl;
+        file << "omega\t" << omega << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << "alpha[" + paramnames[k] + "]\t" << alpha[paramnames[k]] << endl;
+          }
         }
+        file << "beta\t" << beta << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+          }
+        }
+        if(monitornames[0] != ""){
+          for (int k = 0; k < monitornames.n; ++k){
+            file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+          }
+        }
+        file << ubg[] << endl;
+        file << umg[] << endl;
+        file << umag[] << endl;
       }
-      file << "beta\t" << beta << endl;
+      if (paraviewflag > 0){
+        cout << "  Saving '" + hopffileout + "_hopf_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
+        meshN Thgpv;
+        real[int] qpv = ubg[];
+        complex[int] qmpv = umg[], qmapv = umag[];
+        if (paraviewflag > 1){
+          meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+          fespace XMhs(Thgs, Pk);
+          XMhs defu(us) = defu(ubg);
+          XMhs<complex> defu(ums) = defu(umg);
+          qpv.resize(us[].n);
+          qmpv.resize(ums[].n);
+          qmapv.resize(ums[].n);
+          qpv = us[];
+          qmpv = ums[];
+          defu(ums) = defu(umag);
+          qmapv = ums[];
+          Thgpv = movemesh(Thgs, [coordinatetransform]);
+        }
+        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        fespace XMhgpv(Thgpv, Pk);
+        XMhgpv defu(ugr), defu(ugi);
+        ugr[] = qpv;
+        savevtk(workdir + hopffileout + "_hopf_base.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
+        ugr[] = qmpv.re;
+        ugi[] = qmpv.im;
+        savevtk(workdir + hopffileout + "_hopf_dirmode.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+        ugr[] = qmapv.re;
+        ugi[] = qmapv.im;
+        savevtk(workdir + hopffileout + "_hopf_adjmode.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+      }
+    }
+  }
+}//EOM
+
+macro savetdls(tdlsfileout, statsfile, meshfile, basefile, ICfile, sym, time, saveflag){
+  if(mpirank == 0){
+    cout << "\t";
+    if(sym.n > 0) cout << "sym = " + listsym(sym) + ", ";
+    cout << "time = " + time;
+    if(paramnames[0] != "") cout << ", " << listparams(paramnames, params);
+    if(monitornames[0] != "") cout << ", " << listparams(monitornames, monitors);
+    cout << "." << endl;
+  }
+  if(mpirank == 0 && statsfile != "") {
+    cout << "  Saving solution stats to '" + statsfile + ".tdls.cont' in '" + workdir + "'." << endl;
+    string dummy = tdlsfileout;
+    {
+      ofstream file(workdir + statsfile + ".tdls.cont", append);
+      file.precision(17);
+      file << tdlsfileout + ((dummy.rfind(".") > 0) ? "" : ".tdls") << "\t" << meshfile << "\t" << basefile << "\t" << ICfile << "\t";
+      if(sym.n > 0) file << listsym(sym) << "\t";
+      file << time;
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
-          file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+          file << "\t" << params[paramnames[k]];
         }
       }
       if(monitornames[0] != ""){
         for (int k = 0; k < monitornames.n; ++k){
-          file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+          file << "\t" << monitors[monitornames[k]];
         }
       }
-      file << ubg[] << endl;
-      file << umg[] << endl;
-      file << umag[] << endl;
+      file << endl;
     }
-    if (paraviewflag > 0){
-      cout << "  Saving '" + hopffileout + "_hopf_[base,dirmode,adjmode].vtu' in '" + workdir + "'." << endl;
-      meshN Thgpv;
-      real[int] qpv = ubg[];
-      complex[int] qmpv = umg[], qmapv = umag[];
-      if (paraviewflag > 1){
-        meshN Thgs = trunc(Thg, 1, split = paraviewflag);
-        fespace XMhs(Thgs, Pk);
-        XMhs defu(us) = defu(ubg);
-        XMhs<complex> defu(ums) = defu(umg);
-        qpv.resize(us[].n);
-        qmpv.resize(ums[].n);
-        qmapv.resize(ums[].n);
-        qpv = us[];
-        qmpv = ums[];
-        defu(ums) = defu(umag);
-        qmapv = ums[];
-        Thgpv = movemesh(Thgs, [coordinatetransform]);
+  }
+  if(saveflag && tdlsfileout != ""){
+    XMhg<PetscScalar> defu(tempu), defu(umg);
+    tempu[](restu) = um[];
+    mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
+    if(mpirank == 0){
+      cout << "  Saving '" + tdlsfileout + ".tdls' on '" + meshfile + "' in '" + workdir + "'." << endl;
+      {
+        ofstream file(workdir + tdlsfileout + ".tdls", binary);
+        file.precision(17);
+        file << "mesh\t" << meshfile << endl;
+        file << "base\t" << basefile << endl;
+        file << "init\t" << ICfile << endl;
+        if(sym.n > 0) file << "sym\t" << listsym(sym) << endl;
+        file << "time\t" << time << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+          }
+        }
+        if(monitornames[0] != ""){
+          for (int k = 0; k < monitornames.n; ++k){
+            file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+          }
+        }
+        file << umg[] << endl;
       }
-      else Thgpv = movemesh(Thg, [coordinatetransform]);
-      fespace XMhgpv(Thgpv, Pk);
-      XMhgpv defu(ugr), defu(ugi);
-      ugr[] = qpv;
-      savevtk(workdir + hopffileout + "_hopf_base.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
-      ugr[] = qmpv.re;
-      ugi[] = qmpv.im;
-      savevtk(workdir + hopffileout + "_hopf_dirmode.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
-      ugr[] = qmapv.re;
-      ugi[] = qmapv.im;
-      savevtk(workdir + hopffileout + "_hopf_adjmode.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+      if (paraviewflag > 0){
+        cout << "  Saving '" + tdlsfileout + "_tdls.vtu' in '" + workdir + "'." << endl;
+        meshN Thgpv;
+        complex[int] qpv = umg[];
+        if (paraviewflag > 1){
+          meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+          fespace XMhs(Thgs, Pk);
+          XMhs<complex> defu(us) = defu(umg);
+          qpv.resize(us[].n);
+          qpv = us[];
+          Thgpv = movemesh(Thgs, [coordinatetransform]);
+        }
+        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        fespace XMhgpv(Thgpv, Pk);
+        XMhgpv defu(ugr), defu(ugi);
+          ugi[] = qpv.im;
+          ugr[] = qpv.re;
+        savevtk(workdir + tdlsfileout + "_tdls.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+      }
     }
   }
 }//EOM
 
 macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitorflag){
-  XMhg defu(tempu), defu(ubg);
-  tempu[](restu) = ub[];
-  mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-  if(monitorflag) getmonitors(ubg);
+  IFMACRO(getmonitors)
+    XMhg defu(tempu), defu(ubg);
+    tempu[](restu) = ub[];
+    mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    if(monitorflag) getmonitors(ubg);
+  ENDIFMACRO
   if(mpirank == 0 && monitorflag){
     cout << "\ttime = " + time;
     if(paramnames[0] != "") cout << ", " << listparams(paramnames, params);
@@ -757,61 +866,61 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
       file << endl;
     }
   }
-  if(saveflag && mpirank == 0 && tdnsfileout != ""){
-    cout << "  Saving '" + tdnsfileout + ".tdns' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    {
-      ofstream file(workdir + tdnsfileout + ".tdns", binary);
-      file.precision(17);
-      file << "mesh\t" << meshfile << endl;
-      file << "init\t" << ICfile << endl;
-      file << "time\t" << time << endl;
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+  if(saveflag && tdnsfileout != ""){
+    IFMACRO(!getmonitors)
+      XMhg defu(tempu), defu(ubg);
+      tempu[](restu) = ub[];
+      mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    ENDIFMACRO
+    if(mpirank == 0){
+      cout << "  Saving '" + tdnsfileout + ".tdns' on '" + meshfile + "' in '" + workdir + "'." << endl;
+      {
+        ofstream file(workdir + tdnsfileout + ".tdns", binary);
+        file.precision(17);
+        file << "mesh\t" << meshfile << endl;
+        file << "init\t" << ICfile << endl;
+        file << "time\t" << time << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+          }
         }
-      }
-      if(monitornames[0] != ""){
-        for (int k = 0; k < monitornames.n; ++k){
-          file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+        if(monitornames[0] != ""){
+          for (int k = 0; k < monitornames.n; ++k){
+            file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+          }
         }
+        file << ubg[] << endl;
       }
-      file << ubg[] << endl;
-    }
-    if (paraviewflag > 0){
-      cout << "  Saving '" + tdnsfileout + "_tdns.vtu' in '" + workdir + "'." << endl;
-      meshN Thgpv;
-      real[int] qpv = ubg[];
-      if (paraviewflag > 1){
-        meshN Thgs = trunc(Thg, 1, split = paraviewflag);
-        fespace XMhs(Thgs, Pk);
-        XMhs defu(us) = defu(ubg);
-        qpv.resize(us[].n);
-        qpv = us[];
-        Thgpv = movemesh(Thgs, [coordinatetransform]);
+      if (paraviewflag > 0){
+        cout << "  Saving '" + tdnsfileout + "_tdns.vtu' in '" + workdir + "'." << endl;
+        meshN Thgpv;
+        real[int] qpv = ubg[];
+        if (paraviewflag > 1){
+          meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+          fespace XMhs(Thgs, Pk);
+          XMhs defu(us) = defu(ubg);
+          qpv.resize(us[].n);
+          qpv = us[];
+          Thgpv = movemesh(Thgs, [coordinatetransform]);
+        }
+        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        fespace XMhgpv(Thgpv, Pk);
+        XMhgpv defu(ugr);
+        ugr[] = qpv;
+        savevtk(workdir + tdnsfileout + "_tdns.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
       }
-      else Thgpv = movemesh(Thg, [coordinatetransform]);
-      fespace XMhgpv(Thgpv, Pk);
-      XMhgpv defu(ugr);
-      ugr[] = qpv;
-      savevtk(workdir + tdnsfileout + "_tdns.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
     }
   }
 }//EOM
 
 macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23, saveflag, monitorflag){
-  XMhg defu(tempu), defu(ubg);
-  XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag), defu(u2mg), defu(u2mag);
-  tempu[](restu) = ub[].re;
-  mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-  cplxu[](restu) = um[];
-  mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
-  cplxu[](restu) = uma[];
-  mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
-  cplxu[](restu) = um2[];
-  mpiAllReduce(cplxu[], u2mg[], mpiCommWorld, mpiSUM);
-  cplxu[](restu) = um3[];
-  mpiAllReduce(cplxu[], u2mag[], mpiCommWorld, mpiSUM);
-  if(monitorflag) getmonitors(ubg);
+  IFMACRO(getmonitors)
+    XMhg defu(tempu), defu(ubg);
+    tempu[](restu) = ub[].re;
+    mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    if(monitorflag) getmonitors(ubg);
+  ENDIFMACRO
   if(mpirank == 0 && monitorflag){
     cout << "\t";
     if(sym.n > 0) cout << "sym = [" + listsym(sym1) + "; " + listsym(sym2) + "], ";
@@ -854,97 +963,106 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
       file << endl;
     }
   }
-  if(saveflag && mpirank == 0 && hohofileout != ""){
-    cout << "  Saving '" + hohofileout + ".hoho' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    {
-      ofstream file(workdir + hohofileout + ".hoho", binary);
-      file.precision(17);
-      file << "mesh\t" << meshfile << endl;
-      if(sym.n > 0) file << "sym\t" << listsym(sym1) << "\t" << listsym(sym2) << endl;
-      file << "omega\t" << omega1 << "\t" << omega2 << endl;
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          file << "alpha[" + paramnames[k] + "]\t" << alpha1[paramnames[k]] << "\t" << alpha2[paramnames[k]] << endl;
+  if(saveflag && hohofileout != ""){
+    IFMACRO(!getmonitors)
+      XMhg defu(tempu), defu(ubg);
+      tempu[](restu) = ub[].re;
+      mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    ENDIFMACRO
+    XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag), defu(u2mg), defu(u2mag);
+    cplxu[](restu) = um[];
+    mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
+    cplxu[](restu) = uma[];
+    mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
+    cplxu[](restu) = um2[];
+    mpiAllReduce(cplxu[], u2mg[], mpiCommWorld, mpiSUM);
+    cplxu[](restu) = um3[];
+    mpiAllReduce(cplxu[], u2mag[], mpiCommWorld, mpiSUM);
+    if(mpirank == 0){
+      cout << "  Saving '" + hohofileout + ".hoho' on '" + meshfile + "' in '" + workdir + "'." << endl;
+      {
+        ofstream file(workdir + hohofileout + ".hoho", binary);
+        file.precision(17);
+        file << "mesh\t" << meshfile << endl;
+        if(sym.n > 0) file << "sym\t" << listsym(sym1) << "\t" << listsym(sym2) << endl;
+        file << "omega\t" << omega1 << "\t" << omega2 << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << "alpha[" + paramnames[k] + "]\t" << alpha1[paramnames[k]] << "\t" << alpha2[paramnames[k]] << endl;
+          }
         }
-      }
-      file << "beta\t" << beta1 << "\t" << beta2 << endl;
-      file << "gamma\t" << gamma1 << "\t" << gamma2 << "\t" << gamma12 << "\t" << gamma13 << "\t" << gamma22 << "\t" << gamma23 << endl;
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+        file << "beta\t" << beta1 << "\t" << beta2 << endl;
+        file << "gamma\t" << gamma1 << "\t" << gamma2 << "\t" << gamma12 << "\t" << gamma13 << "\t" << gamma22 << "\t" << gamma23 << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+          }
         }
-      }
-      if(monitornames[0] != ""){
-        for (int k = 0; k < monitornames.n; ++k){
-          file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+        if(monitornames[0] != ""){
+          for (int k = 0; k < monitornames.n; ++k){
+            file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+          }
         }
+        file << ubg[] << endl;
+        file << u1mg[] << endl;
+        file << u1mag[] << endl;
+        file << u2mg[] << endl;
+        file << u2mag[] << endl;
       }
-      file << ubg[] << endl;
-      file << u1mg[] << endl;
-      file << u1mag[] << endl;
-      file << u2mg[] << endl;
-      file << u2mag[] << endl;
-    }
-    if (paraviewflag > 0){
-      cout << "  Saving '" + hohofileout + "_hoho_[base,dirmode1,adjmode1,dirmode2,adjmode2].vtu' in '" + workdir + "'." << endl;
-      meshN Thgpv;
-      real[int] qpv = ubg[];
-      complex[int] q1mpv = u1mg[], q1mapv = u1mag[], q2mpv = u2mg[], q2mapv = u2mag[];
-      if (paraviewflag > 1){
-        meshN Thgs = trunc(Thg, 1, split = paraviewflag);
-        fespace XMhs(Thgs, Pk);
-        XMhs defu(us) = defu(ubg);
-        XMhs<complex> defu(ums) = defu(u1mg);
-        qpv.resize(us[].n);
-        q1mpv.resize(ums[].n);
-        q1mapv.resize(ums[].n);
-        q2mpv.resize(ums[].n);
-        q2mapv.resize(ums[].n);
-        qpv = us[];
-        q1mpv = ums[];
-        defu(ums) = defu(u1mag);
-        q1mapv = ums[];
-        defu(ums) = defu(u2mg);
-        q2mpv = ums[];
-        defu(ums) = defu(u2mag);
-        q2mapv = ums[];
-        Thgpv = movemesh(Thgs, [coordinatetransform]);
+      if (paraviewflag > 0){
+        cout << "  Saving '" + hohofileout + "_hoho_[base,dirmode1,adjmode1,dirmode2,adjmode2].vtu' in '" + workdir + "'." << endl;
+        meshN Thgpv;
+        real[int] qpv = ubg[];
+        complex[int] q1mpv = u1mg[], q1mapv = u1mag[], q2mpv = u2mg[], q2mapv = u2mag[];
+        if (paraviewflag > 1){
+          meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+          fespace XMhs(Thgs, Pk);
+          XMhs defu(us) = defu(ubg);
+          XMhs<complex> defu(ums) = defu(u1mg);
+          qpv.resize(us[].n);
+          q1mpv.resize(ums[].n);
+          q1mapv.resize(ums[].n);
+          q2mpv.resize(ums[].n);
+          q2mapv.resize(ums[].n);
+          qpv = us[];
+          q1mpv = ums[];
+          defu(ums) = defu(u1mag);
+          q1mapv = ums[];
+          defu(ums) = defu(u2mg);
+          q2mpv = ums[];
+          defu(ums) = defu(u2mag);
+          q2mapv = ums[];
+          Thgpv = movemesh(Thgs, [coordinatetransform]);
+        }
+        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        fespace XMhgpv(Thgpv, Pk);
+        XMhgpv defu(ugr), defu(ugi);
+        ugr[] = qpv;
+        savevtk(workdir + hohofileout + "_hoho_base.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
+        ugr[] = q1mpv.re;
+        ugi[] = q1mpv.im;
+        savevtk(workdir + hohofileout + "_hoho_dirmode1.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+        ugr[] = q1mapv.re;
+        ugi[] = q1mapv.im;
+        savevtk(workdir + hohofileout + "_hoho_adjmode1.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+        ugr[] = q2mpv.re;
+        ugi[] = q2mpv.im;
+        savevtk(workdir + hohofileout + "_hoho_dirmode2.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+        ugr[] = q2mapv.re;
+        ugi[] = q2mapv.im;
+        savevtk(workdir + hohofileout + "_hoho_adjmode2.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
       }
-      else Thgpv = movemesh(Thg, [coordinatetransform]);
-      fespace XMhgpv(Thgpv, Pk);
-      XMhgpv defu(ugr), defu(ugi);
-      ugr[] = qpv;
-      savevtk(workdir + hohofileout + "_hoho_base.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
-      ugr[] = q1mpv.re;
-      ugi[] = q1mpv.im;
-      savevtk(workdir + hohofileout + "_hoho_dirmode1.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
-      ugr[] = q1mapv.re;
-      ugi[] = q1mapv.im;
-      savevtk(workdir + hohofileout + "_hoho_adjmode1.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
-      ugr[] = q2mpv.re;
-      ugi[] = q2mpv.im;
-      savevtk(workdir + hohofileout + "_hoho_dirmode2.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
-      ugr[] = q2mapv.re;
-      ugi[] = q2mapv.im;
-      savevtk(workdir + hohofileout + "_hoho_adjmode2.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
     }
   }
 }//EOM
 
 macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23, saveflag, monitorflag){
-  XMhg defu(tempu), defu(ubg), defu(u2mg), defu(u2mag);
-  XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag);
-  tempu[](restu) = ub[].re;
-  mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-  cplxu[](restu) = um[];
-  mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
-  cplxu[](restu) = uma[];
-  mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
-  tempu[](restu) = um2[];
-  mpiAllReduce(tempu[], u2mg[], mpiCommWorld, mpiSUM);
-  tempu[](restu) = um3[];
-  mpiAllReduce(tempu[], u2mag[], mpiCommWorld, mpiSUM);
-  if(monitorflag) getmonitors(ubg);
+  IFMACRO(getmonitors)
+    XMhg defu(tempu), defu(ubg), defu(u2mg), defu(u2mag);
+    tempu[](restu) = ub[].re;
+    mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    if(monitorflag) getmonitors(ubg);
+  ENDIFMACRO
   if(mpirank == 0 && monitorflag){
     cout << "\t";
     if(sym.n > 0) cout << "sym = " + listsym(sym) + ", ";
@@ -987,91 +1105,103 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
       file << endl;
     }
   }
-  if(saveflag && mpirank == 0 && fohofileout != ""){
-    cout << "  Saving '" + fohofileout + ".foho' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    {
-      ofstream file(workdir + fohofileout + ".foho", binary);
-      file.precision(17);
-      file << "mesh\t" << meshfile << endl;
-      if(sym.n > 0) file << "sym\t" << listsym(sym) << endl;
-      file << "omega\t" << omega << endl;
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          file << "alpha[" + paramnames[k] + "]\t" << alpha1[paramnames[k]] << "\t" << alpha2[paramnames[k]] << endl;
+  if(saveflag && fohofileout != ""){
+    IFMACRO(!getmonitors)
+      XMhg defu(tempu), defu(ubg), defu(u2mg), defu(u2mag);
+      tempu[](restu) = ub[].re;
+      mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    ENDIFMACRO
+    XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag);
+    cplxu[](restu) = um[];
+    mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
+    cplxu[](restu) = uma[];
+    mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
+    tempu[](restu) = um2[];
+    mpiAllReduce(tempu[], u2mg[], mpiCommWorld, mpiSUM);
+    tempu[](restu) = um3[];
+    mpiAllReduce(tempu[], u2mag[], mpiCommWorld, mpiSUM);
+    if(mpirank == 0){
+      cout << "  Saving '" + fohofileout + ".foho' on '" + meshfile + "' in '" + workdir + "'." << endl;
+      {
+        ofstream file(workdir + fohofileout + ".foho", binary);
+        file.precision(17);
+        file << "mesh\t" << meshfile << endl;
+        if(sym.n > 0) file << "sym\t" << listsym(sym) << endl;
+        file << "omega\t" << omega << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << "alpha[" + paramnames[k] + "]\t" << alpha1[paramnames[k]] << "\t" << alpha2[paramnames[k]] << endl;
+          }
         }
-      }
-      file << "beta\t" << beta1 << "\t" << beta22 << "\t" << beta23 << endl;
-      file << "gamma\t" << gamma12 << "\t" << gamma13 << "\t" << gamma22 << "\t" << gamma23 << endl;
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+        file << "beta\t" << beta1 << "\t" << beta22 << "\t" << beta23 << endl;
+        file << "gamma\t" << gamma12 << "\t" << gamma13 << "\t" << gamma22 << "\t" << gamma23 << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+          }
         }
-      }
-      if(monitornames[0] != ""){
-        for (int k = 0; k < monitornames.n; ++k){
-          file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+        if(monitornames[0] != ""){
+          for (int k = 0; k < monitornames.n; ++k){
+            file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+          }
         }
+        file << ubg[] << endl;
+        file << u1mg[] << endl;
+        file << u1mag[] << endl;
+        file << u2mg[] << endl;
+        file << u2mag[] << endl;
       }
-      file << ubg[] << endl;
-      file << u1mg[] << endl;
-      file << u1mag[] << endl;
-      file << u2mg[] << endl;
-      file << u2mag[] << endl;
-    }
-    if (paraviewflag > 0){
-      cout << "  Saving '" + fohofileout + "_foho_[base,dirmode1,adjmode1,dirmode2,adjmode2].vtu' in '" + workdir + "'." << endl;
-      real[int] qpv = ubg[], q2mpv = u2mg[], q2mapv = u2mag[];
-      complex[int] q1mpv = u1mg[], q1mapv = u1mag[];
-      if (paraviewflag > 1){
-        meshN Thgs = trunc(Thg, 1, split = paraviewflag);
-        fespace XMhs(Thgs, Pk);
-        XMhs defu(us) = defu(ubg);
-        XMhs<complex> defu(ums) = defu(u1mg);
-        qpv.resize(us[].n);
-        q1mpv.resize(ums[].n);
-        q1mapv.resize(ums[].n);
-        q2mpv.resize(us[].n);
-        q2mapv.resize(us[].n);
-        qpv = us[];
-        q1mpv = ums[];
-        defu(ums) = defu(u1mag);
-        q1mapv = ums[];
-        defu(us) = defu(u2mg);
-        q2mpv = us[];
-        defu(us) = defu(u2mag);
-        q2mapv = us[];
-        Thgpv = movemesh(Thgs, [coordinatetransform]);
+      if (paraviewflag > 0){
+        cout << "  Saving '" + fohofileout + "_foho_[base,dirmode1,adjmode1,dirmode2,adjmode2].vtu' in '" + workdir + "'." << endl;
+        real[int] qpv = ubg[], q2mpv = u2mg[], q2mapv = u2mag[];
+        complex[int] q1mpv = u1mg[], q1mapv = u1mag[];
+        if (paraviewflag > 1){
+          meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+          fespace XMhs(Thgs, Pk);
+          XMhs defu(us) = defu(ubg);
+          XMhs<complex> defu(ums) = defu(u1mg);
+          qpv.resize(us[].n);
+          q1mpv.resize(ums[].n);
+          q1mapv.resize(ums[].n);
+          q2mpv.resize(us[].n);
+          q2mapv.resize(us[].n);
+          qpv = us[];
+          q1mpv = ums[];
+          defu(ums) = defu(u1mag);
+          q1mapv = ums[];
+          defu(us) = defu(u2mg);
+          q2mpv = us[];
+          defu(us) = defu(u2mag);
+          q2mapv = us[];
+          Thgpv = movemesh(Thgs, [coordinatetransform]);
+        }
+        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        fespace XMhgpv(Thgpv, Pk);
+        XMhgpv defu(ugr), defu(ugi);
+        ugr[] = qpv;
+        savevtk(workdir + fohofileout + "_foho_base.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
+        ugr[] = q1mpv.re;
+        ugi[] = q1mpv.im;
+        savevtk(workdir + fohofileout + "_foho_dirmode1.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+        ugr[] = q1mapv.re;
+        ugi[] = q1mapv.im;
+        savevtk(workdir + fohofileout + "_foho_adjmode1.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+        ugr[] = q2mpv;
+        savevtk(workdir + fohofileout + "_foho_dirmode2.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
+        ugr[] = q2mapv;
+        savevtk(workdir + fohofileout + "_foho_adjmode2.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
       }
-      else Thgpv = movemesh(Thg, [coordinatetransform]);
-      fespace XMhgpv(Thgpv, Pk);
-      XMhgpv defu(ugr), defu(ugi);
-      ugr[] = qpv;
-      savevtk(workdir + fohofileout + "_foho_base.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
-      ugr[] = q1mpv.re;
-      ugi[] = q1mpv.im;
-      savevtk(workdir + fohofileout + "_foho_dirmode1.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
-      ugr[] = q1mapv.re;
-      ugi[] = q1mapv.im;
-      savevtk(workdir + fohofileout + "_foho_adjmode1.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
-      ugr[] = q2mpv;
-      savevtk(workdir + fohofileout + "_foho_dirmode2.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
-      ugr[] = q2mapv;
-      savevtk(workdir + fohofileout + "_foho_adjmode2.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
     }
   }
 }//EOM
 
 macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monitorflag){
-  XMhg defu(tempu), defu(ubg);
-  XMhg<complex> defu(cplxu);
-  complex[int, int] uhg(ubg[].n, Nh);
-  tempu[](restu) = ub[];
-  mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-  for(int harm = 0; harm < Nh; harm++){
-    cplxu[](restu) = uh(:, harm);
-    mpiAllReduce(cplxu[], uhg(:, harm), mpiCommWorld, mpiSUM);
-  }
-  if(monitorflag) getmonitors(ubg);
+  IFMACRO(getmonitors)
+    XMhg defu(tempu), defu(ubg);
+    tempu[](restu) = ub[];
+    mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    if(monitorflag) getmonitors(ubg);
+  ENDIFMACRO
   if(mpirank == 0 && monitorflag){
     cout << "\t";
     if(sym.n > 0) cout << "sym = " + listsym(sym) + ", ";
@@ -1102,57 +1232,70 @@ macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monit
       file << endl;
     }
   }
-  if(saveflag && mpirank == 0 && porbfileout != ""){
-    cout << "  Saving '" + porbfileout + ".porb' on '" + meshfile + "' in '" + workdir + "'." << endl;
-    {
-      ofstream file(workdir + porbfileout + ".porb", binary);
-      file.precision(17);
-      file << "mesh\t" << meshfile << endl;
-      if(sym.n > 0) file << "sym\t" << listsym(sym) << endl;
-      file << "omega\t" << omega << endl;
-      file << "Nh\t" << Nh << endl;
-      if(paramnames[0] != ""){
-        for (int k = 0; k < paramnames.n; ++k){
-          file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
-        }
-      }
-      if(monitornames[0] != ""){
-        for (int k = 0; k < monitornames.n; ++k){
-          file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
-        }
-      }
-      file << ubg[] << endl;
-      for(int harm = 0; harm < Nh; harm++) file << uhg(:, harm) << endl;
+  if(saveflag && porbfileout != ""){
+    IFMACRO(!getmonitors)
+      XMhg defu(tempu), defu(ubg);
+      tempu[](restu) = ub[];
+      mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+    ENDIFMACRO
+    XMhg<complex> defu(cplxu);
+    complex[int, int] uhg(ubg[].n, Nh);
+    for(int harm = 0; harm < Nh; harm++){
+      cplxu[](restu) = uh(:, harm);
+      mpiAllReduce(cplxu[], uhg(:, harm), mpiCommWorld, mpiSUM);
     }
-    if (paraviewflag > 0){
-      cout << "  Saving '" + porbfileout + "_porb_[mean,harm0,harm1,...].vtu' in '" + workdir + "'." << endl;
-      meshN Thgpv;
-      real[int] qpv = ubg[];
-      complex[int, int] qmpv = uhg;
-      if (paraviewflag > 1){
-        meshN Thgs = trunc(Thg, 1, split = paraviewflag);
-        fespace XMhs(Thgs, Pk);
-        XMhs defu(us) = defu(ubg);
-        XMhs<complex> defu(ums);
-        qpv.resize(us[].n);
-        qmpv.resize(ums[].n, uhg.m);
-        for(int harm = 0; harm < Nh; harm++){
-          cplxu[] = uhg(:, harm);
-          defu(ums) = defu(cplxu);
-          qmpv(:, harm) = ums[];
+    if(mpirank == 0){
+      cout << "  Saving '" + porbfileout + ".porb' on '" + meshfile + "' in '" + workdir + "'." << endl;
+      {
+        ofstream file(workdir + porbfileout + ".porb", binary);
+        file.precision(17);
+        file << "mesh\t" << meshfile << endl;
+        if(sym.n > 0) file << "sym\t" << listsym(sym) << endl;
+        file << "omega\t" << omega << endl;
+        file << "Nh\t" << Nh << endl;
+        if(paramnames[0] != ""){
+          for (int k = 0; k < paramnames.n; ++k){
+            file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+          }
         }
+        if(monitornames[0] != ""){
+          for (int k = 0; k < monitornames.n; ++k){
+            file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+          }
+        }
+        file << ubg[] << endl;
+        for(int harm = 0; harm < Nh; harm++) file << uhg(:, harm) << endl;
       }
-      else Thgpv = movemesh(Thg, [coordinatetransform]);
-      fespace XMhgpv(Thgpv, Pk);
-      XMhgpv defu(ugr), defu(ugi);
-      XMhgpv<complex> defu(ugc);
-      ugr[] = qpv;
-      savevtk(workdir + porbfileout + "_porb_mean.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
-      for(int harm = 0; harm < Nh; harm++){
-        ugc[] = qmpv(:, harm);
-        ugr[] = ugc[].re;
-        ugi[] = ugc[].im;
-        savevtk(workdir + porbfileout + "_porb_harm" + harm + ".vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+      if (paraviewflag > 0){
+        cout << "  Saving '" + porbfileout + "_porb_[mean,harm0,harm1,...].vtu' in '" + workdir + "'." << endl;
+        meshN Thgpv;
+        real[int] qpv = ubg[];
+        complex[int, int] qmpv = uhg;
+        if (paraviewflag > 1){
+          meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+          fespace XMhs(Thgs, Pk);
+          XMhs defu(us) = defu(ubg);
+          XMhs<complex> defu(ums);
+          qpv.resize(us[].n);
+          qmpv.resize(ums[].n, uhg.m);
+          for(int harm = 0; harm < Nh; harm++){
+            cplxu[] = uhg(:, harm);
+            defu(ums) = defu(cplxu);
+            qmpv(:, harm) = ums[];
+          }
+        }
+        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        fespace XMhgpv(Thgpv, Pk);
+        XMhgpv defu(ugr), defu(ugi);
+        XMhgpv<complex> defu(ugc);
+        ugr[] = qpv;
+        savevtk(workdir + porbfileout + "_porb_mean.vtu", Thgpv, adaptu(ugr), dataname = ParaviewDataName, order = ParaviewOrder);
+        for(int harm = 0; harm < Nh; harm++){
+          ugc[] = qmpv(:, harm);
+          ugr[] = ugc[].re;
+          ugi[] = ugc[].im;
+          savevtk(workdir + porbfileout + "_porb_harm" + harm + ".vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+        }
       }
     }
   }
@@ -1474,6 +1617,51 @@ func real[int] loadtdns(string inputfilename, string meshfilename, real& time) {
       }
       setparams(paramnames, params);
       real[int] qlocal = ubg[](restu);
+      return qlocal;
+    }
+
+func complex[int] loadtdls(string inputfilename, string meshfilename, real& time) {
+      XMhg<complex> defu(umg);
+      if (mpirank == 0) cout << "  Loading '" + inputfilename + ".tdls' on '" + meshfilename + "' from '" + workdir + "'." << endl;
+      string filemesh, basefile, ICfile, dummy, symstr;
+      ifstream file(workdir + inputfilename + ".tdls");
+      file >> filemesh >> filemesh >> basefile >> basefile >> ICfile >> ICfile;
+      if (sym.n > 0) {
+        file >> dummy >> symstr;
+        sym = parsesymstr(symstr);
+      }
+      file >> dummy >> time;
+      if(paramnames[0] != ""){
+        for (int k = 0; k < paramnames.n; ++k){
+          file >> paramnames[k] >> params[paramnames[k]];
+        }
+      }
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file >> monitornames[k] >> monitors[monitornames[k]];
+        }
+      }
+      if (mpirank == 0) {
+        cout << "\t";
+        if(sym.n > 0) cout << "sym = " + listsym(sym) + ", ";
+        cout << "time = " << time;
+        if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
+        if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+        cout << "." << endl;
+      }
+      if (filemesh == meshfilename){ // no interpolation needed
+        file >> umg[];
+      }
+      else { // must interpolate
+        if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh << "'." << endl;
+        meshN Thg1 = readmeshN(workdir + filemesh);
+        fespace XMhg1(Thg1, Pk);
+        XMhg1<complex> defu(umg1);
+        file >> umg1[];
+        defu(umg) = defu(umg1);
+      }
+      setparams(paramnames, params);
+      complex[int] qlocal = umg[](restu);
       return qlocal;
     }
 

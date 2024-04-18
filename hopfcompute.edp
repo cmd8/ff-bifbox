@@ -130,7 +130,7 @@ complex beta;
 // Load mesh, make FE basis
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if((fileext == "mode" || fileext == "rslv") && basefilein == "") basefilein = readbasename(workdir + filein);
+if((fileext == "mode" || fileext == "rslv" || fileext == "tdls") && basefilein == "") basefilein = readbasename(workdir + filein);
 string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshroot, meshext = parsefilename(meshin, meshroot);

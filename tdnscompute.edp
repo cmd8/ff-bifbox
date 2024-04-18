@@ -23,26 +23,26 @@ string filein = getARGV("-fi", "");
 string basefilein = getARGV("-bfi", "");
 string fileout = getARGV("-fo", filein);
 bool adj = getARGV("-adj", 0);
-real amplitude = getARGV("-amp", 0.0);
+real amplitude = abs(getARGV("-amp", 0.0));
 real phase = getARGV("-phase", 0.0);
 int select = getARGV("-select", 1);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
-string tstype = getARGV("-ts_type", "beuler");
+string tstype = getARGV("-ts_type", "bdf");
 int tsmaxsnesfailures = getARGV("-ts_max_snes_failures", -1);
 real tsdt = getARGV("-ts_dt", 0.01);
 string tsadapttype = getARGV("-ts_adapt_type", "none");
-string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
+string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic");
 
 // Load mesh, make FE basis
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if((fileext == "mode" || fileext == "rslv") && basefilein == ""){
-  filein = readbasename(workdir + filein);
-  fileext = parsefilename(filein, fileroot);
-}
 string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
+if((fileext == "mode" || fileext == "rslv" || fileext == "tdls") && basefilein == ""){
+  basefilein = readbasename(workdir + filein);
+  basefileext = parsefilename(basefilein, basefileroot);
+}
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshroot, meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshroot); // trim extension from output mesh, if given
@@ -59,6 +59,27 @@ real time = 0.0;
 if (count == 0){
   if(fileext == "base") {
     ub[] = loadbase(fileroot, meshin);
+  }
+  else if(fileext == "mode") {
+    complex eigenvalue;
+    complex[int] qm(um[].n);
+    qm = loadmode(fileroot, meshin, sym, eigenvalue);
+    qm *= exp(1i*phase);
+    um[] = 2.0*qm.re;
+  }
+  else if(fileext == "rslv") {
+    real omega, gain;
+    complex[int] fm, qm(um[].n);
+    qm = loadrslv(fileroot, meshin, fm, sym, omega, gain);
+    qm *= exp(1i*phase);
+    um[] = 2.0*qm.re;
+  }
+  else if(fileext == "tdls") {
+    real time;
+    complex[int] qm(um[].n);
+    qm = loadtdls(fileroot, meshin, time);
+    qm *= exp(1i*phase);
+    um[] = 2.0*qm.re;
   }
   else if(fileext == "fold") {
     real[string] alpha;
@@ -171,7 +192,6 @@ if (count == 0){
   }
   um[] *= amplitude;
   ub[] += um[];
-  savetdns(filein, (savecount > 0 ? fileout : ""), meshin, filein, time, false, false);
 }
 else {
   ub[] = loadtdns(fileroot + "_" + count, meshin, time);
@@ -190,7 +210,9 @@ int adaptflag;
 // initialize
 real[int] q, qp;
 ChangeNumbering(J, ub[], q);
-ChangeNumbering(J, ub[], qp);
+ChangeNumbering(J, ub[], q, inverse = true);
+if (count == 0) savetdns(fileout + "_0", (savecount > 0 ? fileout : ""), meshin, filein, time, true, false);
+qp = q;
 // Function to build residual "F(t,u,\dot{u})" operator in PETSc numbering
 func real[int] funcF(real t, real[int]& qPETSc, real[int]& qdotPETSc) {
     ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
@@ -301,9 +323,9 @@ while (count < maxcount){
       cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
       savemesh(Thg, workdir + meshout);
     }
-    qp = q;
     ChangeNumbering(J, ub[], q, inverse = true);
     savetdns(fileout + "_" + count, (savecount > 0 ? fileout : ""), meshout, filein, time, (count % savecount == 0), true);
+    qp = q;
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
   }
 }
