@@ -65,6 +65,10 @@ if (count == 0){
     complex[int] fm;
     um[] = loadrslv(fileroot, meshin, fm, sym, omega, gain);
   }
+  else if(fileext == "tdls") {
+    real time;
+    um[] = loadtdls(fileroot, meshin, time);
+  }
   else if(fileext == "fold") {
     real[string] alpha;
     real beta;

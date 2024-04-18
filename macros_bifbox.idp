@@ -825,8 +825,8 @@ macro savetdls(tdlsfileout, statsfile, meshfile, basefile, ICfile, sym, time, sa
         else Thgpv = movemesh(Thg, [coordinatetransform]);
         fespace XMhgpv(Thgpv, Pk);
         XMhgpv defu(ugr), defu(ugi);
-          ugi[] = qpv.im;
-          ugr[] = qpv.re;
+        ugr[] = qpv.re;
+        ugi[] = qpv.im;
         savevtk(workdir + tdlsfileout + "_tdls.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
       }
     }
