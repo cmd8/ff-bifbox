@@ -46,9 +46,9 @@ verbosity = getARGV("-v",0);
   int BCopen = 3;
   int BCwall = 4;
 // Define solution monitors to extract
-macro getmonitors(u){
+macro getmonitors(){
   fespace Xh1(Thg, P2);
-  Xh1 RR = u#Y/(u#T + (u#T == 0.0))*exp(params["Ze"]*(1.0 + 1.0/params["dT"])*(1.0 - (1.0 + params["dT"])/(u#T + (u#T == 0.0)))), Xpoints = x;
+  Xh1 RR = ubgY/(ubgT + (ubgT == 0.0))*exp(params["Ze"]*(1.0 + 1.0/params["dT"])*(1.0 - (1.0 + params["dT"])/(ubgT + (ubgT == 0.0)))), Xpoints = x;
   varf Onaxis(RR, VX) = on(BCaxis, RR = 1);
   real[int] onaxis = Onaxis(0, Xh1, tgv = 1);
   int[int] indices(onaxis.sum);

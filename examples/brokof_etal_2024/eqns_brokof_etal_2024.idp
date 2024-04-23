@@ -155,7 +155,10 @@ varf vMq(defu(dum), defu(v))
         + vT*((ubrho*dubArrdT + dubrhodT*ubArr)*ubY)*(ubrho*ubArr)*dumY
         + vY*(ubrho*ubArr)^2.0*dumY
         )
-      ); // This is the heat release norm
+      ) // Bilinear part is the heat release norm for resolvent analysis
+      - int1d(Th, (abs(int(sym(0))) > 0)*BCin)(
+        (vp + (ubc + ub)*v)*N.x*(ubrho + ubrho/ubc*ub)*(ubc + ub)
+      ); // Linear part is the acoustic characteristic forcing for FTF calcs
 
 varf vMf(deff(fm), deff(v))
       = int2d(Th)( Jinv*vdotu(v, fm) );

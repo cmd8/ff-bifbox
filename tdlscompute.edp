@@ -53,10 +53,7 @@ XMh defu(ub), defu(um2), defu(um3);
 XMh<complex> defu(um);
 real time = 0.0;
 if (count == 0){
-  if(fileext == "base") {
-    ub[] = loadbase(fileroot, meshin);
-  }
-  else if(fileext == "mode") {
+  if(fileext == "mode") {
     complex eigenvalue;
     um[] = loadmode(fileroot, meshin, sym, eigenvalue);
   }
@@ -67,7 +64,7 @@ if (count == 0){
   }
   else if(fileext == "tdls") {
     real time;
-    um[] = loadtdls(fileroot, meshin, time);
+    um[] = loadtdls(fileroot, meshin, sym, time);
   }
   else if(fileext == "fold") {
     real[string] alpha;
@@ -101,22 +98,20 @@ if (count == 0){
       um[].re = q2m;
       if(adj) um[].re = q2ma;
       um[].im = 0.0;
+      sym = 0.0;
     }
   }
   else if(fileext == "hoho") {
-    real[int] sym1(sym.n), sym2(sym.n);
+    real[int] sym2(sym.n);
     real omega1, omega2;
     complex[string] alpha1, alpha2;
     complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
     complex[int] q1ma(um[].n), q2m(um[].n), q2ma(um[].n);
-    ub[] = loadhoho(fileroot, meshin, um[], q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+    ub[] = loadhoho(fileroot, meshin, um[], q1ma, q2m, q2ma, sym, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
     if(select == 1 && adj) um[] = q1ma;
     else if (select == 2 && !adj) um[] = q2m;
     else if (select == 2 && adj) um[] = q2ma;
-  }
-  else if(fileext == "tdns") {
-    real time;
-    ub[] = loadtdns(fileroot, meshin, time);
+    if(select == 2) sym = sym2;
   }
   else if(fileext == "porb") {
     int Nh;
@@ -125,14 +120,10 @@ if (count == 0){
     ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);
     for (int nh = 0; nh < Nh; nh++) um[] += qh(:,nh);
   }
-  else {
-    defu(ub) = InitialConditions;
-    setparams(paramnames, params);
-  }
   um[] *= amplitude;
 }
 else {
-  um[] = loadtdls(fileroot + "_" + count, meshin, time);
+  um[] = loadtdls(fileroot + "_" + count, meshin, sym, time);
 }
 if (basefileext == "base") {
   ub[] = loadbase(basefileroot, meshin);
@@ -186,7 +177,6 @@ Mat<complex> J;
 createMatu(Th, J, Pk);
 Mat<complex> M(J), Js(J);
 
-//sym = parsesymstr(symstr);
 complex[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 real iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp" // load equations

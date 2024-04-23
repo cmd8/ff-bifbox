@@ -151,5 +151,5 @@ for (int n = 0; n < nomega; ++n){
       uvec[ii][] = um[];
     }
   }
-  saverslv(fileout + "_" + n, gainout, filein, meshin, fvec, uvec, gains, sym, omega, (fileout != ""));
+  saverslv(fileout + ((nomega > 1) ? ("_" + n) : ""), gainout, filein, meshin, fvec, uvec, gains, sym, omega, (fileout != ""));
 }

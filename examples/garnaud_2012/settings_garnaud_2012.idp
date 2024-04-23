@@ -43,5 +43,5 @@
   int BCinflow = 3;
   int BCwall = 4;
 // Define solution monitors to extract:
-  macro getmonitors(u)
+  macro getmonitors()
   // EOM

@@ -43,4 +43,4 @@
   int[int] BClateral = [6,7];
   int BCoutflow = 3;
 // Define solution monitors to extract:
-  macro getmonitors(u) // EOM
+  macro getmonitors() // EOM

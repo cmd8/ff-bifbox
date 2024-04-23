@@ -272,7 +272,7 @@ macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
     XMhg defu(tempu), defu(ubg);
     tempu[](restu) = ub[];
     mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-    if(monitorflag) getmonitors(ubg);
+    if(monitorflag) getmonitors;
   ENDIFMACRO
   if(mpirank == 0 && monitorflag) {
     if(paramnames[0] != "") cout << "\t" << listparams(paramnames, params);
@@ -353,6 +353,7 @@ macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, sym, sa
     for (int kk = 1; kk < evals.n; ++kk) cout << ", " + evals(kk);
     cout << "]";
     if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
+    if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
     cout << "." << endl;
   }
   if(mpirank == 0 && evalsfile != "") {
@@ -395,6 +396,11 @@ macro savemode(modefileout, evalsfile, basefile, meshfile, evecs, evals, sym, sa
           if(paramnames[0] != ""){
             for (int k = 0; k < paramnames.n; ++k){
               file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+            }
+          }
+          if(monitornames[0] != ""){
+            for (int k = 0; k < monitornames.n; ++k){
+              file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
             }
           }
           file << umg[] << endl;
@@ -481,6 +487,11 @@ macro saverslv(rslvfileout, gainsfile, basefile, meshfile, fvecs, uvecs, gains, 
               file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
             }
           }
+          if(monitorames[0] != ""){
+            for (int k = 0; k < monitornames.n; ++k){
+              file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+            }
+          }
           file << fmg[] << endl;
           file << umg[] << endl;
         }
@@ -522,7 +533,11 @@ macro savefold(foldfileout, statsfile, meshfile, alpha, beta, saveflag, monitorf
     XMhg defu(tempu), defu(ubg), defu(umg), defu(umag);
     tempu[](restu) = ub[];
     mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-    if(monitorflag) getmonitors(ubg);
+    tempu[](restu) = um[];
+    mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
+    tempu[](restu) = uma[];
+    mpiAllReduce(tempu[], umag[], mpiCommWorld, mpiSUM);
+    if(monitorflag) getmonitors;
   ENDIFMACRO
   if(mpirank == 0 && monitorflag){
     cout << "\t";
@@ -567,11 +582,11 @@ macro savefold(foldfileout, statsfile, meshfile, alpha, beta, saveflag, monitorf
       XMhg defu(tempu), defu(ubg), defu(umg), defu(umag);
       tempu[](restu) = ub[];
       mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+      tempu[](restu) = um[];
+      mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
+      tempu[](restu) = uma[];
+      mpiAllReduce(tempu[], umag[], mpiCommWorld, mpiSUM);
     ENDIFMACRO
-    tempu[](restu) = um[];
-    mpiAllReduce(tempu[], umg[], mpiCommWorld, mpiSUM);
-    tempu[](restu) = uma[];
-    mpiAllReduce(tempu[], umag[], mpiCommWorld, mpiSUM);
     if(mpirank == 0){
       cout << "  Saving '" + foldfileout + ".fold' on '" + meshfile + "' in '" + workdir + "'." << endl;
       {
@@ -635,7 +650,12 @@ macro savehopf(hopffileout, statsfile, meshfile, sym, omega, alpha, beta, savefl
     XMhg defu(tempu), defu(ubg);
     tempu[](restu) = ub[].re;
     mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-    if(monitorflag) getmonitors(ubg);
+    XMhg<complex> defu(cplxu), defu(umg), defu(umag);
+    cplxu[](restu) = um[];
+    mpiAllReduce(cplxu[], umg[], mpiCommWorld, mpiSUM);
+    cplxu[](restu) = uma[];
+    mpiAllReduce(cplxu[], umag[], mpiCommWorld, mpiSUM);
+    if(monitorflag) getmonitors;
   ENDIFMACRO
   if(mpirank == 0 && monitorflag){
     cout << "\t";
@@ -684,12 +704,12 @@ macro savehopf(hopffileout, statsfile, meshfile, sym, omega, alpha, beta, savefl
       XMhg defu(tempu), defu(ubg);
       tempu[](restu) = ub[].re;
       mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+      XMhg<complex> defu(cplxu), defu(umg), defu(umag);
+      cplxu[](restu) = um[];
+      mpiAllReduce(cplxu[], umg[], mpiCommWorld, mpiSUM);
+      cplxu[](restu) = uma[];
+      mpiAllReduce(cplxu[], umag[], mpiCommWorld, mpiSUM);
     ENDIFMACRO
-    XMhg<complex> defu(cplxu), defu(umg), defu(umag);
-    cplxu[](restu) = um[];
-    mpiAllReduce(cplxu[], umg[], mpiCommWorld, mpiSUM);
-    cplxu[](restu) = uma[];
-    mpiAllReduce(cplxu[], umag[], mpiCommWorld, mpiSUM);
     if(mpirank == 0){
       cout << "  Saving '" + hopffileout + ".hopf' on '" + meshfile + "' in '" + workdir + "'." << endl;
       {
@@ -838,7 +858,7 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
     XMhg defu(tempu), defu(ubg);
     tempu[](restu) = ub[];
     mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-    if(monitorflag) getmonitors(ubg);
+    if(monitorflag) getmonitors;
   ENDIFMACRO
   if(mpirank == 0 && monitorflag){
     cout << "\ttime = " + time;
@@ -919,7 +939,16 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
     XMhg defu(tempu), defu(ubg);
     tempu[](restu) = ub[].re;
     mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-    if(monitorflag) getmonitors(ubg);
+    XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag), defu(u2mg), defu(u2mag);
+    cplxu[](restu) = um[];
+    mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
+    cplxu[](restu) = uma[];
+    mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
+    cplxu[](restu) = um2[];
+    mpiAllReduce(cplxu[], u2mg[], mpiCommWorld, mpiSUM);
+    cplxu[](restu) = um3[];
+    mpiAllReduce(cplxu[], u2mag[], mpiCommWorld, mpiSUM);
+    if(monitorflag) getmonitors;
   ENDIFMACRO
   if(mpirank == 0 && monitorflag){
     cout << "\t";
@@ -968,16 +997,16 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
       XMhg defu(tempu), defu(ubg);
       tempu[](restu) = ub[].re;
       mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+      XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag), defu(u2mg), defu(u2mag);
+      cplxu[](restu) = um[];
+      mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
+      cplxu[](restu) = uma[];
+      mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
+      cplxu[](restu) = um2[];
+      mpiAllReduce(cplxu[], u2mg[], mpiCommWorld, mpiSUM);
+      cplxu[](restu) = um3[];
+      mpiAllReduce(cplxu[], u2mag[], mpiCommWorld, mpiSUM);
     ENDIFMACRO
-    XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag), defu(u2mg), defu(u2mag);
-    cplxu[](restu) = um[];
-    mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
-    cplxu[](restu) = uma[];
-    mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
-    cplxu[](restu) = um2[];
-    mpiAllReduce(cplxu[], u2mg[], mpiCommWorld, mpiSUM);
-    cplxu[](restu) = um3[];
-    mpiAllReduce(cplxu[], u2mag[], mpiCommWorld, mpiSUM);
     if(mpirank == 0){
       cout << "  Saving '" + hohofileout + ".hoho' on '" + meshfile + "' in '" + workdir + "'." << endl;
       {
@@ -1061,7 +1090,16 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
     XMhg defu(tempu), defu(ubg), defu(u2mg), defu(u2mag);
     tempu[](restu) = ub[].re;
     mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-    if(monitorflag) getmonitors(ubg);
+    XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag);
+    cplxu[](restu) = um[];
+    mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
+    cplxu[](restu) = uma[];
+    mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
+    tempu[](restu) = um2[];
+    mpiAllReduce(tempu[], u2mg[], mpiCommWorld, mpiSUM);
+    tempu[](restu) = um3[];
+    mpiAllReduce(tempu[], u2mag[], mpiCommWorld, mpiSUM);
+    if(monitorflag) getmonitors;
   ENDIFMACRO
   if(mpirank == 0 && monitorflag){
     cout << "\t";
@@ -1110,16 +1148,16 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
       XMhg defu(tempu), defu(ubg), defu(u2mg), defu(u2mag);
       tempu[](restu) = ub[].re;
       mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+      XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag);
+      cplxu[](restu) = um[];
+      mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
+      cplxu[](restu) = uma[];
+      mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
+      tempu[](restu) = um2[];
+      mpiAllReduce(tempu[], u2mg[], mpiCommWorld, mpiSUM);
+      tempu[](restu) = um3[];
+      mpiAllReduce(tempu[], u2mag[], mpiCommWorld, mpiSUM);
     ENDIFMACRO
-    XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag);
-    cplxu[](restu) = um[];
-    mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
-    cplxu[](restu) = uma[];
-    mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
-    tempu[](restu) = um2[];
-    mpiAllReduce(tempu[], u2mg[], mpiCommWorld, mpiSUM);
-    tempu[](restu) = um3[];
-    mpiAllReduce(tempu[], u2mag[], mpiCommWorld, mpiSUM);
     if(mpirank == 0){
       cout << "  Saving '" + fohofileout + ".foho' on '" + meshfile + "' in '" + workdir + "'." << endl;
       {
@@ -1200,7 +1238,13 @@ macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monit
     XMhg defu(tempu), defu(ubg);
     tempu[](restu) = ub[];
     mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-    if(monitorflag) getmonitors(ubg);
+    XMhg<complex> defu(cplxu);
+    complex[int, int] uhg(ubg[].n, Nh);
+    for(int harm = 0; harm < Nh; harm++){
+      cplxu[](restu) = uh(:, harm);
+      mpiAllReduce(cplxu[], uhg(:, harm), mpiCommWorld, mpiSUM);
+    }
+    if(monitorflag) getmonitors;
   ENDIFMACRO
   if(mpirank == 0 && monitorflag){
     cout << "\t";
@@ -1237,13 +1281,13 @@ macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monit
       XMhg defu(tempu), defu(ubg);
       tempu[](restu) = ub[];
       mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
+      XMhg<complex> defu(cplxu);
+      complex[int, int] uhg(ubg[].n, Nh);
+      for(int harm = 0; harm < Nh; harm++){
+        cplxu[](restu) = uh(:, harm);
+        mpiAllReduce(cplxu[], uhg(:, harm), mpiCommWorld, mpiSUM);
+      }
     ENDIFMACRO
-    XMhg<complex> defu(cplxu);
-    complex[int, int] uhg(ubg[].n, Nh);
-    for(int harm = 0; harm < Nh; harm++){
-      cplxu[](restu) = uh(:, harm);
-      mpiAllReduce(cplxu[], uhg(:, harm), mpiCommWorld, mpiSUM);
-    }
     if(mpirank == 0){
       cout << "  Saving '" + porbfileout + ".porb' on '" + meshfile + "' in '" + workdir + "'." << endl;
       {
@@ -1515,11 +1559,17 @@ func complex[int] loadmode(string inputfilename, string meshfilename, real[int] 
           file >> paramnames[k] >> tempparams[paramnames[k]];
         }
       }
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file >> monitornames[k] >> monitors[monitornames[k]];
+        }
+      }
       if (mpirank == 0) {
         cout << "\t";
         if(sym.n > 0) cout << "sym = " + listsym(sym) + ", ";
         cout << "eval = " + eigenvalue;
         if(paramnames[0] != "") cout << ", " + listparams(paramnames, tempparams);
+        if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
         cout << "." << endl;
       }
       if (filemesh == meshfilename){ // no interpolation needed
@@ -1556,11 +1606,17 @@ func complex[int] loadrslv(string inputfilename, string meshfilename, complex[in
           file >> paramnames[k] >> tempparams[paramnames[k]];
         }
       }
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file >> monitornames[k] >> monitors[monitornames[k]];
+        }
+      }
       if (mpirank == 0) {
         cout << "\t";
         if(sym.n > 0) cout << "sym = " + listsym(sym) + ", ";
         cout << "omega = " + omega + ", gain = " + gain;
-        if(paramnames[0] != "") cout << ", " + listparams(paramnames,tempparams);
+        if(paramnames[0] != "") cout << ", " + listparams(paramnames, tempparams);
+        if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
         cout << "." << endl;
       }
       if (filemesh == meshfilename){ // no interpolation needed
@@ -1620,7 +1676,7 @@ func real[int] loadtdns(string inputfilename, string meshfilename, real& time) {
       return qlocal;
     }
 
-func complex[int] loadtdls(string inputfilename, string meshfilename, real& time) {
+func complex[int] loadtdls(string inputfilename, string meshfilename, real[int] & sym, real& time) {
       XMhg<complex> defu(umg);
       if (mpirank == 0) cout << "  Loading '" + inputfilename + ".tdls' on '" + meshfilename + "' from '" + workdir + "'." << endl;
       string filemesh, basefile, ICfile, dummy, symstr;

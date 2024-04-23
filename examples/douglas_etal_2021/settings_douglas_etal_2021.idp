@@ -44,9 +44,9 @@
   int BCwall = 4;
   int BCpipe = 5;
 // Define solution monitors to extract:
-  macro getmonitors(u){
+  macro getmonitors(){
     fespace Xh1(Thg, P2);
-    Xh1 UX = u;
+    Xh1 UX = ubg;
     varf Onaxis(UX, VX) = on(BCaxis, UX = 1);
     real[int] onaxis = Onaxis(0, Xh1, tgv = 1);
     int[int] indices(onaxis.sum);

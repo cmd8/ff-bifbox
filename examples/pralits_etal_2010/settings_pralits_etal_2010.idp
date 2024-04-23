@@ -44,7 +44,7 @@
   int BCwall = 4;
   int BCslip = 5;
 // Define solution monitors to extract: here x and y forces on BCwall
-  macro getmonitors(u){
-    monitors["Fx"] = int1d(Thg, BCwall)(u#p*N.x - params["1/Re"]*(2.0*dx(u  )*N.x + (dx(u#y) + dy(u))*N.y));
-    monitors["Fy"] = int1d(Thg, BCwall)(u#p*N.y - params["1/Re"]*(2.0*dy(u#y)*N.y + (dx(u#y) + dy(u))*N.x));
+  macro getmonitors(){
+    monitors["Fx"] = int1d(Thg, BCwall)(ubgp*N.x - params["1/Re"]*(2.0*dx(ubg )*N.x + (dx(ubgy) + dy(ubg))*N.y));
+    monitors["Fy"] = int1d(Thg, BCwall)(ubgp*N.y - params["1/Re"]*(2.0*dy(ubgy)*N.y + (dx(ubgy) + dy(ubg))*N.x));
   }// EOM

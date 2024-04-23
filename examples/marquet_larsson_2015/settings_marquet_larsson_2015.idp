@@ -62,9 +62,9 @@
 
   macro coordinatetransform() x, y, Z // EOM
 // Define solution monitors to extract:
-  macro getmonitors(u){
-    monitors["Cd"] = 8.0/params["L"]*int2d(Thg, BCwall)(u#p*N.x*dZdz - params["1/Re"]*(2.0*dx(u  )*N.x*dZdz + (dx(u#y) + dy(u))*N.y*dZdz + (dx(u#z) + dZ(u))*N.z));
+  macro getmonitors(){
+    monitors["Cd"] = 8.0/params["L"]*int2d(Thg, BCwall)(ubgp*N.x*dZdz - params["1/Re"]*(2.0*dx(ubg)*N.x*dZdz + (dx(ubgy) + dy(ubg))*N.y*dZdz + (dx(ubgz) + dZ(ubg))*N.z));
     fespace Xh1(Thg, P2);
-    Xh1 UX = u;
+    Xh1 UX = ubg;
     monitors["minux"] = UX[].min;
   }// EOM

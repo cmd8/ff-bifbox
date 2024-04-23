@@ -62,10 +62,10 @@
 
   macro coordinatetransform() X, y // EOM
 // Define solution monitors to extract:
-  macro getmonitors(u){
+  macro getmonitors(){
       fespace Xh1(Thg, P2);
-      Xh1 RR = (params["gamma"]*params["Ma"]^2.0*u#p + 1.0)/(u#T + (u#T == 0.0))*u#Y*exp(-(1.0 + params["dT"])^2.0*params["Ze"]/(params["dT"]*(u#T + (u#T == 0.0)))), Xpoints = X;
-      varf Onaxis(RR, VX) = int2d(Th)(0*RR*VX) + on(BCaxis, RR = 1);
+      Xh1 RR = (params["gamma"]*params["Ma"]^2.0*ubgp + 1.0)/(ubgT + (ubgT == 0.0))*ubgY*exp(-(1.0 + params["dT"])^2.0*params["Ze"]/(params["dT"]*(ubgT + (ubgT == 0.0)))), Xpoints = X;
+      varf Onaxis(RR, VX) = on(BCaxis, RR = 1);
       real[int] onaxis = Onaxis(0, Xh1, tgv = 1);
       int[int] indices(onaxis.sum);
       for(int i=0, j=0; i<Xh1.ndof; ++i) if(onaxis[i]) {indices[j] = i; ++j;}

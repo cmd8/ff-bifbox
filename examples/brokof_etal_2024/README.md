@@ -77,7 +77,14 @@ ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re500L5.base -fo Re8
 ```
 
 ### First order
-1. Compute the eigenspectra at Re = 200, 500, 800 for L = 0.5 for various Rout values. Note that, according to the settings file, the sym argument activates the acoustic characteristic BC in this setup (it does not influence the modes' symmetry).
+1. Compute the response fields for the FTF analysis
+```
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -fo Re800L0p5FTF -forcing 1 -Rin 0 -Rout -1 -sym 1 -eps_target 0+0i -ntarget 64 -targetf 0+12.6i
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L1.base -fo Re800L1FTF -forcing 1 -Rin 0 -Rout -1 -sym 1 -eps_target 0+0i -ntarget 64 -targetf 0+12.6i
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L5.base -fo Re800L5FTF -forcing 1 -Rin 0 -Rout -1 -sym 1 -eps_target 0+0i -ntarget 64 -targetf 0+12.6i
+```
+
+2. Compute the eigenspectra at Re = 200, 500, 800 for L = 0.5 for various Rout values. Note that, according to the settings file, the sym argument activates the acoustic characteristic BC in this setup (it does not influence the modes' symmetry).
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -fo Re200L0p5 -mo Re200L0p5 -hmax 0.05
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout 0 -sym 1 -eps_target 0.5+6i -eps_nev 50
@@ -101,7 +108,7 @@ ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so R
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -1 -sym 1 -eps_target 0.5+6i -eps_nev 50
 ```
 
-2. Perform resolvent analysis at Re = 200, 500, 800 for L = 0.5 for tuned Rout values where sigma ~ -0.45.
+3. Perform resolvent analysis at Re = 200, 500, 800 for L = 0.5 for tuned Rout values where sigma ~ -0.45.
 ```
 ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -0.24125 -sym 1 -omega 0.1 -omegaf 12.5 -nomega 125
 ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -0.70125 -sym 1 -omega 0.1 -omegaf 12.5 -nomega 125
