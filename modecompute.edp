@@ -120,8 +120,8 @@ sepcharind = max(targetf.rfind("+"), targetf.rfind("-"));
 complex shiftf = atof(targetf(0:sepcharind)) + 1i*atof(targetf(sepcharind:targetf.length-2));
 if (!forcing){ // compute eigenmodes with SLEPc
   ik.im = sym;
+  M = vM(XMh, XMh, tgv = -10);
   {
-    M = vM(XMh, XMh, tgv = -10);
     matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -1);
     if (adj) Jtemp = -Jtemp';
     else Jtemp = -Jtemp;
@@ -153,14 +153,18 @@ if (!forcing){ // compute eigenmodes with SLEPc
   }
 }
 else { // compute forced response mode with PETSc
-  assert(adj == 0 && epsnev == 1);
+  assert(epsnev == 1);
   ik.im = sym;
   for (int n = 0; n < ntarget; ++n){
     if (ntarget > 1) shift = shifts + (shiftf - shifts)*real(n)/real(ntarget - 1);
     iomega = shift;
     val[0] = shift;
     complex[int] RHS = vMq(0, XMh, tgv = -1);
-    J = vJ(XMh, XMh, tgv = -1);
+    {
+      matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -1);
+      if (adj) Jtemp = Jtemp';
+      J = Jtemp;
+    }
     // set up Mat parameters
     IFMACRO(Jprecon) Jprecon(shift); ENDIFMACRO
     set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams + " -options_left no");
@@ -171,11 +175,9 @@ else { // compute forced response mode with PETSc
     ChangeNumbering(J, um[], temp);
     ChangeNumbering(J, um[], temp, inverse = true);
     ub[] = um[].re;
-    for (int ii = 0; ii < val.n; ++ii){
-      ChangeNumbering(J, um[], temp);
-      ChangeNumbering(J, um[], temp, inverse = true);
-      vec[ii][] = um[];
-    }
+    ChangeNumbering(J, um[], temp);
+    ChangeNumbering(J, um[], temp, inverse = true);
+    vec[0][] = um[];
     savemode(fileout + ((ntarget > 1) ? ("_" + n) : ""), "", filein, meshin, vec, val, sym, (fileout != ""));
     ub[] = ubsave;
   }

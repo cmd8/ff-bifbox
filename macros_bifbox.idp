@@ -269,7 +269,7 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
 // FUNCTIONS -------------------------------------------------------------------
 macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
   IFMACRO(getmonitors) 
-    XMhg defu(tempu), defu(ubg);
+    XMhg defu(tempu), defu(ubg), def(umg), def(umag);
     tempu[](restu) = ub[];
     mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
     if(monitorflag) getmonitors;
@@ -301,7 +301,7 @@ macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
   }
   if (saveflag && basefileout != ""){
     IFMACRO(!getmonitors) 
-      XMhg defu(tempu), defu(ubg);
+      XMhg defu(tempu), defu(ubg), def(umg), def(umag);
       tempu[](restu) = ub[];
       mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
     ENDIFMACRO
@@ -855,7 +855,7 @@ macro savetdls(tdlsfileout, statsfile, meshfile, basefile, ICfile, sym, time, sa
 
 macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitorflag){
   IFMACRO(getmonitors)
-    XMhg defu(tempu), defu(ubg);
+    XMhg defu(tempu), defu(ubg), def(umg), def(umag);
     tempu[](restu) = ub[];
     mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
     if(monitorflag) getmonitors;
@@ -888,7 +888,7 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
   }
   if(saveflag && tdnsfileout != ""){
     IFMACRO(!getmonitors)
-      XMhg defu(tempu), defu(ubg);
+      XMhg defu(tempu), defu(ubg), def(umg), def(umag);
       tempu[](restu) = ub[];
       mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
     ENDIFMACRO
@@ -936,7 +936,7 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
 
 macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23, saveflag, monitorflag){
   IFMACRO(getmonitors)
-    XMhg defu(tempu), defu(ubg);
+    XMhg defu(tempu), defu(ubg), defu(umg), defu(umag);
     tempu[](restu) = ub[].re;
     mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
     XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag), defu(u2mg), defu(u2mag);
@@ -994,7 +994,7 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
   }
   if(saveflag && hohofileout != ""){
     IFMACRO(!getmonitors)
-      XMhg defu(tempu), defu(ubg);
+      XMhg defu(tempu), defu(ubg), defu(umg), defu(umag);
       tempu[](restu) = ub[].re;
       mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
       XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag), defu(u2mg), defu(u2mag);
@@ -1087,7 +1087,7 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
 
 macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23, saveflag, monitorflag){
   IFMACRO(getmonitors)
-    XMhg defu(tempu), defu(ubg), defu(u2mg), defu(u2mag);
+    XMhg defu(tempu), defu(ubg), defu(umg), defu(umag), defu(u2mg), defu(u2mag);
     tempu[](restu) = ub[].re;
     mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
     XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag);
@@ -1145,7 +1145,7 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
   }
   if(saveflag && fohofileout != ""){
     IFMACRO(!getmonitors)
-      XMhg defu(tempu), defu(ubg), defu(u2mg), defu(u2mag);
+      XMhg defu(tempu), defu(ubg), defu(umg), defu(umag), defu(u2mg), defu(u2mag);
       tempu[](restu) = ub[].re;
       mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
       XMhg<complex> defu(cplxu), defu(u1mg), defu(u1mag);
@@ -1238,11 +1238,12 @@ macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monit
     XMhg defu(tempu), defu(ubg);
     tempu[](restu) = ub[];
     mpiAllReduce(tempu[], ubg[], mpiCommWorld, mpiSUM);
-    XMhg<complex> defu(cplxu);
+    XMhg<complex> defu(cplxu), defu(umg), defu(umag);
     complex[int, int] uhg(ubg[].n, Nh);
     for(int harm = 0; harm < Nh; harm++){
       cplxu[](restu) = uh(:, harm);
       mpiAllReduce(cplxu[], uhg(:, harm), mpiCommWorld, mpiSUM);
+      umg[] += uhg(:, harm);
     }
     if(monitorflag) getmonitors;
   ENDIFMACRO
