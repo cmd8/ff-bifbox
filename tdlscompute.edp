@@ -35,7 +35,7 @@ string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
 string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
-if((fileext == "mode" || fileext == "rslv" || fileext == "tdls") && basefilein == ""){
+if((fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls") && basefilein == ""){
   basefilein = readbasename(workdir + filein);
   basefileext = parsefilename(basefilein, basefileroot);
 }
@@ -56,6 +56,10 @@ if (count == 0){
   if(fileext == "mode") {
     complex eigenvalue;
     um[] = loadmode(fileroot, meshin, sym, eigenvalue);
+  }
+  else if(fileext == "resp") {
+    real omega;
+    um[] = loadresp(fileroot, meshin, sym, omega);
   }
   else if(fileext == "rslv") {
     real omega, gain;

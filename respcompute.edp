@@ -1,14 +1,14 @@
 //
-// rslvcompute.edp
+// respcompute.edp
 // Chris Douglas
 // cdoug@mit.edu
 //
 // EXAMPLE USAGE:
-//  Compute gains, store without storing forcing/response modes:
-// ff-mpirun -np 4 rslvcompute.edp -eps_target 0.1+1.0i -eps_nev 10 -fi <FILEIN> -fo <VALFILE>
+//  Solve linear forced response problem, store solution:
+// ff-mpirun -np 4 respcompute.edp -eps_target 0+1.0i -forcing 1 -fi <FILEIN> -fo <VECFILE>
 //
-//  Compute gains, store with forcing/response modes:
-// ff-mpirun -np 4 rslvcompute.edp -eps_target 0.1+1.0i -eps_nev 4 -fi <FILEIN> -fo <VALFILE>
+//  Solve linear forced response problem over a sequence of shifts, store solutions:
+// ff-mpirun -np 4 respcompute.edp -eps_target 0+0.2i -ntarget 10 -targetf 0+2.0i -forcing 1 -fi <FILEIN> -fo <VECFILE>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
 //
@@ -25,8 +25,6 @@ string symstr = getARGV("-sym", "0");
 real omega = getARGV("-omega", 1.0);
 int nomega = getARGV("-nomega", 1);
 real omegaf = getARGV("-omegaf", 1.0);
-int epsnev = getARGV("-eps_nev", 1);
-bool strictnev = getARGV("-strict", 1);
 
 // Load mesh, make FE basis
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
@@ -40,10 +38,8 @@ if(filein != "" && meshin == "") meshin = readmeshname(workdir + filein); // get
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
-restf = restrict(Xh, Xhg, n2o);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(um2), defu(um3);
-
 if(fileext == "base") {
   ub[] = loadbase(fileroot, meshin);
 }
@@ -88,63 +84,35 @@ else if(fileext == "porb") {
   complex[int, int] qh(ub[].n, Nh);
   ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);
 }
-complex[int] val(epsnev);
-Xh<complex>[int] deff(fvec)(epsnev);
-Xh<complex> deff(fm);
 XMh<complex> defu(um);
 
-Mat<complex> J, Mf;
+Mat<complex> J;
 createMatu(Th, J, Pk);
-Mat<complex> M(J);
-createMatf(Th, Mf, Pkf);
 
 sym = parsesymstr(symstr);
 complex[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 ik.im = sym;
-complex iomega, iomega2 = 0.0, iomega3 = 0.0;
+complex iomega, iomega2 = 0.0, iomega3 = 0.0; // Let PETSc/SLEPc do the shift
 include "eqns.idp"
-// construct matrices
-M  = vMq(XMh, XMh); // Response Norm
-Mf = vMf(Xh, Xh); // Forcing Norm
-matrix<complex> LocPQ = vP(Xh, XMh); // Forcing/Response Correspondence
-Mat<complex> PQ(M, Mf, LocPQ, clean = true);
-
-func complex[int] LHSop(complex[int]& inPETSc) {
-  complex[int] temp(XMh.ndof), outPETSc(inPETSc.n);
-  MatMult(PQ, inPETSc, outPETSc);
-  KSPSolve(J, outPETSc, temp);
-  MatMult(M, temp, outPETSc);
-  KSPSolveHermitianTranspose(J, outPETSc, temp);
-  MatMultHermitianTranspose(PQ, temp, outPETSc);
-  return outPETSc;
-}
-
-Mat<complex> LHS(Mf, LHSop);
 
 real omegas = omega;
 for (int n = 0; n < nomega; ++n){
   if (nomega > 1) omega = omegas + (omegaf - omegas)*real(n)/real(nomega - 1);
   iomega = 1i*omega;
-  J  = vJ(XMh, XMh, tgv = -1); //Linear operator
+  complex[int] RHS = vMq(0, XMh, tgv = -1);
+  J = vJ(XMh, XMh, tgv = -1);
+  // set up Mat parameters
   IFMACRO(Jprecon) Jprecon(iomega); ENDIFMACRO
-  set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams);
-  int k = EPSSolve(LHS, Mf, vectors = fvec, values = val,
-                 sparams = "-eps_type krylovschur -eps_largest_real -eps_monitor_conv -options_left no -eps_gen_hermitian");
-  if (strictnev) {// activate to limit number of eigenpairs
-    val.resize(min(k, epsnev));
-    fvec.resize(min(k, epsnev));
-  }
-  XMh<complex>[int] defu(uvec)(val.n);
-  real[int] gains = sqrt(val.re);
-  if(fileout != ""){ //If saving modes, compute response modes
-    complex[int] gm(Xh.ndof), qm(XMh.ndof), temp(XMh.ndof);
-    for (int ii = 0; ii < val.n; ++ii){
-      ChangeNumbering(Mf, fvec[ii][], gm);
-      MatMult(PQ, gm, temp);
-      KSPSolve(J, temp, qm);
-      ChangeNumbering(Mf, fvec[ii][], gm, inverse = true);
-      ChangeNumbering(J, uvec[ii][], qm, inverse = true);
-    }
-  }
-  saverslv(fileout + ((nomega > 1) ? ("_" + n) : ""), statout, filein, meshin, fvec, uvec, gains, sym, omega, (fileout != ""));
+  set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams + " -options_left no");
+  um[] = J^-1*RHS;
+  real[int] ubsave = ub[];
+  complex[int] ubcplx(ub[].n), temp;
+  ubcplx.re = ub[];
+  ChangeNumbering(J, ubcplx, temp);
+  ChangeNumbering(J, ubcplx, temp, inverse = true);
+  ub[] = ubcplx.re;
+  ChangeNumbering(J, um[], temp);
+  ChangeNumbering(J, um[], temp, inverse = true);
+  saveresp(fileout + ((nomega > 1) ? ("_" + n) : ""), statout, filein, meshin, sym, omega, (fileout != ""), true);
+  ub[] = ubsave;
 }

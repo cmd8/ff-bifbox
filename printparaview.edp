@@ -69,6 +69,28 @@ if (mpirank==0){
     ugi[] = qpv.im;
     savevtk(workdir + fileout + "_mode.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
   }
+  else if (fileext == "resp"){
+    XMhg<complex> defu(umg);
+    restu = 0:XMhg.ndof-1;
+    real omega;
+    umg[] = loadresp(fileroot, meshin, sym, omega);
+    cout << "  Saving '" + fileout + "_resp.vtu' in '" + workdir + "'." << endl;
+    complex[int] qpv = umg[];
+    if (paraviewflag > 1){
+      meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+      fespace XMhs(Thgs, Pk);
+      XMhs<complex> defu(us) = defu(umg);
+      qpv.resize(us[].n);
+      qpv = us[];
+      Thgpv = movemesh(Thgs, [coordinatetransform]);
+    }
+    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    fespace XMhgpv(Thgpv, Pk);
+    XMhgpv defu(ugr), defu(ugi);
+    ugr[] = qpv.re;
+    ugi[] = qpv.im;
+    savevtk(workdir + fileout + "_resp.vtu", Thgpv, adaptu(ugr), adaptu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+  }
   else if (fileext == "rslv"){
     Xhg<complex> deff(fmg);
     XMhg<complex> defu(umg);
@@ -197,7 +219,7 @@ if (mpirank==0){
     XMhg<complex> defu(umg);
     restu = 0:XMhg.ndof-1;
     real time;
-    umg[] = loadtdls(fileroot, meshin, time);
+    umg[] = loadtdls(fileroot, meshin, sym, time);
     cout << "  Saving '" + fileout + "_tdls.vtu' in '" + workdir + "'." << endl;
     meshN Thgpv;
     complex[int] qpv = umg[];

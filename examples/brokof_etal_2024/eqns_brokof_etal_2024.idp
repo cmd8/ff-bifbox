@@ -42,7 +42,7 @@
   macro d3ubrhodT3() (-6.0*(params["gamma"]*params["Ma"]^2.0*ubp + 1.0)/ubT^4.0) // EOM
   macro d3ubrhodpdT2() (2.0*params["gamma"]*params["Ma"]^2.0/ubT^3.0) // EOM
 // Arrhenius reaction rate macro
-  macro ubArr() ( params["Da"]*exp(-params["Ze"]*(1.0 + params["dT"])*(1.0 + params["dT"] - ubT)/(params["dT"]*ubT)) ) // EOM
+  macro ubArr() ( params["Da"]*exp(params["Ze"]/params["dT"]*(1.0 + params["dT"] - (1.0 + params["dT"])^2./ubT)) ) // EOM
   macro dubArrdT() ( (params["Ze"]/params["dT"]*(1.0 + params["dT"])^2.0/ubT^2.0)*ubArr ) // EOM
   macro d2ubArrdT2() ( (-2.0*params["Ze"]/params["dT"]*(1.0 + params["dT"])^2.0/ubT^3.0 + (params["Ze"]/params["dT"]*(1.0 + params["dT"])^2.0/ubT^2.0)^2.0)*ubArr ) // EOM
   macro d3ubArrdT3() ( (6.0*params["Ze"]/params["dT"]*(1.0 + params["dT"])^2.0/ubT^4.0 + (params["Ze"]/params["dT"]*(1.0 + params["dT"])^2.0/ubT^2.)^3.0 + 3.0*(params["Ze"]/params["dT"]*(1.0 + params["dT"])^2.0/ubT^2.0)*(-2.0*params["Ze"]/params["dT"]*(1.0 + params["dT"])^2.0/ubT^3.0))*ubArr ) // EOM

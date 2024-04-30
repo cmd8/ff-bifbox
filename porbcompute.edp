@@ -37,7 +37,7 @@ real omega;
 // Load mesh, make FE basis
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if((fileext == "mode" || fileext == "rslv" || fileext == "tdls") && basefilein == "") basefilein = readbasename(workdir + filein);
+if((fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls") && basefilein == "") basefilein = readbasename(workdir + filein);
 string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshroot, meshext = parsefilename(meshin, meshroot);
@@ -86,8 +86,11 @@ else if(fileext == "hoho") {
 }
 else if (fileext == "mode") {
   complex eigenvalue;
-  um[] = loadmode(fileroot, meshin, sym1, eigenvalue);
+  uh(:, 0) = loadmode(fileroot, meshin, sym1, eigenvalue);
   omega = imag(eigenvalue);
+}
+else if (fileext == "resp") {
+  uh(:, 0) = loadresp(fileroot, meshin, sym1, omega);
 }
 else if (fileext == "rslv") {
   real gain;

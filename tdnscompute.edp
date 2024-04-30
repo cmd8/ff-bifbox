@@ -39,7 +39,7 @@ string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic");
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
 string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
-if((fileext == "mode" || fileext == "rslv" || fileext == "tdls") && basefilein == ""){
+if((fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls") && basefilein == ""){
   basefilein = readbasename(workdir + filein);
   basefileext = parsefilename(basefilein, basefileroot);
 }
@@ -67,6 +67,13 @@ if (count == 0){
     qm *= exp(1i*phase);
     um[] = 2.0*qm.re;
   }
+  else if(fileext == "resp") {
+    real omega;
+    complex[int] qm(um[].n);
+    qm = loadresp(fileroot, meshin, sym, omega);
+    qm *= exp(1i*phase);
+    um[] = 2.0*qm.re;
+  }
   else if(fileext == "rslv") {
     real omega, gain;
     complex[int] fm, qm(um[].n);
@@ -77,7 +84,7 @@ if (count == 0){
   else if(fileext == "tdls") {
     real time;
     complex[int] qm(um[].n);
-    qm = loadtdls(fileroot, meshin, time);
+    qm = loadtdls(fileroot, meshin, sym, time);
     qm *= exp(1i*phase);
     um[] = 2.0*qm.re;
   }
@@ -208,11 +215,11 @@ if(meshout == "") meshout = meshin; // if no adaptation
 else adapt = true;  // if output meshfile is given, adapt mesh
 int adaptflag;
 // initialize
-real[int] q, qp;
+real[int] q;
 ChangeNumbering(J, ub[], q);
 ChangeNumbering(J, ub[], q, inverse = true);
 if (count == 0) savetdns(fileout + "_0", (savecount > 0 ? fileout : ""), meshin, filein, time, true, false);
-qp = q;
+real[int] qp = q;
 // Function to build residual "F(t,u,\dot{u})" operator in PETSc numbering
 func real[int] funcF(real t, real[int]& qPETSc, real[int]& qdotPETSc) {
     ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);

@@ -54,7 +54,7 @@ complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
 string fileroot1, fileext1 = parsefilename(filein, fileroot1); //extract file name and extension
 string fileroot2, fileext2 = parsefilename(filein2, fileroot2); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if((fileext1 == "mode" || fileext1 == "rslv" || fileext1 == "tdls") && basefilein == "") basefilein = readbasename(workdir + filein);
+if((fileext1 == "mode" || fileext1 == "resp" || fileext1 == "rslv" || fileext1 == "tdls") && basefilein == "") basefilein = readbasename(workdir + filein);
 string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshroot, meshext = parsefilename(meshin, meshroot);
@@ -90,6 +90,9 @@ else if (fileext2 == "mode") {
   complex eigenvalue;
   um2[] = loadmode(fileroot2, meshin, sym2, eigenvalue);
   omega2 = imag(eigenvalue);
+}
+else if (fileext2 == "resp") {
+  um2[] = loadresp(fileroot2, meshin, sym2, omega2);
 }
 else if (fileext2 == "rslv") {
   real gain;
@@ -132,6 +135,9 @@ else if (fileext1 == "mode") {
   complex eigenvalue;
   um[] = loadmode(fileroot1, meshin, sym1, eigenvalue);
   omega1 = imag(eigenvalue);
+}
+else if (fileext1 == "resp") {
+  um[] = loadresp(fileroot1, meshin, sym1, omega1);
 }
 else if (fileext1 == "rslv") {
   real gain;
