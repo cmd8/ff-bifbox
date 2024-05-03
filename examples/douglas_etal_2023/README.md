@@ -1,4 +1,4 @@
-# Low-Mach conical flame Example: Douglas et al., CNF, (2023)
+# Low-Mach conical flame Example: Douglas et al., CnF, (2023)
 This file shows an example `ff-bifbox` workflow for reproducing the results in the study:
 ```
 @article{douglas_etal_2023,
@@ -43,7 +43,6 @@ FreeFem++-mpi -v 0 examples/douglas_etal_2023/jet.edp -mo $workdir/jet
 ```
 
 ## Perform parallel computations using `ff-bifbox`
-### Laminar base flow
 1. Compute a base state on the created mesh at Re = 10, Pr = 0.7, Le = 1, Da = 1, dT = 4, Ze = 0, a = 2/3.
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -mi jet.msh -fo ignite_0 -Re 10 -Pr 0.7 -Le 1 -Da 1 -dT 4 -Ze 0 -a 0.6666666666666667
@@ -58,7 +57,50 @@ ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_3.base -fo ig
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_4.base -fo ignite_5 -Re 1000 -mo ignite_5
 ```
 
-3. Continue base state along the parameters to the desired conditions. This is a complicated step that takes a significant amount of computations/time and involves a lot of trial and error decisions. It is useful to save the outputs to paraview in order to keep track of how the solution is changing as a function of the parameters.
+2. Gradually ignite the conical flame via continuation of Da and Ze and timestepping. (slow!)
 ```
-ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi ignite_5.base -fo ignite -param Ze -h0 10 -count 5 -scount 5 -maxcount 100 -mo ignite -pv 1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_5.base -fo ignite_6 -Da 3 -Ze 1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_6.base -fo ignite_7 -Da 7 -Ze 1.3
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_7.base -fo ignite_8 -Da 16 -Ze 1.5
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_8.base -fo ignite_9 -Da 30 -Ze 1.65
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_9.base -fo ignite_10 -Da 45 -Ze 1.75 -mo ignite_10
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_10.base -fo ignite_11 -Da 55 -Ze 1.8
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_11.base -fo ignite_12 -Da 67 -Ze 1.85 -mo ignite_12
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_12.base -fo ignite_13 -Da 82 -Ze 1.9
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_13.base -fo ignite_14 -Da 102 -Ze 1.95 -mo ignite_14
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_14.base -fo ignite_15 -Da 126 -Ze 2 -mo ignite_15
+ff-mpirun -np $nproc tdnscompute.edp -v 0 -dir $workdir -fi ignite_15.base -fo ignitetime -Le 0.7 -Ze 10 -Da 5000 -ts_dt 0.0025 -mo ignitetime -scount 5 -maxcount 120 -pv 1 -ts_adapt_type basic -ts_atol 1e10
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignitetime_120.tdns -fo conicalflame -mo conicalflame
+```
+
+3. Compute the |m|=11 polyhedral flame bifurcation at Da = 4000, Le ~ 0.845.
+```
+ff-mpirun -np $nproc tdnscompute.edp -v 0 -dir $workdir -fi conicalflame.base -fo polyhedral -Le 0.845 -Da 4000 -ts_dt 0.0025 -mo polyhedral -scount 5 -maxcount 25 -ts_adapt_type basic -ts_atol 1e10
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi polyhedral_25.tdns -fo polyhedral -mo polyhedral
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi polyhedral.base -fo polyhedral -sym 11 -eps_target 0.1+0i
+ff-mpirun -np $nproc hopfcompute.edp -v 0 -dir $workdir -fi polyhedral.mode -fo polyhedral -param Le -nf 0 -zero 1
+ff-mpirun -np $nproc hopfcompute.edp -v 0 -dir $workdir -fi polyhedral.hopf -fo polyhedral -mo polyhedralm11 -adaptto bda -param Le -zero 1 -pv 1
+```
+
+4. Compute the |m|=1 tilted flame bifurcation at Le = 1.1, Da ~ 9130.
+```
+ff-mpirun -np $nproc tdnscompute.edp -v 0 -dir $workdir -fi conicalflame.base -fo tilted -Le 1.1 -Da 9135 -ts_dt 0.0025 -mo tilted -scount 5 -maxcount 150 -ts_adapt_type basic -ts_atol 1e10
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi tilted_150.tdns -fo tilted -mo tilted
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi tilted.base -fo tilted -sym 1 -eps_target 0.1+0i
+ff-mpirun -np $nproc hopfcompute.edp -v 0 -dir $workdir -fi tilted.mode -fo tilted -param Da -zero 1 -nf 0 -snes_divergence_tolerance 1e8
+ff-mpirun -np $nproc hopfcompute.edp -v 0 -dir $workdir -fi tilted.hopf -fo tilted -mo tiltedm1 -adaptto bda -param Da -zero 1 -pv 1
+```
+
+5. Continue the base flow along Le at Da = 4000. (slow!)
+```
+ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi polyhedral.base -fo Da4000Leup -mo Da4000Leup -param Le -h0 10 -scount 5 -maxcount 200
+ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi polyhedral.base -fo Da4000Ledown -mo Da4000Ledown -param Le -h0 -10 -scount 5 -maxcount 400
+```
+
+6. Continue the base flow along Da at Le = 1. (very slow!)
+```
+ff-mpirun -np $nproc tdnscompute.edp -v 0 -dir $workdir -fi conicalflame.base -fo conicalflame -Le 1 -Da 4000 -ts_dt 0.0025 -mo conicalflame -scount 5 -maxcount 60 -pv 1 -ts_adapt_type basic -ts_atol 1e10
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi conicalflame_60.tdns -fo Le1Da4000 -mo Le1Da4000
+ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi Le1Da4000.base -fo Le1Daup -mo Le1Daup -param Da -h0 10 -scount 5 -maxcount 1000
+ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi Le1Da4000.base -fo Le1Dadown -mo Le1Dadown -param Da -h0 -10 -scount 5 -maxcount 500
 ```
