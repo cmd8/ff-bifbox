@@ -95,7 +95,7 @@ ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -mi G2.msh -fo balancedS
 FreeFem++-mpi -v 0 examples/douglas_2024/computebaseerror.edp -fi balanced -ci S0p85 -fo balancedS0p85err -dir $workdir -pv 1
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi balancedS0p85.base -fo balancedS0p9 -S 0.9 -snes_rtol 0
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi balancedS0p9.base -fo balancedS1 -S 1 -snes_rtol 0 -pv 1
-FreeFem++-mpi -v 0 examples/douglas_2024/computebaseerror.edp -fi balanced -ci S1 -fo balandedS1err -dir $workdir -pv 1
+FreeFem++-mpi -v 0 examples/douglas_2024/computebaseerror.edp -fi balanced -ci S1 -fo balancedS1err -dir $workdir -pv 1
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi balancedS1.base -fo balancedS1p095 -S 1.095 -snes_rtol 0
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi balancedS1p095.base -fo balancedS1p3 -S 1.3 -snes_rtol 0
 ```
