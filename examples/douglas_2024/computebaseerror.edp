@@ -1,0 +1,41 @@
+//
+// computebaseerror.edp
+// Chris Douglas
+// christopher.douglas@duke.edu
+//
+// MUST BE RUN WITH 1 MPI PROCESS
+//
+load "iovtk"
+include "settings.idp"
+include "macros_bifbox.idp"
+// arguments
+string meshin = getARGV("-mi", ""); // input meshfile with extension
+string filein = getARGV("-fi", ""); // input file with extension
+string fileout = getARGV("-fo", "");
+string refin = getARGV("-ri", "meliga");
+string casein = getARGV("-ci", ""); // input file with extension
+assert(mpisize==1);
+string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
+if(filein != "" && meshin == "") meshin = readmeshname(workdir + fileroot + casein + ".base"); // get mesh file
+string meshroot, meshext = parsefilename(meshin, meshroot);
+// Load mesh
+Th = readmeshN(workdir + meshin);
+Thg = Th;
+// Partition mesh across processors
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+// Make finite element basis
+XMh defu(ub), defu(um), defu(um2), defu(um3), defu(Sfields), defu(Slist);
+
+ub[] = loadbase(fileroot + casein, meshin);
+um[] = loadbase(refin + casein, meshin);
+ub[] -= um[];
+savebase(fileout, "", meshin, true, true);
+fespace Xh1(Th, P2);
+Xh1 E = sqrt(abs(ub)^2 + abs(uby)^2 + abs(ubz)^2);
+real error = int2d(Th)(y*E);
+real vol = int2d(Th)(y);
+real maxerror = E[].max;
+real avgerror = error/vol;
+
+cout << filein << ", maxerror = " << maxerror << ", avgerror = " << avgerror << endl;

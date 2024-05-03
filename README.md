@@ -128,7 +128,7 @@ Distributed under the GPL-3.0 License. See `LICENSE` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Chris Douglas - cdoug@mit.edu
+Chris Douglas - christopher.douglas@duke.edu
 
 Project Link: [https://github.com/cmd8/ff-bifbox](https://github.com/cmd8/ff-bifbox)
 

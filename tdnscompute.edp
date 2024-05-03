@@ -1,7 +1,7 @@
 //
 // tdnscompute.edp
 // Chris Douglas
-// cdoug@mit.edu
+// christopher.douglas@duke.edu
 //
 // EXAMPLE USAGE:
 //  Compute time-domain nonlinear simulation with IC from input file without mesh adaptation:

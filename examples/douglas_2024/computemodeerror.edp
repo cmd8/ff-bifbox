@@ -1,0 +1,64 @@
+//
+// computemodeerror.edp
+// Chris Douglas
+// christopher.douglas@duke.edu
+//
+// MUST BE RUN WITH 1 MPI PROCESS
+//
+load "iovtk"
+include "settings.idp"
+include "macros_bifbox.idp"
+// arguments
+string meshin = getARGV("-mi", ""); // input meshfile
+string filein = getARGV("-fi", "");
+string fileout = getARGV("-fo", "");
+string refin = getARGV("-ri", "meliga");
+string casein = getARGV("-ci", "");
+assert(mpisize==1);
+string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
+if(filein != "" && meshin == "") meshin = readmeshname(workdir + fileroot + casein + ".mode"); // get mesh file
+string meshroot, meshext = parsefilename(meshin, meshroot);
+// Load mesh, make FE basis
+Th = readmeshN(workdir + meshin);
+Thg = Th;
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+XMh defu(ub);
+XMh<complex> defu(um), defu(um2), defu(um3);
+complex[int] val(1);
+XMh<complex>[int] defu(vec)(1);
+
+complex eigenvalue, eigenvalueref;
+complex[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
+complex iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0; // Let PETSc/SLEPc do the shift
+include "eqns.idp"
+um[] = loadmode(refin + casein, meshin, sym, eigenvalueref);
+ik.im = sym;
+
+fespace Xh2(Th, P2);
+Xh2 E = sqrt(abs(um)^2 + abs(umy)^2 + abs(umz)^2);
+um[] /= E[].linfty;
+complex[int] Mq = vM(0, XMh, tgv = 0);
+real Mnorm = sqrt(real(um[]'*Mq));
+complex[int] qm = um[];
+
+um2[] = loadmode(filein + casein, meshin, sym, eigenvalue);
+val(0) = (eigenvalueref - eigenvalue);
+um3[] = loadmode(refin + casein + "adj", meshin, sym, eigenvalueref);
+complex numerator = (um3[]'*Mq);
+
+um[] = um2[];
+Mq = vM(0, XMh, tgv = 0);
+complex denominator = (um3[]'*Mq);
+
+um[] = qm - (numerator/denominator)*um2[];
+vec[0][] = um[];
+savemode(fileout, "", filein, meshin, vec, val, sym, (fileout != ""));
+
+E = sqrt(abs(um)^2 + abs(umy)^2 + abs(umz)^2);
+real error = int2d(Th)(y*E);
+real vol = int2d(Th)(y);
+real maxerror = E[].max;
+real avgerror = error/vol;
+
+cout << filein + casein << ", maxerror = " << maxerror << ", avgerror = " << avgerror << "." << endl;

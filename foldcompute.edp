@@ -1,7 +1,7 @@
 //
 // foldcompute.edp
 // Chris Douglas
-// cdoug@mit.edu
+// christopher.douglas@duke.edu
 //
 // EXAMPLE USAGE:
 //  Initialize with fold guess from base file, solve on same mesh

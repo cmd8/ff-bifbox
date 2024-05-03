@@ -1,7 +1,7 @@
 //
 // cylinder.geo
 // Chris Douglas
-// cdoug@mit.edu
+// christopher.douglas@duke.edu
 //
 // This file can be used with Gmsh to create a mesh for the cylinder as in
 // [D. Sipp and A. Lebedev, JFM (2007) DOI:10.1017/S0022112007008907].

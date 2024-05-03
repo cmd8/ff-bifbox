@@ -1,0 +1,64 @@
+
+load "iovtk"
+include "settings.idp"
+include "macros_bifbox.idp"
+// arguments
+string filein = getARGV("-fi", ""); // input file with extension
+string fileout = getARGV("-fo", filein); // input file with extension
+assert(mpisize==1);
+string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
+parsefilename(fileout, fileout); //extract file name and extension
+string meshin = readmeshname(workdir + filein); // get mesh file
+// Load mesh
+Th = readmeshN(workdir + meshin);
+Thg = Th;
+// Partition mesh across processors
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+// Make finite element basis
+XMh defu(ub);
+
+func real[int] loadbaseappend(string inputfilename, string meshfilename) {
+      XMhg defu(ubg);
+      if (mpirank == 0) cout << "  Loading '" + inputfilename + ".base' on '" + meshfilename + "' from '" + workdir + "'." << endl;
+      string filemesh;
+      ifstream file(workdir + inputfilename + ".base");
+      file >> filemesh >> filemesh;
+      if(paramnames[0] != ""){
+        for (int k = 0; k < paramnames.n; ++k){
+          file >> paramnames[k] >> params[paramnames[k]];
+        }
+      }
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file >> monitornames[k] >> monitors[monitornames[k]];
+        }
+      }
+      if (mpirank == 0) {
+        if(paramnames[0] != "" || monitornames[0] != "") cout << "\t";
+        if(paramnames[0] != "") cout << listparams(paramnames, params);
+        if(paramnames[0] != "" && monitornames[0] != "") cout << ", ";
+        if(monitornames[0] != "") cout << listparams(monitornames, monitors);
+        if(paramnames[0] != "" || monitornames[0] != "") cout << "." << endl;
+      }
+      if (filemesh == meshfilename){ // no interpolation needed
+        fespace XMhg1(Thg, [P2, P2, P2, P1]);
+        XMhg1 [ubg1, ubg1y, ubg1z, ubg1p];
+        file >> ubg1[];
+        defu(ubg) = [ubg1, ubg1y, ubg1z, ubg1p, 0];
+      }
+      else { // must interpolate
+        if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh << "'." << endl;
+        meshN Thg1 = readmeshN(workdir + filemesh);
+        fespace XMhg1(Thg1, [P2, P2, P2, P1]);
+        XMhg1 [ubg1, ubg1y, ubg1z, ubg1p];
+        file >> ubg1[];
+        defu(ubg) = [ubg1, ubg1y, ubg1z, ubg1p, 0];
+      }
+      setparams(paramnames, params);
+      real[int] qlocal = ubg[](restu);
+      return qlocal;
+    }
+
+ub[] = loadbaseappend(fileroot, meshin);
+savebase(fileout, "", meshin, true, true);

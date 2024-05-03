@@ -1,0 +1,196 @@
+//
+// basecomputeaug.edp
+// Chris Douglas
+// christopher.douglas@duke.edu
+//
+// EXAMPLE USAGE:
+//  Initialize without file:
+// ff-mpirun -np 4 basecomputeaug.edp -Re 1 -Pe 1 -Le 1 -mi <FILEIN> -fo <FILEOUT>
+//
+//  Initialize with guess from file, solve on same mesh
+// ff-mpirun -np 4 basecomputeaug.edp -Re 1 -Pe 1 -Le 1 -fi <FILEIN> -fo <FILEOUT>
+//
+//  Initialize with guess from file, solve on different mesh
+// ff-mpirun -np 4 basecomputeaug.edp -mi <MESHIN> -fi <FILEIN> -fo <FILEOUT>
+//
+//  Initialize with guess from file, adapt mesh/solution
+// ff-mpirun -np 4 basecomputeaug.edp -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
+//
+// NOTE: This file should not be changed unless you know what you're doing.
+//
+load "iovtk"
+load "PETSc"
+include "settings.idp"
+include "macros_bifbox.idp"
+// arguments
+string meshin = getARGV("-mi", ""); // input meshfile with extension
+string meshout = getARGV("-mo", ""); // output mesh without extension
+string filein = getARGV("-fi", ""); // input file with extension
+string fileout = getARGV("-fo", ""); // output file without extension
+string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
+
+string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
+parsefilename(fileout, fileout); // trim extension from output file, if given
+if(fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls"){
+  filein = readbasename(workdir + filein);
+  fileext = parsefilename(filein, fileroot);
+}
+if(filein != "" && meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
+string meshroot, meshext = parsefilename(meshin, meshroot);
+parsefilename(meshout, meshout); // trim extension from output mesh, if given
+// Load mesh
+Th = readmeshN(workdir + meshin);
+Thg = Th;
+// Partition mesh across processors
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+// Make finite element basis
+XMh defu(ub), defu(um), defu(um2), defu(um3);
+if(fileext == "base") {
+  ub[] = loadbase(fileroot, meshin);
+}
+else if(fileext == "fold") {
+  real[string] alpha;
+  real beta;
+  real[int] qm, qma;
+  ub[] = loadfold(fileroot, meshin, qm, qma, alpha, beta);
+}
+else if(fileext == "hopf") {
+  real omega;
+  complex[string] alpha;
+  complex beta;
+  complex[int] qm, qma;
+  ub[] = loadhopf(fileroot, meshin, qm, qma, sym, omega, alpha, beta);
+}
+else if(fileext == "foho") {
+  real omega;
+  complex[string] alpha1;
+  real[string] alpha2;
+  complex beta1, gamma12, gamma13;
+  real beta22, beta23, gamma22, gamma23;
+  complex[int] q1m, q1ma;
+  real[int] q2m, q2ma;
+  ub[] = loadfoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym, omega, alpha1, alpha2, beta1, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
+}
+else if(fileext == "hoho") {
+  real[int] sym1(sym.n), sym2(sym.n);
+  real omega1, omega2;
+  complex[string] alpha1, alpha2;
+  complex beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
+  complex[int] q1m, q1ma, q2m, q2ma;
+  ub[] = loadhoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+}
+else if(fileext == "tdns") {
+  real time;
+  ub[] = loadtdns(fileroot, meshin, time);
+}
+else if(fileext == "porb") {
+  int Nh=1;
+  real omega;
+  complex[int, int] qh(ub[].n, Nh);
+  ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);
+}
+else {
+  defu(ub) = InitialConditions;
+  setparams(paramnames,params);
+}
+// Create distributed Mat
+Mat J, Ja;
+createMatu(Th, J, Pk);
+// MESH ADAPTATION
+bool adapt = false;
+if(meshout == "") meshout = meshin; // if no adaptation
+else { // if output meshfile is given, adapt mesh
+  adapt = true;
+  meshout = meshout + "." + meshext;
+  XMhg defu(uG), defu(tempu); // create private global FE functions
+  real[int] q;
+  ChangeNumbering(J, ub[], q);
+  ChangeNumbering(J, ub[], q, inverse = true);
+  tempu[](restu) = ub[]; // populate local portion of global soln
+  mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
+  if(mpirank == 0) { // Perform mesh adaptation (serially) on processor 0
+    IFMACRO(dimension,2)
+      Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
+    ENDIFMACRO
+    IFMACRO(dimension,3)
+      cout << "NOTE: 3D mesh adaptation is still under development." << endl;
+      load "mshmet"
+      load "mmg"
+      real anisomax = getARGV("-anisomax",1.0);
+      real[int] met = mshmet(Thg, adaptu(uG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0), hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      if(anisomax > 1.0) {
+        load "aniso"
+        boundaniso(6, met, anisomax);
+      }
+      Thg = mmg3d(Thg, metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1, verbose = verbosity-(verbosity==0));
+    ENDIFMACRO
+  }
+  broadcast(processor(0), Thg); // broadcast global mesh to all processors
+  defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
+  Th = Thg; //Reinitialize local mesh with global mesh
+  Mat Adapt;
+  createMatu(Th, Adapt, Pk); // Partition new mesh and update the PETSc numbering
+  J = Adapt;
+  defu(ub) = initu(0.0); // set local values to zero
+  restu.resize(ub[].n); // Change size of restriction operator
+  restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
+  ub[] = uG[](restu); //restrict global solution to each local mesh
+}
+sym = 0;
+real[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
+real iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
+include "eqns.idp" // load equations
+Mat Jp(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
+Ja = [[J,Jp],[Jp',0]]; // make dummy Jacobian
+// Function to build residual operator in PETSc numbering
+func real[int] funcR(real[int]& qPETSc) {
+    ChangeNumbering(J, ub[], qPETSc(0:qPETSc.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true);
+    if(mpirank == 0) c = qPETSc(qPETSc.n-1);
+    broadcast(processor(0), c);
+    real[int] RPETSc, R = vR(0, XMh, tgv = -1);
+    ChangeNumbering(J, R, RPETSc);
+    ub[] .*= J.D;
+    real pavg, pavgl = int2d(Th)( y*ubp );
+    mpiAllReduce(pavgl, pavg, mpiCommWorld, mpiSUM);
+    if(mpirank == 0) {
+        RPETSc.resize(RPETSc.n+1); // Append 0 to residual vector on proc 0
+        RPETSc(RPETSc.n-1) = pavg;
+    }
+    return RPETSc;
+}
+// Function to build Jacobian operator in PETSc numbering
+func int funcJ(real[int]& qPETSc) {
+    ChangeNumbering(J, ub[], qPETSc(0:qPETSc.n - (mpirank == 0 ? 2 : 1)), inverse = true, exchange = true);
+    if(mpirank == 0) c = qPETSc(qPETSc.n-1);
+    broadcast(processor(0), c);
+    J = vJ(XMh, XMh, tgv = -1);
+    real[int] vP, vaug = vJp(0, XMh, tgv = -10);
+    ChangeNumbering(J, vaug, vP); // FreeFEM to PETSc
+    matrix tempPms = [[vP]]; // dense array to sparse matrix
+    ChangeOperator(Jp, tempPms, parent = Ja); // send to Mat
+    return 0;
+}
+// set up Mat parameters
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
+IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
+set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
+// Initialize
+real[int] q;
+ChangeNumbering(J, ub[], q);
+if(mpirank == 0) {
+    q.resize(q.n+1); // Append 0 to residual vector on proc 0
+    q(q.n-1) = c;
+}
+int ret;
+// solve nonlinear problem with SNES
+SNESSolve(Ja, funcJ, funcR, q, reason = ret,
+          sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_monitor -snes_converged_reason -options_left no");
+if(ret > 0) { // Save solution if solver converged and output file is given
+  if(mpirank==0 && adapt) { // Save adapted mesh
+    cout << "  Saving adapted mesh '" + meshout + "' in '" + workdir + "'." << endl;
+    savemesh(Thg, workdir + meshout);
+  }
+  ChangeNumbering(J, ub[], q(0:q.n - (mpirank == 0 ? 2 : 1)), inverse = true);
+  savebase(fileout, "", meshout, true, true);
+}

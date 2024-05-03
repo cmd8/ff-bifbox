@@ -1,7 +1,7 @@
 //
 // settings_moulin_etal_2019.idp
 // Chris Douglas
-// cdoug@mit.edu
+// christopher.douglas@duke.edu
 //
 // Set dimension macro for 'macro_ddm.idp' (3)
   macro dimension()3//EOM

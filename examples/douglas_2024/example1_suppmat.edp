@@ -1,0 +1,171 @@
+/*
+  Title: example1_suppmat.edp
+  Author: Christopher M. Douglas <christopher.douglas@duke.edu>
+  Date: Jan 15, 2024
+  Copyright: CC-BY 4.0 License
+  Notes:
+    This FreeFEM (v4.14) script is provided in the supplementary material for
+    the article:
+      "A Balanced Outflow Boundary Condition for Open Swirling Flows",
+      Christopher M. Douglas.
+
+    It may be executed using FreeFEM (v4.14) by running the command:
+      FreeFem++ example1_suppmat.edp
+
+    The script parameters may be altered by additionally providing the
+    following command-line arguemnts:
+      -nn   grid density parameter (default=50)
+      -tol  Newton solver convergence tolerance (default=1.0e-12)
+      -L    Pipe length (default=1.0)
+      -Re   Reynolds number (default=1000.0)
+      -S    Pipe rotation rate (default=2.0)
+
+  This script is distributed in the hope that it will be useful, but WITHOUT
+  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+  FOR A PARTICULAR PURPOSE.
+*/
+
+include "getARGV.idp"
+load "msh3"
+load "MUMPS"
+cout.precision(16);
+// Get arguments
+int nn = getARGV("-nn",50);
+real tol = getARGV("-tol",1.0e-12);
+real L = getARGV("-L",1.0);
+real Re = getARGV("-Re",1000.0);
+real S = getARGV("-S",2.0);
+// Define macros
+macro div(u) ( y*(dx(u) + dy(u#y)) + u#y ) // divergence operator
+macro vgrads(v, s) ( y*(v*dx(s) + v#y*dy(s)) ) // weak form of convection term
+macro ugradu(v, U, u) ( v*(y*(U*dx(u) + U#y*dy(u))) + v#y*(y*(U*dx(u#y) + U#y*dy(u#y)) - U#z*u#z ) + v#z*(y*(U*dx(u#z) + U#y*dy(u#z)) + U#z*u#y) ) // weak form of convection term
+macro veclap(v, u) ( y*(dx(v)*dx(u) + dy(v)*dy(u) + dx(v#y)*dx(u#y) + dy(v#y)*dy(u#y) + dx(v#z)*dx(u#z) + dy(v#z)*dy(u#z)) + (v#z*u#z + v#y*u#y)/y ) // weak form of vector laplacian
+macro visc(v, u) ( y*(2*dx(v)*dx(u) + dy(v)*(dx(u#y) + dy(u)) + dx(v#y)*(dx(u#y) + dy(u)) + 2*dy(v#y)*dy(u#y) + dx(v#z)*dx(u#z)) + v#z*(u#z/y - dy(u#z)) + dy(v#z)*(y*dy(u#z) - u#z) + 2*v#y*u#y/y ) // weak form of strain rate divergence
+macro lap(v, u) ( y*(dx(v)*dx(u) + dy(v)*dy(u)) ) // weak form of scalar laplacian
+macro BoundaryConditions(u, U) on(3, 4, u = U - (2 - 8*y^2), u#y = U#y, u#z = U#z - 2*S*y) + on(1, u#y = U#y, u#z = U#z) // EOM
+
+// Load mesh
+meshL Tho;
+mesh Th = square(2*L*nn+1, nn+1, [L*x, 0.5*y]);
+int[int] openedge = [2];
+Tho = extract(Th, refedge = openedge);
+// Save mesh
+savemesh(Th, "mesh.msh");
+// Create FE spaces
+fespace XXXMh(Th,[P2,P2,P2,P1]);
+fespace Mho(Tho,P1);
+fespace Xho(Tho,P2);
+fespace XXXMMoh = XXXMh*Mho;
+fespace XXXMXoh = XXXMh*Xho;
+fespace Xh(Th, P2);
+// Make finite element basis
+XXXMh [u, uy, uz, up], [U, Uy, Uz, Up] = [(2 - 8*y^2), 0, 2*S*y, (32/Re*(2-x) + 2*(S*y)^2)];
+Mho upo;
+Xho Nx, Ny, uphio;
+{ // get normal values on open edge
+  varf vNx(u,v) = on(2, u = N.x);
+  varf vNy(u,v) = on(2, u = N.y);
+  Xh Nx0 = vNx(0, Xh, tgv=1);
+  Xh Ny0 = vNy(0, Xh, tgv=1);
+  Nx = Nx0;
+  Ny = Ny0;
+}
+u[] = U[];
+
+{ cout << " -- CASE #1: Convective BC -- " << endl;
+  real c;
+  varf vR(<[du, duy, duz, dup]>, <[v, vy, vz, vp]>)
+    = int2d(Th)(
+      ugradu(v, u, u) + veclap(v, u)/Re - div(v)*up - vp*div(u) + y*c*vp
+    ) + int1d(Th, 2)(
+      y*(Nx*v + Ny*vy)*up
+    ) + BoundaryConditions(du, u);
+  varf vJ(<[du, duy, duz, dup]>, <[v, vy, vz, vp]>)
+    = int2d(Th)(
+      ugradu(v, du, u) + ugradu(v, u, du) + veclap(v, du)/Re - div(v)*dup - vp*div(du)
+    ) + int1d(Th, 2)(
+      y*(Nx*v + Ny*vy)*dup
+    ) + BoundaryConditions(du, u);
+  varf vJp(<[du, duy, duz, dup]>, <[v, vy, vz, vp]>) = int2d(Th)( y*vp ) + BoundaryConditions(du, u);
+    u[] = U[];
+    int it;
+    while(1){
+      real[int] Res = vR(0, XXXMh, tgv = -1);
+      Res.resize(Res.n+1);
+      Res(Res.n-1) = int2d(Th)( y*up );
+      cout << "Residual norm = " + Res.l2;
+      if (Res.l2 < tol) break;
+      matrix Jac00 = vJ(XXXMh, XXXMh, tgv = -1);
+      real[int] Jacp = vJp(0, XXXMh, tgv = -10);
+      matrix Jac = [[Jac00, Jacp],[Jacp',0]];
+      set(Jac, solver=sparsesolver);
+      real[int] du = Jac^-1*Res;
+      real[int] uu = [u[], c];
+      uu -= du;
+      [u[], c] = uu;
+      it++;
+      cout << ", Step norm = " + du.l2 + "." << endl;
+    }
+    cout << "." << endl << "convective BC: err = " + int1d(Th,2)(y*sqrt((U-u)^2 + (Uy-uy)^2 + (Uz-uz)^2))/int1d(Th,2)(y*sqrt(U^2+Uz^2)) + ", #DOF = " + (XXXMh.ndof+1) + "." << endl;
+}
+
+{ cout << " -- CASE #2: Free Outflow BC -- " << endl;
+  varf vR(<[du, duy, duz, dup]>,<[v, vy, vz, vp]>)
+    = int2d(Th)(
+      ugradu(v, u, u) + veclap(v, u)/Re - div(v)*up
+      - vp*div(u)
+    ) + BoundaryConditions(du, u);
+  varf vJ(<[du, duy, duz, dup]>,<[v, vy, vz, vp]>)
+    = int2d(Th)(
+      ugradu(v, du, u) + ugradu(v, u, du) + veclap(v, du)/Re - div(v)*dup
+      - vp*div(du)
+    ) + BoundaryConditions(du, u);
+    u[] = U[];
+    int it;
+    while(1){
+      real[int] Res = vR(0, XXXMh, tgv = -1);
+      cout << "Residual norm = " + Res.l2;
+      if (Res.l2 < tol) break;
+      matrix Jac = vJ(XXXMh, XXXMh, tgv = -1);
+      set(Jac, solver=sparsesolver);
+      real[int] du = Jac^-1*Res;
+      u[] -= du;
+      it++;
+      cout << ", Step norm = " + du.l2 + "." << endl;
+    }
+    cout << "." << endl << "free outflow BC: err = " + int1d(Th,2)(y*sqrt((U-u)^2 + (Uy-uy)^2 + (Uz-uz)^2))/int1d(Th,2)(y*sqrt(U^2+Uz^2)) + ", #DOF = " + XXXMh.ndof + "." << endl;
+}
+
+{ cout << " -- CASE #3: Balanced Outflow BC -- " << endl;
+  varf vR(<[du, duy, duz, dup], [duphio]>, <[v, vy, vz, vp], [vphio]>)
+    = int2d(Th)(
+      ugradu(v, u, u) + veclap(v, u)/Re - div(v)*up - vp*div(u)
+    ) + int1d(Th, 2)(
+      y*(N.x*v + N.y*vy)*uphio
+    ) + int1d(Tho)(
+      lap(vphio, uphio) - dy(vphio)*uz^2
+    ) + BoundaryConditions(du, u) + on(3, duphio = uphio);
+  varf vJ(<[du, duy, duz, dup], [duphio]>, <[v, vy, vz, vp], [vphio]>)
+    = int2d(Th)(
+      ugradu(v, du, u) + ugradu(v, u, du) + veclap(v, du)/Re - div(v)*dup - vp*div(du)
+    ) + int1d(Tho)(
+      y*(Nx*v + Ny*vy)*duphio + lap(vphio, duphio) - dy(vphio)*2*uz*duz
+    ) + BoundaryConditions(du, u) + on(3, duphio = uphio);
+    u[] = U[];
+    uphio[] = 0;
+    int it;
+    while(1){
+      real[int] Res = vR(0, XXXMXoh);
+      cout << "Residual norm = " + Res.l2;
+      if (Res.l2 < tol) break;
+      matrix Jac = vJ(XXXMXoh, XXXMXoh);
+      set(Jac, solver=sparsesolver);
+      real[int] du = Jac^-1*Res;
+      real[int] uu = [u[], uphio[]];
+      uu -= du;
+      [u[], uphio[]] = uu;
+      it++;
+      cout << ", Step norm = " + du.l2 + "." << endl;
+    }
+    cout << "." << endl << "balanced BC: err = " + int1d(Th,2)(y*sqrt((U-u)^2 + (Uy-uy)^2 + (Uz-uz)^2))/int1d(Th,2)(y*sqrt(U^2+Uz^2)) + ", #DOF = " + (XXXMh.ndof + Xho.ndof) + "." << endl;
+}

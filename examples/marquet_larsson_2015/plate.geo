@@ -1,7 +1,7 @@
 //
 // plate.geo
 // Chris Douglas
-// cdoug@mit.edu
+// christopher.douglas@duke.edu
 //
 // This file can be used with Gmsh to create a mesh for the flow over a flat plate as in
 // [Marquet and Larsson, Euro. J. Mech. B/Fluids (2015) DOI:10.1016/j.euromechflu.2014.05.005].

@@ -1,0 +1,56 @@
+//
+// settings_douglas_2024_modified.idp
+// Chris Douglas
+// christopher.douglas@duke.edu
+//
+// Set dimension macro for 'macro_ddm.idp' (2)
+  macro dimension()2//EOM
+// Load hpddm macros
+  include "macro_ddm.idp"
+  verbosity = getARGV("-v",0);
+// Define parameter and monitor names
+  string[int] paramnames = ["Re", "S", "C"]; // set parameter names
+  string[int] monitornames = ["minux(x,0)"]; // set monitor names
+// Declare symmetries
+  real[int] sym(1);
+// Define state vector and FE space
+  macro defu(u)[u, u#y, u#z, u#p, u#po]//EOM
+  macro initu(i)[i, i, i, i, i]//EOM
+  func Pk = [P2, P2, P2, P1, P1];
+// Define forcing vector and FE space (for resolvent analysis)
+  macro deff(f)[f, f#y, f#z]//EOM
+  macro initf(i)[i, i, i]//EOM
+  func Pkf = [P2, P2, P2];
+// Define quantities for mesh adaptation and plotting in Paraview
+  macro adaptu(u)[u, u#y, u#z], u#p//EOM
+  macro adaptf(f)[f, f#y, f#z]//EOM
+// Name and order for real Paraview outputs
+  string ParaviewDataName = "velocity pressure";
+  string ParaviewDataNamef = "momentum";
+  int[int] ParaviewOrder = [1, 1];
+  int[int] ParaviewOrderf = [1];
+// Name and order for complex Paraview outputs
+  string ParaviewDataNamec = "velocity_r pressure_r velocity_i pressure_i";
+  string ParaviewDataNamefc = "momentum_r momentum_i";
+  int[int] ParaviewOrderc = [ParaviewOrder, ParaviewOrder];
+  int[int] ParaviewOrderfc = [ParaviewOrderf, ParaviewOrderf];
+  // Initial conditions (if no file)
+  macro InitialConditions()[1, 0, (params["S"]*((y<=1)*y*(2-y^2) + (y>1)/(y+(y==0)))), 0, 0]//EOM
+// Boundary labels
+  int BCnull = 0;
+  int BCaxis = 1;
+  int BCinflow = 4;
+  int BCopen = 5;
+  int BCwall = 6;
+// Define solution monitors to extract:
+  macro getmonitors(){
+    fespace Xh1(Thg, P2);
+    Xh1 UX = ubg;
+    varf Onaxis(UX, VX) = on(BCaxis, UX = 1);
+    real[int] onaxis = Onaxis(0, Xh1, tgv = 1);
+    int[int] indices(onaxis.sum);
+    real[int] uonaxis(indices.n);
+    for(int i=0, j=0; i<Xh1.ndof; ++i) if(onaxis[i]) {indices[j] = i; ++j;}
+    for(int i=0; i<indices.n; ++i) uonaxis[i] = UX[][indices[i]];
+    monitors["minux(x,0)"] = uonaxis.min;
+  }// EOM

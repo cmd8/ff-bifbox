@@ -1,7 +1,7 @@
 //
 // eqns_pralits_etal_2010.idp
 // Chris Douglas
-// cdoug@mit.edu
+// christopher.douglas@duke.edu
 //
 // Define KSP parameters
   string KSPparams = "-ksp_type preonly -pc_type lu";

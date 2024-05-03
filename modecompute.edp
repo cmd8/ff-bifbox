@@ -1,7 +1,7 @@
 //
 // modecompute.edp
 // Chris Douglas
-// cdoug@mit.edu
+// christopher.douglas@duke.edu
 //
 // EXAMPLE USAGE:
 //  Solve eigenvalue problem, store eigenvalue spectrum without storing eigenvectors:

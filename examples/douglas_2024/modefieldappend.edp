@@ -1,0 +1,78 @@
+
+load "iovtk"
+include "settings.idp"
+include "macros_bifbox.idp"
+// arguments
+string filein = getARGV("-fi", ""); // input file with extension
+string fileout = getARGV("-fo", filein); // input file with extension
+assert(mpisize==1);
+string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
+parsefilename(fileout, fileout); // trim extension from output file, if given
+string basefilein = readbasename(workdir + filein);
+string meshin = readmeshname(workdir + filein); // get mesh file
+// Load mesh
+Th = readmeshN(workdir + meshin);
+Thg = Th;
+// Partition mesh across processors
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+// Make finite element basis
+XMh<complex> defu(um);
+
+func complex[int] loadmodeappend(string inputfilename, string meshfilename, real[int] & sym, complex & eigenvalue) {
+      XMhg<complex> defu(umg);
+      if (mpirank == 0) cout << "  Loading '" + inputfilename + ".mode' over '";
+      string filemesh, basefilename, dummy, symstr;
+      ifstream file(workdir + inputfilename + ".mode");
+      file >> dummy >> filemesh >> dummy >> basefilename;
+      if (sym.n > 0) {
+        file >> dummy >> symstr;
+        sym = parsesymstr(symstr);
+      }
+      file >> dummy >> eigenvalue;
+      if (mpirank == 0) cout << basefilename + "' on '" + meshfilename + "' from '" + workdir + "'." << endl;
+      if(paramnames[0] != ""){
+        for (int k = 0; k < paramnames.n; ++k){
+          file >> paramnames[k] >> params[paramnames[k]];
+        }
+      }
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file >> monitornames[k] >> monitors[monitornames[k]];
+        }
+      }
+      if (mpirank == 0) {
+        cout << "\t";
+        if(sym.n > 0) cout << "sym = " + listsym(sym) + ", ";
+        cout << "eval = " + eigenvalue;
+        if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
+        if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+        cout << "." << endl;
+      }
+      if (filemesh == meshfilename){ // no interpolation needed
+        fespace XMhg1(Thg, [P2, P2, P2, P1]);
+        XMhg1<complex> [umg1, umg1y, umg1z, umg1p];
+        file >> umg1[];
+        defu(umg) = [umg1, umg1y, umg1z, umg1p, 0];
+      }
+      else { // must interpolate
+        if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh << "'." << endl;
+        meshN Thg1 = readmeshN(workdir + filemesh);
+        fespace XMhg1(Thg1, [P2, P2, P2, P1]);
+        XMhg1<complex> [umg1, umg1y, umg1z, umg1p];
+        file >> umg1[];
+        defu(umg) = [umg1, umg1y, umg1z, umg1p, 0];
+      }
+      setparams(paramnames, params);
+      complex[int] qlocal = umg[](restu);
+      return qlocal;
+    }
+
+complex eigenvalue;
+um[] = loadmodeappend(fileroot, meshin, sym, eigenvalue);
+
+complex[int] val(1);
+XMh<complex>[int] defu(vec)(1);
+val(0) = eigenvalue;
+vec[0][] = um[];
+savemode(fileout, "", basefilein, meshin, vec, val, sym, true);
