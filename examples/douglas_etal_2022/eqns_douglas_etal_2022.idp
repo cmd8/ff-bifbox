@@ -22,7 +22,7 @@
                             + ((ij)*v*(ik)*u + ((ij)*v#y - v#z)*((ik)*u#y - u#z) + ((ij)*v#z + v#y)*((ik)*u#z + u#y))/Y ) // EOM
 // Boundary conditions
   macro BoundaryConditions(u, U)
-    on(BCinflow, u = U - 2.0*(1.0 - 4.0*Y^2 + (1.0 - params["d"]^2)/log(1.0/params["d"])*log(2.0*Y))/((1.0 + params["d"]^2) - (1.0 - params["d"]^2)/log(1.0/params["d"])), u#z = U#z - 2.0*params["S"]*Y, u#po = U#po)
+    on(BCinflow, u = U - 2.0*(1.0 - 4.0*Y^2 - log(2.0*Y)*(1.0 - params["d"]^2)/log(params["d"]))/(1.0 + params["d"]^2 + (1.0 - params["d"]^2)/log(params["d"])), u#z = U#z - 2.0*params["S"]*Y, u#po = U#po)
     + on(BCwall, u = U, u#y = U#y, u#z = U#z, u#po = U#po)
     + on(BCpipe, u = U, u#y = U#y, u#z = U#z - 2.0*params["S"]*Y, u#po = U#po)
     + on(BCaxis, u#y = U#y, u#z = U#z)

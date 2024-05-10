@@ -686,6 +686,7 @@ while (!stopflag){
     ChangeNumbering(J, um[], qm, inverse = true);
     savehopf(fileout + "_" + count + (forcesave ? "specialpt" : ""), fileout, meshout, sym1, omega, alpha, beta, ((count % savecount == 0) || forcesave || stopflag), true);
     forcesave = false;
+    ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     Mq = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, Mq, qP);
