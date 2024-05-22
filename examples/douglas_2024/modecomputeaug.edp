@@ -116,20 +116,22 @@ complex shift = shifts;
 sepcharind = max(targetf.rfind("+"), targetf.rfind("-"));
 complex shiftf = atof(targetf(0:sepcharind)) + 1i*atof(targetf(sepcharind:targetf.length-2));
 
-M = vM(XMh, XMh, tgv = -10);
 {
-  matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -1);
-  if (adj) Jtemp = -Jtemp';
-  else Jtemp = -Jtemp;
-  J = Jtemp;
+  matrix<complex> tempMx = vJ(XMh, XMh, tgv = -2);
+  if (adj) tempMx = -tempMx';
+  else tempMx = -tempMx;
+  J = tempMx;
+  tempMx = vM(XMh, XMh, tgv = -20);
+  if (adj) tempMx = tempMx';
+  M = tempMx;
   complex[int] vP, vaug = vJp(0, XMh, tgv = -10);
   ChangeNumbering(J, vaug, vP); // FreeFEM to PETSc
-  matrix<complex> tempPms = [[vP]]; // dense array to sparse matrix
-  ChangeOperator(Jp, tempPms); // send to Mat
-  tempPms = [[0]];
-  ChangeOperator(ZZ, tempPms); // send to Mat
-  Mat<complex> Jatemp = [[J,Jp],[Jp',0]]; // make dummy Jacobian
-  Mat<complex> Matemp = [[M,0],[0,ZZ]]; // make dummy Jacobian
+  tempMx = [[vP]]; // dense array to sparse matrix
+  ChangeOperator(Jp, tempMx); // send to Mat
+  tempMx = [[0]];
+  ChangeOperator(ZZ, tempMx); // send to Mat
+  Mat<complex> Jatemp = [[J, Jp], [Jp', 0]]; // make dummy Jacobian
+  Mat<complex> Matemp = [[M, 0], [0, ZZ]]; // make dummy Jacobian
   MatConvert(Jatemp, Ja);
   MatConvert(Matemp, Ma);
 }

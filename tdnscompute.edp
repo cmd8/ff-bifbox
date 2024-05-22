@@ -218,7 +218,7 @@ int adaptflag;
 real[int] q;
 ChangeNumbering(J, ub[], q);
 ChangeNumbering(J, ub[], q, inverse = true);
-if (count == 0) savetdns(fileout + "_0", (savecount > 0 ? fileout : ""), meshin, filein, time, true, false);
+if (count == 0) savetdns(fileout + "_0", (savecount > 0 ? fileout : ""), meshin, filein, time, true, true);
 real[int] qp = q;
 // Function to build residual "F(t,u,\dot{u})" operator in PETSc numbering
 func real[int] funcF(real t, real[int]& qPETSc, real[int]& qdotPETSc) {

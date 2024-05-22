@@ -1184,9 +1184,9 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
     mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
     cplxu[](restu) = uma[];
     mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
-    tempu[](restu) = um2[];
+    tempu[](restu) = um2[].re;
     mpiAllReduce(tempu[], u2mg[], mpiCommWorld, mpiSUM);
-    tempu[](restu) = um3[];
+    tempu[](restu) = um3[].re;
     mpiAllReduce(tempu[], u2mag[], mpiCommWorld, mpiSUM);
     if(monitorflag) getmonitors;
   ENDIFMACRO
@@ -1242,9 +1242,9 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
       mpiAllReduce(cplxu[], u1mg[], mpiCommWorld, mpiSUM);
       cplxu[](restu) = uma[];
       mpiAllReduce(cplxu[], u1mag[], mpiCommWorld, mpiSUM);
-      tempu[](restu) = um2[];
+      tempu[](restu) = um2[].re;
       mpiAllReduce(tempu[], u2mg[], mpiCommWorld, mpiSUM);
-      tempu[](restu) = um3[];
+      tempu[](restu) = um3[].re;
       mpiAllReduce(tempu[], u2mag[], mpiCommWorld, mpiSUM);
     ENDIFMACRO
     if(mpirank == 0){
@@ -1280,6 +1280,7 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
       }
       if (paraviewflag > 0){
         cout << "  Saving '" + fohofileout + "_foho_[base,dirmode1,adjmode1,dirmode2,adjmode2].vtu' in '" + workdir + "'." << endl;
+        meshN Thgpv;
         real[int] qpv = ubg[], q2mpv = u2mg[], q2mapv = u2mag[];
         complex[int] q1mpv = u1mg[], q1mapv = u1mag[];
         if (paraviewflag > 1){

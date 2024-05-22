@@ -114,7 +114,7 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, alpha0, beta0;
       R = vR(0, XMh, tgv = -1);
       real[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
-      J = vJ(XMh, XMh, tgv = -1);
+      J = vJ(XMh, XMh, tgv = -2);
       KSPSolve(J, pP, qm);
       KSPSolveTranspose(J, qP, qma);
       real ginv, ginvl = (qP'*qm);
@@ -169,7 +169,7 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, alpha0, beta0;
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       tempPms = [[J(uma[], Hl1)]];
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-      H = vH(XMh, XMh, tgv = -10);
+      H = vH(XMh, XMh, tgv = -20);
       MatMultTranspose(H, qma, temp);
       tempPms = [[temp]];
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
@@ -179,6 +179,7 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, alpha0, beta0;
       if (mpirank == 0) yqP(yqP.n-1) = gl2;
       tempPms = [[yqP]]; // dense array to sparse matrix
       ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
+      J = vJ(XMh, XMh, tgv = -1);
       KSPSolve(Ja, yqP, yqP);
       tempPms = [[yqP]]; // dense array to sparse matrix
       ChangeOperator(yqPMa, tempPms, parent = Jaa); // send to Mat
@@ -238,7 +239,7 @@ if(mpirank == 0) {
   ChangeNumbering(J, Jl1, temp); // FreeFEM to PETSc
   matrix tempPms = [[temp]]; // dense array to sparse matrix
   ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-  H = vH(XMh, XMh, tgv = -10);
+  H = vH(XMh, XMh, tgv = -20);
   MatMultTranspose(H, qma, temp);
   tempPms = [[temp]];
   ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
@@ -447,12 +448,12 @@ while (!stopflag){
       // 2nd-order
       //  A: base modification due to parameter changes
       if(paramnames[0] != ""){
+        temp1 = vR(0, XMh, tgv = -1);
         for (int k = 0; k < paramnames.n; ++k){
           lambda1 = getlambda(paramnames[k]);
           updatelambda(paramnames[k], lambda1 + eps);
           temp = vR(0, XMh, tgv = -1);
           updatelambda(paramnames[k], lambda1);
-          temp1 = vR(0, XMh, tgv = -1);
           temp -= temp1;
           temp /= eps;
           alpha[paramnames[k]] = -J(uma[], temp);

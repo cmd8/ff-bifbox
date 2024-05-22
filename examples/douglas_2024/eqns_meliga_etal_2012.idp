@@ -62,10 +62,11 @@ real Res = 0.1;
     + int2d(Th)( vdotu(v, um) )
     + HomBoundaryConditions(dum);
 
-// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+// FORCING/RESPONSE OPERATORS
   varf vMq(defu(dum), defu(v))
     = int2d(Th)( vdotu(v, dum) )
-    + int2d(Th)( vdotu(v, um) );
+    + int2d(Th)( vdotu(v, um) )
+    + HomBoundaryConditions(dum);
 
   varf vMf(deff(fm), deff(v))
     = int2d(Th)( vdotu(v, fm) );

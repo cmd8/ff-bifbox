@@ -80,9 +80,11 @@
     + int2d(Th)( Jinv*vdotu(v, um) )
     + HomBoundaryConditions(dum);
 
-// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+// FORCING/RESPONSE OPERATORS
   varf vMq(defu(dum), defu(v))
-    = int2d(Th)( Jinv*vdotu(v, dum) );
+    = int2d(Th)( Jinv*vdotu(v, dum) )
+    + int2d(Th)( Jinv*vdotu(v, um) )
+    + HomBoundaryConditions(dum);
 
   varf vMf(deff(fm), deff(v))
     = int2d(Th)( Jinv*vdotu(v, fm) );

@@ -113,12 +113,14 @@ complex shift = shifts;
 sepcharind = max(targetf.rfind("+"), targetf.rfind("-"));
 complex shiftf = atof(targetf(0:sepcharind)) + 1i*atof(targetf(sepcharind:targetf.length-2));
 
-M = vM(XMh, XMh, tgv = -10);
 {
-  matrix<complex> Jtemp = vJ(XMh, XMh, tgv = -1);
-  if (adj) Jtemp = -Jtemp';
-  else Jtemp = -Jtemp;
-  J = Jtemp;
+  matrix<complex> tempMx = vJ(XMh, XMh, tgv = -2);
+  if (adj) tempMx = -tempMx';
+  else tempMx = -tempMx;
+  J = tempMx;
+  tempMx = vM(XMh, XMh, tgv = -20);
+  if (adj) tempMx = tempMx';
+  M = tempMx;
 }
 for (int n = 0; n < ntarget; ++n){
   if (ntarget > 1) shift = shifts + (shiftf - shifts)*real(n)/real(ntarget - 1);

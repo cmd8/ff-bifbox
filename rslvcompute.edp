@@ -104,13 +104,13 @@ ik.im = sym;
 complex iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // construct matrices
-M  = vMq(XMh, XMh); // Response Norm
-Mf = vMf(Xh, Xh); // Forcing Norm
-matrix<complex> LocPQ = vP(Xh, XMh); // Forcing/Response Correspondence
+M  = vMq(XMh, XMh, tgv = -20); // Response Norm
+Mf = vMf(Xh, Xh, tgv = 0); // Forcing Norm
+matrix<complex> LocPQ = vP(Xh, XMh, tgv = 0); // Forcing/Response Correspondence
 Mat<complex> PQ(M, Mf, LocPQ, clean = true);
 
 func complex[int] LHSop(complex[int]& inPETSc) {
-  complex[int] temp(XMh.ndof), outPETSc(inPETSc.n);
+  complex[int] temp(J.n), outPETSc(inPETSc.n);
   MatMult(PQ, inPETSc, outPETSc);
   KSPSolve(J, outPETSc, temp);
   MatMult(M, temp, outPETSc);
@@ -125,7 +125,7 @@ real omegas = omega;
 for (int n = 0; n < nomega; ++n){
   if (nomega > 1) omega = omegas + (omegaf - omegas)*real(n)/real(nomega - 1);
   iomega = 1i*omega;
-  J  = vJ(XMh, XMh, tgv = -1); //Linear operator
+  J  = vJ(XMh, XMh, tgv = -2); //Linear operator
   IFMACRO(Jprecon) Jprecon(iomega); ENDIFMACRO
   set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams);
   int k = EPSSolve(LHS, Mf, vectors = fvec, values = val,

@@ -183,7 +183,7 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       R = vR(0, XMh, tgv = -1);
       real[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
-      J = vJ(XMh, XMh, tgv = -1);
+      J = vJ(XMh, XMh, tgv = -2);
       KSPSolve(J, pP, qm);
       KSPSolveTranspose(J, qP, qma);
       real ginv, ginvl = (qP'*qm);
@@ -215,12 +215,13 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeNumbering(J, Jl, tempP); // FreeFEM to PETSc
       matrix tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      H = vH(XMh, XMh, tgv = -10);
+      H = vH(XMh, XMh, tgv = -20);
       MatMultTranspose(H, qma, tempP);
       tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       tempPms = [[J(uma[], Hl)]]; // dense array to sparse matrix
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
+      J = vJ(XMh, XMh, tgv = -1);
       return 0;
   }
 // set up Mat parameters
@@ -236,12 +237,12 @@ if(mpirank == 0) {
 }
 if (fileext != "fold" && fileext != "foho"){
   updatelambda(param, lambda + eps);
-  real[int] Jl = vR(0, XMh, tgv = -1);
+  real[int] Jl = vR(0, XMh);
   updatelambda(param, lambda);
-  R = vR(0, XMh, tgv = -1);
+  R = vR(0, XMh);
   Jl -= R;
   Jl /= eps;
-  J = vJ(XMh, XMh, tgv = -1);
+  J = vJ(XMh, XMh);
   um[] = J^-1*Jl;
   uma[] = J'^-1*Jl;
 }
@@ -280,12 +281,12 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     // 2nd-order
     //  A: base modification due to parameter changes
     if(paramnames[0] != ""){
+      temp1 = vR(0, XMh, tgv = -1);
       for (int k = 0; k < paramnames.n; ++k){
         lambda = getlambda(paramnames[k]);
         updatelambda(paramnames[k], lambda + eps);
         temp = vR(0, XMh, tgv = -1);
         updatelambda(paramnames[k], lambda);
-        temp1 = vR(0, XMh, tgv = -1);
         temp -= temp1;
         temp /= eps;
         alpha[paramnames[k]] = -J(uma[], temp);

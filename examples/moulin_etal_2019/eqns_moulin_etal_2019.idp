@@ -115,9 +115,11 @@
     + int3d(Th)( vdotu(v, um) )
     + HomBoundaryConditions(dum);
 
-// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+// FORCING/RESPONSE OPERATORS
   varf vMq(defu(dum), defu(v))
-    = int3d(Th)( vdotu(v, dum) );
+    = int3d(Th)( vdotu(v, dum) )
+    = int3d(Th)( vdotu(v, um) )
+    + HomBoundaryConditions(dum);
 
   varf vMf(deff(fm), deff(v))
     = int3d(Th)( vdotu(v, fm) );

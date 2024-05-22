@@ -146,7 +146,7 @@ varf vM(defu(dum), defu(v))
         )
       ) + HomBoundaryConditions(dum);
 
-// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+// FORCING/RESPONSE OPERATORS
 varf vMq(defu(dum), defu(v))
       = int2d(Th)(
         Jinv*(params["gamma"]/(params["gamma"] - 1.0)*params["dT"])^2.0*(
@@ -158,7 +158,7 @@ varf vMq(defu(dum), defu(v))
       ) // Bilinear part is the heat release norm for resolvent analysis
       - int1d(Th, (abs(int(sym(0))) > 0)*BCin)(
         (vp + (ubc + ub)*v)*N.x*(ubrho + ubrho/ubc*ub)*(ubc + ub)
-      ); // Linear part is the acoustic characteristic forcing for FTF calcs
+      ) + HomBoundaryConditions(dum); // Linear part is the acoustic characteristic forcing for FTF calcs
 
 varf vMf(deff(fm), deff(v))
       = int2d(Th)( Jinv*vdotu(v, fm) );

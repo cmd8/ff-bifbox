@@ -64,11 +64,13 @@
     + int2d(Th)( vR*umR + ubR*(vdotu(v, um) + vT*umT) )
     + HomBoundaryConditions(dum);
 
-// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+// FORCING/RESPONSE OPERATORS
   varf vMq(defu(dum), defu(v))
     = int2d(Th)(
       0.5*(ubT/(params["gamma"]*params["Ma^2"]*ubR)*vR*dumR + ubR*vdotu(v, dum) + ubR/(params["gamma"]*(params["gamma"] - 1.0)*params["Ma^2"]*ubT)*vT*dumT)
-    );
+    )
+    + int2d(Th)( vR*umR + ubR*(vdotu(v, um) + vT*umT) )
+    + HomBoundaryConditions(dum);
 
   varf vMf(deff(fm), deff(v))
     = int2d(Th)( vdotu(v, fm) );

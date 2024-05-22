@@ -279,7 +279,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       iomega = 1i*omega;
       ik.im = sym1;
       sym = sym1;
-      J = vJ(XMh, XMh, tgv = -1);
+      J = vJ(XMh, XMh, tgv = -2);
       KSPSolve(J, p1P, q1m);
       KSPSolveHermitianTranspose(J, q1P, q1ma);
       complex ginv, ginvl = (q1P'*q1m);
@@ -289,7 +289,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       iomega = 0.0;
       ik = 0.0;
       sym = 0;
-      J = vJ(XMh, XMh, tgv = -1);
+      J = vJ(XMh, XMh, tgv = -2);
       KSPSolve(J, p2P, q2m);
       q2m.im = 0.0;
       KSPSolveTranspose(J, q2P, q2ma);
@@ -364,6 +364,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       iomega = 0.0;
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
       R = vJ(0, XMh, tgv = -10);
+      J = vJ(XMh, XMh, tgv = -1);
       Kl1 -= R;
       Kl2 -= R;
       Kl1 /= eps;
@@ -395,12 +396,12 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       ik.im = sym1;
       iomega = 1i*omega;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+      H = vH(XMh, XMh, tgv = -20); // form the matrix (dL/dq*w)
       MatMultHermitianTranspose(H, q1ma, temp1); // gqr,i
       ik = 0.0;
       iomega = 0.0;
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-      H = vH(XMh, XMh, tgv = -10); // form the matrix (dJ/dq*w)
+      H = vH(XMh, XMh, tgv = -20); // form the matrix (dJ/dq*w)
       MatMultTranspose(H, q2ma, temp3); // gqr,i
       if(!zerofreq) temp2.re = -temp1.im;
       temp1.im = 0.0;
@@ -435,7 +436,7 @@ if(mpirank == 0) {
   else {
     ik.im = sym1;
     iomega = 1i*omega;
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh);
     KSPSolveHermitianTranspose(J, q1P, q1ma);
     ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);
   }
@@ -448,12 +449,12 @@ if(mpirank == 0) {
   iomega = 0.0;
   if (fileext2 != "fold" && fileext2 != "foho"){
     updatelambda(param, lambda1 + eps);
-    complex[int] Jl = vR(0, XMh, tgv = -1);
+    complex[int] Jl = vR(0, XMh);
     updatelambda(param, lambda1);
-    R= vR(0, XMh, tgv = -1);
+    R = vR(0, XMh);
     Jl -= R;
     Jl /= eps;
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh);
     um2[] = J^-1*Jl;
     um3[] = J'^-1*Jl;
   }
@@ -533,12 +534,12 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
     J = vJ(XMh, XMh, tgv = -1);
     if(paramnames[0] != ""){
+      temp1 = vR(0, XMh, tgv = -1);
       for (int k = 0; k < paramnames.n; ++k){
         lambda1 = getlambda(paramnames[k]);
         updatelambda(paramnames[k], lambda1 + eps);
         temp = vR(0, XMh, tgv = -1);
         updatelambda(paramnames[k], lambda1);
-        temp1 = vR(0, XMh, tgv = -1);
         temp -= temp1;
         temp /= -eps;
         complex[int] tempPa, sol;
@@ -657,17 +658,16 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 1i*omega;
     iomega2 = 0.0;
     if(paramnames[0] != ""){
+      temp1 = vJ(0, XMh, tgv = -10);
       for (int k = 0; k < paramnames.n; ++k){
         lambda1 = getlambda(paramnames[k]);
         updatelambda(paramnames[k], lambda1 + eps);
         temp = vJ(0, XMh, tgv = -10);
         updatelambda(paramnames[k], lambda1);
-        temp1 = vJ(0, XMh, tgv = -10);
         temp -= temp1;
         temp /= eps;
         ChangeNumbering(J, um2[], qDa(k, :), inverse = true, exchange = true); // FreeFEM to PETSc
-        temp1 = vH(0, XMh, tgv = -10); // 2.0/2.0
-        temp += temp1;
+        temp += vH(0, XMh, tgv = -10); // 2.0/2.0
         alpha1[paramnames[k]] = -J(uma[], temp);
       }
     }
@@ -692,8 +692,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 1i*omega;
     iomega2 = 0.0;
     ChangeNumbering(J, um2[], qAAs, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp1 = vH(0, XMh, tgv = -10);
-    temp += temp1;
+    temp += vH(0, XMh, tgv = -10);
     //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
     ik.im = -sym1;
     ik2.im = 2.0*sym1;
@@ -701,8 +700,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega2 = 2i*omega;
     um[] = um3[];
     ChangeNumbering(J, um2[], qAA, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp1 = vH(0, XMh, tgv = -10);
-    temp += temp1;
+    temp += vH(0, XMh, tgv = -10);
     beta1 = -J(uma[], temp);
 
     // B^3
@@ -719,13 +717,11 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega2 = 0.0;
     iomega3 = 0.0;
     temp = vT(0, XMh, tgv = -10);
-    temp *= 1.0/6.0;
+    temp *= 1.0/3.0;
     //  C: fundamental modification due to quadratic interaction of fundamental with 2nd order modification B
     ChangeNumbering(J, um2[], qBB, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp1 = vH(0, XMh, tgv = -10);
-    temp1 *= 0.5;
-    temp += temp1;
-    beta23 = -real(J(uma[], temp));
+    temp += vH(0, XMh, tgv = -10);
+    beta23 = -0.5*real(J(uma[], temp));
 
     // A|B|^2
     //  B: fundamental modification due to cubic self-interaction of fundamental
@@ -748,8 +744,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 1i*omega;
     iomega2 = 0.0;
     ChangeNumbering(J, um2[], qBB, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp1 = vH(0, XMh, tgv = -10);
-    temp += temp1;
+    temp += vH(0, XMh, tgv = -10);
     //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
     ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
     ik = 0.0;
@@ -757,8 +752,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 0.0;
     iomega2 = 1i*omega;
     ChangeNumbering(J, um2[], qAB, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp1 = vH(0, XMh, tgv = -10);
-    temp += temp1;
+    temp += vH(0, XMh, tgv = -10);
     gamma13 = -J(uma[], temp);
 
     // B|A|^2
@@ -781,8 +775,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 0.0;
     iomega2 = 0.0;
     ChangeNumbering(J, um2[], qAAs, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp1 = vH(0, XMh, tgv = -10);
-    temp += temp1;
+    temp += vH(0, XMh, tgv = -10);
     //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
     um[] = um3[];
     ik.im = -sym1;
@@ -790,8 +783,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = -1i*omega;
     iomega2 = 1i*omega;
     ChangeNumbering(J, um2[], qAB, inverse = true, exchange = true); // FreeFEM to PETSc
-    temp1 = vH(0, XMh, tgv = -10);
-    temp += temp1;
+    temp += vH(0, XMh, tgv = -10);
     gamma23 = -real(J(uma[], temp));
     if(wnlsave){
       complex[int] val(1);

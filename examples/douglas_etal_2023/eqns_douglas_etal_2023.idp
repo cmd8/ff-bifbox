@@ -104,9 +104,11 @@ varf vM(defu(dum), defu(v))
       + int2d(Th)( (gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))/ubT )
       + HomBoundaryConditions(dum);
 
-// FORCING/RESPONSE WEIGHTING MATRICES (FOR RESOLVENT ANALYSIS)
+// FORCING/RESPONSE OPERATORS
 varf vMq(defu(dum), defu(v))
       = int2d(Th)( (gdotf(vY, dumY) + gdotf(vT, dumT) + vdotu(v, dum))/ubT );
+      + int2d(Th)( (gdotf(vY, umY) + gdotf(vT, umT) + vdotu(v, um))/ubT )
+      + HomBoundaryConditions(dum);
 
 varf vMf(deff(dum), deff(v))
       = int2d(Th)( vdotu(v, dum)/ubT );
