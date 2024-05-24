@@ -48,7 +48,8 @@ Note: since no `-mo` argument is specified, the output files (.msh) inherit the 
 ### y-antisymmetric, z-symmetric mode
 1. Compute a base state on the mesh at Re = 60, L = 6 from default guess
 ```
-ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -mi plate.mesh -fo wakeL6Re60 -1/Re 0.01666666666666666666 -L 6
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -mi plate.mesh -fo wakeL6Re20 -1/Re 0.05 -L 6
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi wakeL6Re20.base -fo wakeL6Re60 -1/Re 0.01666666666666666666 -L 6
 ```
 
 2. Compute the leading eigenmode at Re = 60, L = 6 that is anti-symmetric along y and symmetric along z.
