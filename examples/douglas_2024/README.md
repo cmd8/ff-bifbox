@@ -4,8 +4,10 @@ This file shows an example `ff-bifbox` workflow for reproducing the results in s
 @article{douglas_2024,
   title={A Balanced Outflow Boundary Condition for Swirling Flows},
   journal={Theoretical and Computational Fluid Dynamics},
+  publisher={Springer Nature},
   author={Douglas, Christopher M.},
   year={2024},
+  DOI={10.1007/s00162-024-00701-5},
 }
 ```
 The commands below illustrate how to perform the analysis of the Grabowski--Berger vortex as in the paper using `ff-bifbox`. Note: a reproducer for the portion of the analysis focused on the rotating pipe flow is given in the Supplementary Materials.
