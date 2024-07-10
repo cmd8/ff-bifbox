@@ -1,13 +1,15 @@
 # 2D Reacting Compressible Flow Example: Brokof et al, PROCI. (2024)
 This file shows an example `ff-bifbox` workflow for reproducing the results in the study:
 ```
-@inproceedings{brokof_etal_2024,
-  title={The role of hydrodynamic shear in the thermoacoustic response of slit flames},
-  address={Milan, Italy},
-  booktitle={Proceedings of the 40th International Symposium on Combustion},
-  author={Brokof, Philipp and Douglas, Christopher M. and Polifke, Wolfgang},
-  year={2024},
-  month={july},
+@article{brokof_etal_2024,
+  title = {The role of hydrodynamic shear in the thermoacoustic response of slit flames},
+  journal = {Proceedings of the Combustion Institute},
+  volume = {40},
+  number = {1},
+  pages = {105362},
+  year = {2024},
+  doi = {10.1016/j.proci.2024.105362},
+  author = {Brokof, Philipp and Douglas, Christopher M. and Polifke, Wolfgang},
 }
 ```
 The commands below illustrate how to analyze a 2D reacting compressible flow through a duct using `ff-bifbox`.
