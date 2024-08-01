@@ -169,10 +169,8 @@ sym = 0;
 real[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 real iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
-Mat H(J);
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), gqPM(J.n, mpirank == 0 ? 1 : 0), glPM(mpirank == 0 ? 1 : 0, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
-Mat Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
-
+Mat H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
@@ -215,7 +213,7 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeNumbering(J, Jl, tempP); // FreeFEM to PETSc
       matrix tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      H = vH(XMh, XMh, tgv = -20);
+      H = vH(XMh, XMh, tgv = -10);
       MatMultTranspose(H, qma, tempP);
       tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
@@ -226,8 +224,8 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
   }
 // set up Mat parameters
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu", setup = 1);
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
-set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self");
 // Initialize
 real[int] qa;
 ChangeNumbering(J, ub[], qa);

@@ -396,12 +396,12 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       ik.im = sym1;
       iomega = 1i*omega;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-      H = vH(XMh, XMh, tgv = -20); // form the matrix (dL/dq*w)
+      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
       MatMultHermitianTranspose(H, q1ma, temp1); // gqr,i
       ik = 0.0;
       iomega = 0.0;
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-      H = vH(XMh, XMh, tgv = -20); // form the matrix (dJ/dq*w)
+      H = vH(XMh, XMh, tgv = -10); // form the matrix (dJ/dq*w)
       MatMultTranspose(H, q2ma, temp3); // gqr,i
       if(!zerofreq) temp2.re = -temp1.im;
       temp1.im = 0.0;
@@ -413,8 +413,8 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
   }
 // set up Mat parameters
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu", setup = 1);
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
-set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self");
 // Initialize
 complex[int] qa;
 ChangeNumbering(J, ub[], qa);
@@ -436,7 +436,7 @@ if(mpirank == 0) {
   else {
     ik.im = sym1;
     iomega = 1i*omega;
-    J = vJ(XMh, XMh);
+    J = vJ(XMh, XMh, tgv = -3);
     KSPSolveHermitianTranspose(J, q1P, q1ma);
     ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);
   }
@@ -507,13 +507,14 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, um2[], q2m);
   ChangeNumbering(J, um3[], q2ma);
   if (normalform){
-    complex[int] qAAs(J.n), qAA(J.n), qAB(J.n), qBB(J.n), tempP(J.n), temp(um[].n), temp1(um[].n);
+    complex[int] qAAs(J.n), qAA(J.n), qAB(J.n), qBB(J.n), tempP(J.n), temp(um[].n), temp1(um[].n), tempPa, sol;
     complex[int,int] qDa(paramnames.n, J.n);
 
     Mat<complex> qPM(J.n, mpirank == 0 ? 1 : 0), pPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
     Mat<complex> Ja = [[J, qPM], [pPM', 0]]; // make dummy Jacobian
     set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
+//    set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu", setup = 1);
     set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
     // 2nd-order
     //  A: base modifications due to parameter changes
@@ -542,10 +543,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
         updatelambda(paramnames[k], lambda1);
         temp -= temp1;
         temp /= -eps;
-        complex[int] tempPa, sol;
         ChangeNumbering(J, temp, tempPa); // FreeFEM to PETSc
         if(mpirank == 0) {
-          tempPa.resize(tempPa.n+1);
+          tempPa.resize(J.n+1);
           tempPa(J.n) = 0.0;
         }
         KSPSolve(Ja, tempPa, sol);
@@ -565,10 +565,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       temp = vH(0, XMh, tgv = -10);
       temp.re *= -1.0; // -2.0/2.0
       temp.im = 0.0;
-      complex[int] tempPa, sol;
       ChangeNumbering(J, temp, tempPa); // FreeFEM to PETSc
       if(mpirank == 0) {
-        tempPa.resize(tempPa.n+1);
+        tempPa.resize(J.n+1);
         tempPa(J.n) = 0.0;
       }
       KSPSolve(Ja, tempPa, sol);
@@ -589,7 +588,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       complex[int] tempPa, sol;
       ChangeNumbering(J, temp, tempPa); // FreeFEM to PETSc
       if(mpirank == 0) {
-        tempPa.resize(tempPa.n+1);
+        tempPa.resize(J.n+1);
         tempPa(J.n) = 0.0;
       }
       KSPSolve(Ja, tempPa, sol);
@@ -635,10 +634,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       ChangeNumbering(J, um2[], q2m, inverse = true, exchange = true);
       temp = vH(0, XMh, tgv = -10);
       temp *= -1.0; // -2.0/2.0
-      complex[int] tempPa, sol;
       ChangeNumbering(J, temp, tempPa); // FreeFEM to PETSc
       if(mpirank == 0) {
-        tempPa.resize(tempPa.n+1);
+        tempPa.resize(J.n+1);
         tempPa(J.n) = 0.0;
       }
       KSPSolve(Ja, tempPa, sol);

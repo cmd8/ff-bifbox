@@ -467,12 +467,12 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       ik.im = sym1;
       iomega = 1i*omega1;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-      H = vH(XMh, XMh, tgv = -20); // form the matrix (dL/dq*w)
+      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
       MatMultHermitianTranspose(H, q1ma, temp1); // gqr,i
       ik.im = sym2;
       iomega = 1i*omega2;
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-      H = vH(XMh, XMh, tgv = -20); // form the matrix (dL/dq*w)
+      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
       MatMultHermitianTranspose(H, q2ma, temp3); // gqr,i
       if(!zerofreq) temp2.re = -temp1.im;
       temp1.im = 0.0;
@@ -491,8 +491,8 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
   }
 // set up Mat parameters
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu", setup = 1);
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
-set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self");
 // Initialize
 complex[int] qa;
 ChangeNumbering(J, ub[], qa);
@@ -515,7 +515,7 @@ if(mpirank == 0) {
   else {
     ik.im = sym1;
     iomega = 1i*omega1;
-    J = vJ(XMh, XMh);
+    J = vJ(XMh, XMh, tgv = -3);
     KSPSolveHermitianTranspose(J, q1P, q1ma);
     ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);
   }
@@ -535,7 +535,7 @@ if(mpirank == 0) {
   else {
     ik.im = sym2;
     iomega = 1i*omega2;
-    J = vJ(XMh, XMh);
+    J = vJ(XMh, XMh, tgv = -3);
     KSPSolveHermitianTranspose(J, q2P, q2ma);
     ChangeNumbering(J, um[], q2ma, inverse = true, exchange = true);
   }
@@ -588,7 +588,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
 
     Mat<complex> qPM(J.n, mpirank == 0 ? 1 : 0), pPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
     Mat<complex> Ja = [[J, qPM], [pPM', 0]]; // make dummy Jacobian
-    set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
+    set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu", setup = 1);
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
     set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
     if (res1x == 2){

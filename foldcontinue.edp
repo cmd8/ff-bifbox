@@ -169,7 +169,7 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, alpha0, beta0;
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       tempPms = [[J(uma[], Hl1)]];
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-      H = vH(XMh, XMh, tgv = -20);
+      H = vH(XMh, XMh, tgv = -10);
       MatMultTranspose(H, qma, temp);
       tempPms = [[temp]];
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
@@ -187,23 +187,9 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, alpha0, beta0;
   }
 // set up Mat parameters
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
+set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu", setup = 1);
+set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa, setup = 1);
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
-set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa);
-func PetscScalar[int] blockSchur(PetscScalar[int]& in) {
-  PetscScalar[int] R1 = in(0:Ja.n-1), out;
-  KSPSolve(Ja, R1, out);
-  PetscScalar yqyq, yqyql = (yqP'*yqP), yqdq, yqdql = (yqP'*out);
-  mpiAllReduce(yqyql, yqyq, mpiCommWorld, mpiSUM);
-  mpiAllReduce(yqdql, yqdq, mpiCommWorld, mpiSUM);
-  PetscScalar dlambda = yqdq/(1.0 + yqyq);
-  out -= dlambda*yqP;
-  if (mpirank == 0) {
-    out.resize(in.n);
-    out(out.n-1) = dlambda;
-  }
-  return out;
-}
-set(Jaa, sparams = "-ksp_type preonly -pc_type shell", precon = blockSchur);
 // PREDICTOR
 real[int] qa;
 ChangeNumbering(J, ub[], qa);
@@ -239,7 +225,7 @@ if(mpirank == 0) {
   ChangeNumbering(J, Jl1, temp); // FreeFEM to PETSc
   matrix tempPms = [[temp]]; // dense array to sparse matrix
   ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-  H = vH(XMh, XMh, tgv = -20);
+  H = vH(XMh, XMh, tgv = -10);
   MatMultTranspose(H, qma, temp);
   tempPms = [[temp]];
   ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
@@ -381,8 +367,7 @@ while (!stopflag){
       Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; // make dummy Jacobian
       IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
       set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
-      set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa);
-      set(Jaa, sparams = "-ksp_type preonly -pc_type shell", precon = blockSchur);
+      set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa);
       qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
       if(mpirank == 0) {

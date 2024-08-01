@@ -160,22 +160,8 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
   }
 // set up Mat parameters
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu", setup = 1);
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
-func PetscScalar[int] blockSchur(PetscScalar[int]& in) {
-  PetscScalar[int] R1 = in(0:J.n-1), out;
-  KSPSolve(J, R1, out);
-  PetscScalar yqyq, yqyql = (yqP'*yqP), yqdq, yqdql = (yqP'*out);
-  mpiAllReduce(yqyql, yqyq, mpiCommWorld, mpiSUM);
-  mpiAllReduce(yqdql, yqdq, mpiCommWorld, mpiSUM);
-  PetscScalar dlambda = yqdq/(1.0 + yqyq);
-  out -= dlambda*yqP;
-  if (mpirank == 0) {
-    out.resize(in.n);
-    out(out.n-1) = dlambda;
-  }
-  return out;
-}
-set(Ja, sparams = "-ksp_type preonly -pc_type shell", precon = blockSchur);
 // PREDICTOR
 real[int] qa;
 ChangeNumbering(J, ub[], qa);
@@ -276,7 +262,6 @@ while (!stopflag){
       Ja = [[J, JlPM], [yqPM', -1.0]]; // make dummy Jacobian
       IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
       set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
-      set(Ja, sparams = "-ksp_type preonly -pc_type shell", precon = blockSchur);
       qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
       if(mpirank == 0) {
