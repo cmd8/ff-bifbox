@@ -512,9 +512,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
 
     Mat<complex> qPM(J.n, mpirank == 0 ? 1 : 0), pPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
     Mat<complex> Ja = [[J, qPM], [pPM', 0]]; // make dummy Jacobian
-    set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self", setup = 1);
+    set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu", setup = 1);
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
-//    set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu", setup = 1);
     set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
     // 2nd-order
     //  A: base modifications due to parameter changes
