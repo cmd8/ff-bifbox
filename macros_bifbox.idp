@@ -1862,7 +1862,7 @@ func real[int] loadhoho(string inputfilename, string meshfilename, complex[int] 
       sym2 = parsesymstr(symstr2);
       if(mpirank == 0) {
         cout << "\tomega = [" + omega1 + "; " + omega2;
-        if(sym.n > 0) cout << "sym = [" + listsym(sym1) + "; " + listsym(sym2) + "], ";
+        if(sym.n > 0) cout << "], sym = [" + listsym(sym1) + "; " + listsym(sym2);
         if(paramnames[0] != ""){
           for (int k = 0; k < paramnames.n; ++k){
             cout << "], alpha[" + paramnames[k] + "] = [" + alpha1[paramnames[k]] + "; " + alpha2[paramnames[k]];
