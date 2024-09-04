@@ -213,7 +213,7 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeNumbering(J, Jl, tempP); // FreeFEM to PETSc
       matrix tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      H = vH(XMh, XMh, tgv = -10);
+      H = vH(XMh, XMh, tgv = 0);
       MatMultTranspose(H, qma, tempP);
       tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat

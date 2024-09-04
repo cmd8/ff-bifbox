@@ -396,12 +396,12 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       ik.im = sym1;
       iomega = 1i*omega;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+      H = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
       MatMultHermitianTranspose(H, q1ma, temp1); // gqr,i
       ik = 0.0;
       iomega = 0.0;
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-      H = vH(XMh, XMh, tgv = -10); // form the matrix (dJ/dq*w)
+      H = vH(XMh, XMh, tgv = 0); // form the matrix (dJ/dq*w)
       MatMultTranspose(H, q2ma, temp3); // gqr,i
       if(!zerofreq) temp2.re = -temp1.im;
       temp1.im = 0.0;

@@ -197,7 +197,7 @@ complex alpha0, beta0;
       else tempPms = [[temp1, 0]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       sym = 0;
-      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+      H = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
       sym = sym1;
       MatMultHermitianTranspose(H, qma, temp1); // gqr,i
       if(!zerofreq) temp2.re = -temp1.im;
@@ -279,7 +279,7 @@ if(mpirank == 0) {
   else tempPms = [[temp1, 0]]; // dense array to sparse matrix
   ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
   sym = 0;
-  H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+  H = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
   sym = sym1;
   MatMultHermitianTranspose(H, qma, temp1); // gqr,i
   if(!zerofreq) temp2.re = -temp1.im;

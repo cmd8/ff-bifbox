@@ -467,12 +467,12 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       ik.im = sym1;
       iomega = 1i*omega1;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+      H = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
       MatMultHermitianTranspose(H, q1ma, temp1); // gqr,i
       ik.im = sym2;
       iomega = 1i*omega2;
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-      H = vH(XMh, XMh, tgv = -10); // form the matrix (dL/dq*w)
+      H = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
       MatMultHermitianTranspose(H, q2ma, temp3); // gqr,i
       if(!zerofreq) temp2.re = -temp1.im;
       temp1.im = 0.0;
@@ -591,7 +591,11 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu", setup = 1);
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
     set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
-    if (res1x == 2){
+    if (res1x == 1){
+      omega2 = (omega2 + omega1)/2.0;
+      omega1 = omega2;
+    }
+    else if (res1x == 2){
       omega2 = (2.0*omega2 + omega1)/4.0;
       omega1 = 2.0*omega2;
     }
