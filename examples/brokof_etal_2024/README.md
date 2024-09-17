@@ -89,8 +89,8 @@ ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re800L1.base -fo Re8
 ff-mpirun -np $nproc respcompute.edp -v 0 -dir $workdir -fi Re800L1.base -so Re800L1 -Rin 0 -Rout -1 -sym 1 -omega 0 -nomega 64 -omegaf 12.6
 ff-mpirun -np $nproc respcompute.edp -v 0 -dir $workdir -fi Re800L1.base -fo Re800L1 -Rin 0 -Rout -1 -sym 1 -omega 6.28318530718 -pv 1
 
-ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re800L5.base -fo Re800L5 -mo Re800L5 -hmax 0.05
-ff-mpirun -np $nproc respcompute.edp -v 0 -dir $workdir -fi Re800L5.base -so Re800L5 -Rin 0 -Rout -1 -sym 1 -omega 0 -nomega 64 -omegaf 12.6
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re800L5.base -fo Re800L5 -mo Re800L5 -hmax 0.01
+ff-mpirun -np $nproc respcompute.edp -v 0 -dir $workdir -fi Re800L5.base -so Re800L5 -Rin 0 -Rout -1 -sym 1 -omega 0 -nomega 127 -omegaf 12.6
 ff-mpirun -np $nproc respcompute.edp -v 0 -dir $workdir -fi Re800L5.base -fo Re800L5 -Rin 0 -Rout -1 -sym 1 -omega 6.28318530718 -pv 1
 ```
 
@@ -119,7 +119,7 @@ ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so R
 
 3. Perform resolvent analysis at Re = 200, 500, 800 for L = 0.5 for tuned Rout values where sigma ~ -0.45.
 ```
-ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -0.24125 -sym 1 -omega 0.1 -omegaf 12.5 -nomega 125
-ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -0.70125 -sym 1 -omega 0.1 -omegaf 12.5 -nomega 125
-ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -0.92 -sym 1 -omega 0.1 -omegaf 12.5 -nomega 125
+ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -0.24125 -sym 1 -omega 0.1 -omegaf 12.6 -nomega 127
+ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -0.70125 -sym 1 -omega 0.1 -omegaf 12.6 -nomega 127
+ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -0.92 -sym 1 -omega 0.1 -omegaf 12.6 -nomega 127
 ```
