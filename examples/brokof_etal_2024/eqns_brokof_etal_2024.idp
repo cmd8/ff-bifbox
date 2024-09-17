@@ -4,7 +4,7 @@
 // christopher.douglas@duke.edu
 //
 // Define KSP parameters
-  string KSPparams = "-ksp_type preonly -pc_type lu -mat_mumps_icntl_13 1";
+  string KSPparams = "-ksp_type preonly -pc_type lu";
 // term macros ------------------------------------------------------
   macro ndotu(u) (N.x*u + N.y*dXdx*u#y) //EOM
 
@@ -81,7 +81,7 @@ varf vJ(defu(dum), defu(v))
         - ubrho*ugradf(dum, vp) - (dubrhodT*dumT + dubrhodp*dump)*ugradf(ub, vp)
       // Species equation
         + vY*((dubrhodp*dump + dubrhodT*dumT)*(ugradf(ub, ubY) + ubY*ubArr) + ubrho*(ugradf(dum, ubY) + ugradf(ub, dumY) + dumY*ubArr + ubY*dubArrdT*dumT)) + diff(vY, dumY)/params["Pe"]
-      // Momentum equation (if sym(0)==0, no Divergence Thm, else if sym(0)>0, Divergence Thm with acoustic characteristic BCs enforced via boundary integrals)
+      // Momentum equation (if sym(0)==0, no Divergence Thm, else if abs(sym(0)>0), Divergence Thm with acoustic characteristic BCs enforced via boundary integrals)
         - (abs(int(sym(0))) > 0)*(ubrho*(ugradu(dum, ub, v) + ugradu(ub, dum, v)) + (dubrhodT*dumT + dubrhodp*dump)*ugradu(ub, ub, v)) + (int(sym(0)) == 0)*(ubrho*(ugradu(v, dum, ub) + ugradu(v, ub, dum)) + (dubrhodT*dumT + dubrhodp*dump)*ugradu(v, ub, ub)) - div(v)*dump + visc(v, dum)/params["Re"]
       // Energy equation
         + vT*(params["Ma"]^2.0*(ugradf(dum, ubp) + ugradf(ub, dump)) + params["gamma"]*params["Ma"]^2.0*dump*div(ub) + (params["gamma"]*params["Ma"]^2.0*ubp + 1.0)*div(dum) - params["dT"]*(((dubrhodT*dumT + dubrhodp*dump)*ubY + ubrho*dumY)*ubArr + ubrho*ubY*(dubArrdT*dumT)) - (params["gamma"] - 1.0)*params["Ma"]^2.0/params["Re"]*(visc(dum, ub) + visc(ub, dum))) + diff(vT, dumT)/params["Pe"]
