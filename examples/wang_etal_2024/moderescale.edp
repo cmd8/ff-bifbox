@@ -1,0 +1,47 @@
+//
+// moderescale.edp
+// Chris Douglas
+// christopher.douglas@duke.edu
+//
+// MUST BE RUN WITH 1 MPI PROCESS
+//
+load "iovtk"
+include "settings.idp"
+include "macros_bifbox.idp"
+// arguments
+string meshin = getARGV("-mi", ""); // input meshfile
+string filein = getARGV("-fi", "");
+string fileout = getARGV("-fo", "");
+assert(mpisize==1);
+string basefilein = readbasename(workdir + filein);
+string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
+string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
+if(filein != "" && meshin == "") meshin = readmeshname(workdir + fileroot + ".mode"); // get mesh file
+string meshroot, meshext = parsefilename(meshin, meshroot);
+// Load mesh, make FE basis
+Th = readmeshN(workdir + meshin);
+Thg = Th;
+buildDmesh(Th);
+restu = restrict(XMh, XMhg, n2o);
+XMh defu(ub);
+XMh<complex> defu(um), defu(um2), defu(um3);
+complex[int] val(1);
+XMh<complex>[int] defu(vec)(1);
+
+complex eigenvalue;
+ub[] = loadbase(basefileroot, meshin);
+um[] = loadmode(fileroot, meshin, sym, eigenvalue);
+val(0) = eigenvalue;
+
+fespace Xh2(Th, P2);
+Xh2 basemag = sqrt(ub^2 + uby^2);
+Xh2 modemag = sqrt(abs(um)^2 + abs(umy)^2);
+
+real maxbase = basemag[].max;
+real maxmode = 2.0*modemag[].max; // factor of 2 because the mode is initialized as um + conj(um)
+
+// set amplitude
+defu(um) = [um*maxbase/maxmode, umy*maxbase/maxmode, 0, 0, 0];
+
+vec[0][] = um[];
+savemode(fileout, "", basefilein, meshin, vec, val, sym, (fileout != ""));

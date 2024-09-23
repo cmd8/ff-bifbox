@@ -1,0 +1,147 @@
+//
+// eqns_wang_etal_2024.idp
+// Chris Douglas
+// christopher.douglas@duke.edu
+//
+// Define KSP parameters
+  string KSPparams = "-ksp_type preonly -pc_type lu";
+// term macros ------------------------------------------------------
+  macro zeta(a, b, c) (0.5 + 0.5*tanh(tan(-0.5*pi + pi*abs(a - b)/abs(b - c))))//EOM
+
+  macro sg()(1. + (x > params["xsg"])*(params["alpha"] - 1.)*zeta(x, params["xsg"], 0.20)
+             + (y > params["rsg"])*((params["alpha"] - (1. + (x > params["xsg"])*(params["alpha"] - 1.)*zeta(x, params["xsg"], 0.20)))*zeta(y, params["rsg"], 0.05)))//EOM
+
+  macro ndotu(u) ( y*(N.x*u + N.y*u#y) )//EOM
+
+  macro gdotf(f, g) ( y*(g)*(f) )//EOM
+
+  macro vdotu(v, u) ( y*(v*u + v#y*u#y) ) //EOM
+
+  macro div(u) ( y*(dx(u) + dy(u#y)) + u#y ) // velocity divergence
+
+  macro ugradu(v, U, u) ( y*(v  *(U*dx(u  ) + U#y*dy(u  ))
+                           + v#y*(U*dx(u#y) + U#y*dy(u#y))) ) // scaled convection term
+
+  macro visc(v, u) ( 2.*y*dx(v)*dx(u)               +     y*dy(v)*(dx(u#y) + dy(u))
+                      + y*dx(v#y)*(dx(u#y) + dy(u)) + 2.*(y*dy(v#y)*dy(u#y) + v#y*u#y/y) ) // EOM
+
+  macro diff(g, f) ( y*(dx(g)*dx(f) + dy(g)*dy(f)) ) // EOM
+
+  macro ugradf(U, f) ( y*(U*dx(f) + U#y*dy(f)) ) // EOM
+
+// density macro
+  macro ubrho() ( params["p0"]/(params["Rs"]*ubT) ) // EOM
+  macro dubrhodT() ( -params["p0"]/(params["Rs"]*ubT^2.) ) // EOM
+  macro d2ubrhodT2() ( 2.*params["p0"]/(params["Rs"]*ubT^3.) ) // EOM
+  macro d3ubrhodT3() ( -6.*params["p0"]/(params["Rs"]*ubT^4.) ) // EOM
+
+// Arrhenius reaction rate macro
+  macro ubQ() ( y*params["Ar"]*ubrho^(params["nCH4"] + params["nO2"])*(ubY/params["WCH4"])^params["nCH4"]*(params["YO2"]/params["WO2"])^params["nO2"]*exp(-params["Ta"]/ubT) ) // EOM
+  macro dubQdT() ( y*params["Ar"]*(ubrho^(params["nCH4"] + params["nO2"])*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"])*ubrho^(params["nCH4"] + params["nO2"] - 1.)*dubrhodT)*(ubY/params["WCH4"])^params["nCH4"]*(params["YO2"]/params["WO2"])^params["nO2"]*exp(-params["Ta"]/ubT) ) // EOM
+  macro dubQdY() ( y*params["Ar"]*ubrho^(params["nCH4"] + params["nO2"])*params["nCH4"]/params["WCH4"]*(ubY/params["WCH4"])^(params["nCH4"] - 1.)*(params["YO2"]/params["WO2"])^params["nO2"]*exp(-params["Ta"]/ubT) ) // EOM
+  macro d2ubQdT2() ( y*params["Ar"]*((ubrho^(params["nCH4"] + params["nO2"])*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"])*ubrho^(params["nCH4"] + params["nO2"] - 1.)*dubrhodT)*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"])*(ubrho^(params["nCH4"] + params["nO2"] - 1.)*dubrhodT*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"] - 1.)*ubrho^(params["nCH4"] + params["nO2"] - 2.)*dubrhodT^2. + ubrho^(params["nCH4"] + params["nO2"] - 1.)*d2ubrhodT2) - 2.*ubrho^(params["nCH4"] + params["nO2"])*params["Ta"]/ubT^3.)*(ubY/params["WCH4"])^params["nCH4"]*(params["YO2"]/params["WO2"])^params["nO2"]*exp(-params["Ta"]/ubT) ) // EOM
+  macro d2ubQdTdY() ( y*params["Ar"]*(ubrho^(params["nCH4"] + params["nO2"])*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"])*ubrho^(params["nCH4"] + params["nO2"] - 1.)*dubrhodT)*params["nCH4"]/params["WCH4"]*(ubY/params["WCH4"])^(params["nCH4"] - 1.)*(params["YO2"]/params["WO2"])^params["nO2"]*exp(-params["Ta"]/ubT) ) // EOM
+  macro d2ubQdY2() ( y*params["Ar"]*ubrho^(params["nCH4"] + params["nO2"])*params["nCH4"]*(params["nCH4"] - 1.)/params["WCH4"]^2.*(ubY/params["WCH4"])^(params["nCH4"] - 2.)*(params["YO2"]/params["WO2"])^params["nO2"]*exp(-params["Ta"]/ubT) ) // EOM
+  macro d3ubQdT3() ( y*params["Ar"]*(((ubrho^(params["nCH4"] + params["nO2"])*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"])*ubrho^(params["nCH4"] + params["nO2"] - 1.)*dubrhodT)*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"])*(ubrho^(params["nCH4"] + params["nO2"] - 1.)*dubrhodT*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"] - 1.)*ubrho^(params["nCH4"] + params["nO2"] - 2.)*dubrhodT^2. + ubrho^(params["nCH4"] + params["nO2"] - 1.)*d2ubrhodT2) - 2.*ubrho^(params["nCH4"] + params["nO2"])*params["Ta"]/ubT^3.)*params["Ta"]/ubT^2. + ((params["nCH4"] + params["nO2"])*ubrho^(params["nCH4"] + params["nO2"] - 1.)*params["Ta"]/ubT^2. - 2.*ubrho^(params["nCH4"] + params["nO2"])*params["Ta"]/ubT^3. + (params["nCH4"] + params["nO2"])*(params["nCH4"] + params["nO2"] - 1.)*ubrho^(params["nCH4"] + params["nO2"] - 2.)*dubrhodT^2. + (params["nCH4"] + params["nO2"])*ubrho^(params["nCH4"] + params["nO2"] - 1.)*d2ubrhodT2)*params["Ta"]/ubT^2. - 2.*(ubrho^(params["nCH4"] + params["nO2"])*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"])*ubrho^(params["nCH4"] + params["nO2"] - 1.)*dubrhodT)*params["Ta"]/ubT^3. + (params["nCH4"] + params["nO2"])*((params["nCH4"] + params["nO2"] - 1.)*ubrho^(params["nCH4"] + params["nO2"] - 2.)*dubrhodT*params["Ta"]/ubT^2. + ubrho^(params["nCH4"] + params["nO2"] - 1.)*d2ubrhodT2*params["Ta"]/ubT^2. - 2.*ubrho^(params["nCH4"] + params["nO2"] - 1.)*dubrhodT^2.*params["Ta"]/ubT^3. + (params["nCH4"] + params["nO2"] - 1.)*(params["nCH4"] + params["nO2"] - 2.)*ubrho^(params["nCH4"] + params["nO2"] - 3.)*dubrhodT^3. + 3.*(params["nCH4"] + params["nO2"] - 1.)*ubrho^(params["nCH4"] + params["nO2"] - 2.)*dubrhodT*d2ubrhodT2 + ubrho^(params["nCH4"] + params["nO2"] - 1.)*d3ubrhodT3) - 2.*(params["nCH4"] + params["nO2"])*ubrho^(params["nCH4"] + params["nO2"] - 1.)*dubrhodT*params["Ta"]/ubT^3. + 6.*ubrho^(params["nCH4"] + params["nO2"])*params["Ta"]/ubT^4.)*(ubY/params["WCH4"])^params["nCH4"]*(params["YO2"]/params["WO2"])^params["nO2"]*exp(-params["Ta"]/ubT) ) // EOM  
+  macro d3ubQdT2dY() ( y*params["Ar"]*((ubrho^(params["nCH4"] + params["nO2"])*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"])*ubrho^(params["nCH4"] + params["nO2"] - 1.)*dubrhodT)*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"])*(ubrho^(params["nCH4"] + params["nO2"] - 1.)*dubrhodT*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"] - 1.)*ubrho^(params["nCH4"] + params["nO2"] - 2.)*dubrhodT^2. + ubrho^(params["nCH4"] + params["nO2"] - 1.)*d2ubrhodT2) - 2.*ubrho^(params["nCH4"] + params["nO2"])*params["Ta"]/ubT^3.)*params["nCH4"]/params["WCH4"]*(ubY/params["WCH4"])^(params["nCH4"] - 1.)*(params["YO2"]/params["WO2"])^params["nO2"]*exp(-params["Ta"]/ubT) ) // EOM
+  macro d3ubQdTdY2() ( y*params["Ar"]*(ubrho^(params["nCH4"] + params["nO2"])*params["Ta"]/ubT^2. + (params["nCH4"] + params["nO2"])*ubrho^(params["nCH4"] + params["nO2"] - 1.)*dubrhodT)*params["nCH4"]*(params["nCH4"] - 1.)/params["WCH4"]^2.*(ubY/params["WCH4"])^(params["nCH4"] - 2.)*(params["YO2"]/params["WO2"])^params["nO2"]*exp(-params["Ta"]/ubT) ) // EOM
+  macro d3ubQdY3() ( y*params["Ar"]*ubrho^(params["nCH4"] + params["nO2"])*params["nCH4"]*(params["nCH4"] - 1.)*(params["nCH4"] - 2.)/params["WCH4"]^3.*(ubY/params["WCH4"])^(params["nCH4"] - 3.)*(params["YO2"]/params["WO2"])^params["nO2"]*exp(-params["Ta"]/ubT) ) // EOM
+
+// Sutherland law viscosity macro
+  macro ubmu() ( params["As"]/sg*sqrt(ubT)/(1. + params["Ts"]/ubT) ) // EOM
+  macro dubmudT() ( params["As"]/sg*sqrt(ubT)*(1.5*params["Ts"] + 0.5*ubT)/(params["Ts"] + ubT)^2. ) // EOM
+  macro d2ubmudT2() ( params["As"]/sg*(0.75*params["Ts"]^2. - 1.5*params["Ts"]*ubT - 0.25*ubT^2.)/(sqrt(ubT)*(params["Ts"] + ubT)^3.) ) // EOM
+  macro d3ubmudT3() ( params["As"]/sg*3.*(ubT - params["Ts"])*(params["Ts"]^2. + 10.*params["Ts"]*ubT + ubT^2.)/(8.*ubT^1.5*(params["Ts"] + ubT)^4.) ) // EOM
+
+// Boundary conditions
+  macro uPoiseuille() ( 2.*(0.000121 - 4.0*y^2. - 0.000112*log(2.*y/0.011)/log(0.3/1.1))/(0.00013 + 0.000112/log(0.3/1.1)) ) // EOM //Note: this is the actual Poiseuille solution in an annulus
+  macro uParabolic() 93750.0*(2.*y - 0.003)*(0.011 - 2.*y) // EOM //Note: this was the inlet BC used in the Wang et al. paper
+
+  macro BoundaryConditions(u, U)
+    on(BCinflow, u = U - params["U0"]*uParabolic, u#y = U#y, u#Y = U#Y - params["YCH4"], u#T = U#T - 300. )
+  + on(BCchannel, u = U, u#y = U#y )
+  + on(BClateral, u#y = U#y, u#Y = U#Y, u#T = U#T - 300. )
+  + on(BCwall, u = U, u#y = U#y, u#T = U#T - 300. )
+  + on(BCcenterbody, u = U, u#y = U#y, u#T = U#T - params["Tr"] )
+  + on(BCaxis, u#y = U#y )
+  // EOM
+  macro HomBoundaryConditions(u)
+    on(BCinflow, u = 0, u#y = 0, u#Y = 0, u#T = 0 )
+  + on(BCchannel, u = 0, u#y = 0 )
+  + on(BClateral, u#y = 0, u#Y = 0, u#T = 0 )
+  + on(BCwall, BCcenterbody, u = 0, u#y = 0, u#T = 0 )
+  + on(BCaxis, u#y = 0 )
+  // EOM
+// RESIDUAL OPERATOR
+  varf vR(defu(um), defu(v))
+    = int2d(Th)(
+        vY*(ubrho*ugradf(ub, ubY) + params["WCH4"]*ubQ) + ubmu*diff(vY, ubY)/params["Sc"]
+      + vT*(ubrho*ugradf(ub, ubT) + params["Dh0f"]/params["Cp"]*ubQ) + ubmu*diff(vT, ubT)/params["Pr"]
+      + ubrho*ugradu(v, ub, ub) - div(v)*ubp + ubmu*visc(v, ub)
+      + vp*(ugradf(ub, ubT)/ubT - div(ub))
+    )
+    + BoundaryConditions(um, ub);
+
+// JACOBIAN OPERATOR
+  varf vJ(defu(dum), defu(v))
+    = int2d(Th)(
+      iomega*(gdotf(vp, dumT)/ubT + ubrho*(gdotf(vT, dumT) + gdotf(vY, dumY) + vdotu(v, dum)))
+      + vY*(ubrho*(ugradf(dum, ubY) + ugradf(ub, dumY)) + dubrhodT*dumT*ugradf(ub, ubY) + params["WCH4"]*(dubQdT*dumT + dubQdY*dumY)) + (dubmudT*dumT*diff(vY, ubY) + ubmu*diff(vY, dumY))/params["Sc"]
+      + vT*(ubrho*(ugradf(dum, ubT) + ugradf(ub, dumT)) + dubrhodT*dumT*ugradf(ub, ubT) + params["Dh0f"]/params["Cp"]*(dubQdT*dumT + dubQdY*dumY)) + (dubmudT*dumT*diff(vT, ubT) + ubmu*diff(vT, dumT))/params["Pr"]
+      + ubrho*(ugradu(v, dum, ub) + ugradu(v, ub, dum)) + dubrhodT*dumT*ugradu(v, ub, ub) - div(v)*dump + dubmudT*dumT*visc(v, ub) + ubmu*visc(v, dum)
+      + vp*((ugradf(dum, ubT) + ugradf(ub, dumT))/ubT - ugradf(ub, ubT)*dumT/ubT^2. - div(dum))
+    )
+    + int2d(Th)(
+      iomega*(gdotf(vp, umT)/ubT + ubrho*(gdotf(vT, umT) + gdotf(vY, umY) + vdotu(v, um)))
+      + vY*(ubrho*(ugradf(um, ubY) + ugradf(ub, umY)) + dubrhodT*umT*ugradf(ub, ubY) + params["WCH4"]*(dubQdT*umT + dubQdY*umY)) + (dubmudT*umT*diff(vY, ubY) + ubmu*diff(vY, umY))/params["Sc"]
+      + vT*(ubrho*(ugradf(um, ubT) + ugradf(ub, umT)) + dubrhodT*umT*ugradf(ub, ubT) + params["Dh0f"]/params["Cp"]*(dubQdT*umT + dubQdY*umY)) + (dubmudT*umT*diff(vT, ubT) + ubmu*diff(vT, umT))/params["Pr"]
+      + ubrho*(ugradu(v, um, ub) + ugradu(v, ub, um)) + dubrhodT*umT*ugradu(v, ub, ub) - div(v)*ump + dubmudT*umT*visc(v, ub) + ubmu*visc(v, um)
+      + vp*((ugradf(um, ubT) + ugradf(ub, umT))/ubT - ugradf(ub, ubT)*umT/ubT^2. - div(um))
+    )
+    + HomBoundaryConditions(dum);
+
+// MASS OPERATOR
+  varf vM(defu(dum), defu(v))
+    = int2d(Th)( gdotf(vp, dumT)/ubT + ubrho*(gdotf(vT, dumT) + gdotf(vY, dumY) + vdotu(v, dum)) )
+    + int2d(Th)( gdotf(vp, umT)/ubT + ubrho*(gdotf(vT, umT) + gdotf(vY, umY) + vdotu(v, um)) )
+    + HomBoundaryConditions(dum);
+
+// FORCING/RESPONSE OPERATORS
+  varf vMq(defu(dum), defu(v))
+    = int2d(Th)( vdotu(v, dum) )
+    + HomBoundaryConditions(dum);
+
+  varf vMf(deff(dum), deff(v))
+    = int2d(Th)( vdotu(v, dum) );
+
+  varf vP(deff(fm), defu(v))
+    = int2d(Th)( vdotu(v, fm) );
+
+// HESSIAN OPERATOR
+  varf vH(defu(dum), defu(v))
+    = int2d(Th)(
+      iomega*(-gdotf(vp, umT)*dumT/ubT^2. + dubrhodT*dumT*(gdotf(vT, umT) + gdotf(vY, umY) + vdotu(v, um))) + iomega2*(-gdotf(vp, dumT)*umT/ubT^2. + dubrhodT*umT*(gdotf(vT, dumT) + gdotf(vY, dumY) + vdotu(v, dum)))
+      + vY*(ubrho*(ugradf(dum, umY) + ugradf(um, dumY)) + dubrhodT*(umT*(ugradf(dum, ubY) + ugradf(ub, dumY)) + dumT*(ugradf(um, ubY) + ugradf(ub, umY))) + d2ubrhodT2*dumT*umT*ugradf(ub, ubY) + params["WCH4"]*(d2ubQdT2*dumT*umT + d2ubQdTdY*(dumT*umY + umT*dumY) + d2ubQdY2*dumY*umY)) + (dubmudT*(umT*diff(vY, dumY) + dumT*diff(vY, umY)) + d2ubmudT2*dumT*umT*diff(vY, ubY))/params["Sc"]
+      + vT*(ubrho*(ugradf(dum, umT) + ugradf(um, dumT)) + dubrhodT*(umT*(ugradf(dum, ubT) + ugradf(ub, dumT)) + dumT*(ugradf(um, ubT) + ugradf(ub, umT))) + d2ubrhodT2*dumT*umT*ugradf(ub, ubT) + params["Dh0f"]/params["Cp"]*(d2ubQdT2*dumT*umT + d2ubQdTdY*(dumT*umY + umT*dumY) + d2ubQdY2*dumY*umY)) + (dubmudT*(umT*diff(vT, dumT) + dumT*diff(vT, umT)) + d2ubmudT2*dumT*umT*diff(vT, ubT))/params["Pr"]
+      + ubrho*(ugradu(v, um, dum) + ugradu(v, dum, um)) + dubrhodT*(umT*(ugradu(v, dum, ub) + ugradu(v, ub, dum)) + dumT*(ugradu(v, um, ub) + ugradu(v, ub, um))) + d2ubrhodT2*dumT*umT*ugradu(v, ub, ub) + d2ubmudT2*umT*dumT*visc(v, ub) + dubmudT*(dumT*visc(v, um) + umT*visc(v, dum))
+      + vp*((ugradf(um, dumT) + ugradf(dum, umT))/ubT - ((ugradf(um, ubT) + ugradf(ub, umT))*dumT + (ugradf(dum, ubT) + ugradf(ub, dumT))*umT)/ubT^2. + 2.*ugradf(ub, ubT)*umT*dumT/ubT^3.)
+    )
+    + int2d(Th)(
+      iomega*(-gdotf(vp, umT)*um2T/ubT^2. + dubrhodT*um2T*(gdotf(vT, umT) + gdotf(vY, umY) + vdotu(v, um))) + iomega2*(-gdotf(vp, um2T)*umT/ubT^2. + dubrhodT*umT*(gdotf(vT, um2T) + gdotf(vY, um2Y) + vdotu(v, um2)))
+      + vY*(ubrho*(ugradf(um2, umY) + ugradf(um, um2Y)) + dubrhodT*(umT*(ugradf(um2, ubY) + ugradf(ub, um2Y)) + um2T*(ugradf(um, ubY) + ugradf(ub, umY))) + d2ubrhodT2*um2T*umT*ugradf(ub, ubY) + params["WCH4"]*(d2ubQdT2*um2T*umT + d2ubQdTdY*(um2T*umY + umT*um2Y) + d2ubQdY2*um2Y*umY)) + (dubmudT*(umT*diff(vY, um2Y) + um2T*diff(vY, umY)) + d2ubmudT2*um2T*umT*diff(vY, ubY))/params["Sc"]
+      + vT*(ubrho*(ugradf(um2, umT) + ugradf(um, um2T)) + dubrhodT*(umT*(ugradf(um2, ubT) + ugradf(ub, um2T)) + um2T*(ugradf(um, ubT) + ugradf(ub, umT))) + d2ubrhodT2*um2T*umT*ugradf(ub, ubT) + params["Dh0f"]/params["Cp"]*(d2ubQdT2*um2T*umT + d2ubQdTdY*(um2T*umY + umT*um2Y) + d2ubQdY2*um2Y*umY)) + (dubmudT*(umT*diff(vT, um2T) + um2T*diff(vT, umT)) + d2ubmudT2*um2T*umT*diff(vT, ubT))/params["Pr"]
+      + ubrho*(ugradu(v, um, um2) + ugradu(v, um2, um)) + dubrhodT*(umT*(ugradu(v, um2, ub) + ugradu(v, ub, um2)) + um2T*(ugradu(v, um, ub) + ugradu(v, ub, um))) + d2ubrhodT2*um2T*umT*ugradu(v, ub, ub) + d2ubmudT2*umT*um2T*visc(v, ub) + dubmudT*(um2T*visc(v, um) + umT*visc(v, um2))
+      + vp*((ugradf(um, um2T) + ugradf(um2, umT))/ubT - ((ugradf(um, ubT) + ugradf(ub, umT))*um2T + (ugradf(um2, ubT) + ugradf(ub, um2T))*umT)/ubT^2. + 2.*ugradf(ub, ubT)*umT*um2T/ubT^3.)
+    )
+    + HomBoundaryConditions(dum);
+
+// TRESSIAN OPERATOR (FOR WEAKLY NONLINEAR ANALYSIS)
+  varf vT(defu(dum), defu(v))
+    = int2d(Th)(
+      iomega*(2.*gdotf(vp, umT)*um2T*um3T/ubT^3. + d2ubrhodT2*um2T*um3T*(gdotf(vT, umT) + gdotf(vY, umY) + vdotu(v, um))) + iomega2*(2.*gdotf(vp, um2T)*umT*um3T/ubT^3. + d2ubrhodT2*umT*um3T*(gdotf(vT, um2T) + gdotf(vY, um2Y) + vdotu(v, um2))) + iomega3*(2.*gdotf(vp, um3T)*umT*um2T/ubT^3. + d2ubrhodT2*umT*um2T*(gdotf(vT, um3T) + gdotf(vY, um3Y) + vdotu(v, um3)))
+      + vY*(dubrhodT*(um3T*(ugradf(um2, umY) + ugradf(um, um2Y)) + umT*(ugradf(um2, um3Y) + ugradf(um3, um2Y)) + um2T*(ugradf(um, um3Y) + ugradf(um3, umY))) + d2ubrhodT2*(um3T*(umT*(ugradf(um2, ubY) + ugradf(ub, um2Y)) + um2T*(ugradf(um, ubY) + ugradf(ub, umY))) + um2T*umT*(ugradf(um3, ubY) + ugradf(ub, um3Y))) + d3ubrhodT3*um3T*um2T*umT*ugradf(ub, ubY) + params["WCH4"]*(d3ubQdT3*um3T*um2T*umT + d3ubQdT2dY*(um3Y*um2T*umT + um3T*(um2T*umY + umT*um2Y)) + d3ubQdTdY2*(um3Y*(um2T*umY + umT*um2Y) + um3T*um2Y*umY) + d3ubQdY3*um3Y*um2Y*umY)) + (d2ubmudT2*(um3T*(umT*diff(vY, um2Y) + um2T*diff(vY, umY)) + um2T*umT*diff(vY, um3Y)) + d3ubmudT3*um3T*um2T*umT*diff(vY, ubY))/params["Sc"]
+      + vT*(dubrhodT*(um3T*(ugradf(um2, umT) + ugradf(um, um2T)) + umT*(ugradf(um2, um3T) + ugradf(um3, um2T)) + um2T*(ugradf(um, um3T) + ugradf(um3, umT))) + d2ubrhodT2*(um3T*(umT*(ugradf(um2, ubT) + ugradf(ub, um2T)) + um2T*(ugradf(um, ubT) + ugradf(ub, umT))) + um2T*umT*(ugradf(um3, ubT) + ugradf(ub, um3T))) + d3ubrhodT3*um3T*um2T*umT*ugradf(ub, ubT) + params["Dh0f"]/params["Cp"]*(d3ubQdT3*um3T*um2T*umT + d3ubQdT2dY*(um3Y*um2T*umT + um3T*(um2T*umY + umT*um2Y)) + d3ubQdTdY2*(um3Y*(um2T*umY + umT*um2Y) + um3T*um2Y*umY) + d3ubQdY3*um3Y*um2Y*umY)) + (d2ubmudT2*(um3T*(umT*diff(vT, um2T) + um2T*diff(vT, umT)) + um2T*umT*diff(vT, um3T)) + d3ubmudT3*um3T*um2T*umT*diff(vT, ubT))/params["Pr"]
+      + dubrhodT*(um3T*(ugradu(v, um, um2) + ugradu(v, um2, um)) + umT*(ugradu(v, um2, um3) + ugradu(v, um3, um2)) + um2T*(ugradu(v, um, um3) + ugradu(v, um3, um))) + d2ubrhodT2*(um3T*(umT*(ugradu(v, um2, ub) + ugradu(v, ub, um2)) + um2T*(ugradu(v, um, ub) + ugradu(v, ub, um)) + um2T*umT*(ugradu(v, um3, ub) + ugradu(v, ub, um3))) + d3ubrhodT3*um3T*um2T*umT*ugradu(v, ub, ub) + d3ubmudT3*um3T*umT*um2T*visc(v, ub) + d2ubmudT2*(umT*um2T*visc(v, um3) + um3T*(um2T*visc(v, um) + umT*visc(v, um2)))
+      + vp*(-((ugradf(um, um2T) + ugradf(um2, umT))*um3T + (ugradf(um, um3T) + ugradf(um3, umT))*um2T + (ugradf(um2, um3T) + ugradf(um3, um2T))*umT)/ubT^2. + 2.*(um3T*((ugradf(um, ubT) + ugradf(ub, umT))*um2T + (ugradf(um2, ubT) + ugradf(ub, um2T))*umT) + (ugradf(um3, ubT) + ugradf(ub, um3T))*umT*um2T)/ubT^3. - 6.*um3T*ugradf(ub, ubT)*umT*um2T/ubT^4.))
+    )
+    + HomBoundaryConditions(dum);

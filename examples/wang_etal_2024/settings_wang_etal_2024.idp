@@ -1,0 +1,56 @@
+//
+// settings_wang_etal_2024.idp
+// Chris Douglas
+// christopher.douglas@duke.edu
+//
+// NOTE: When starting a project this is one of the main files that should be edited
+//
+// Set dimension macro for 'macro_ddm.idp' (2)
+macro dimension()2//EOM
+// Load hpddm macros
+include "macro_ddm.idp"
+verbosity = getARGV("-v", 0);
+// Define parameter and monitor names
+  string[int] paramnames = ["U0","Tr","As","Ts","Pr","Sc","p0","Rs","Cp","YCH4","WCH4","YO2","WO2","nCH4","nO2","Ar","Ta","Dh0f","alpha","xsg","rsg"]; // set parameter names
+  string[int] monitornames = ["Re","ux(2.7D,1.2D)","omegadotT"]; // set monitor names
+// Declare symmetries
+  real[int] sym(0);
+// Define state vector and FE space
+  macro defu(u)[u, u#y, u#Y, u#T, u#p]//EOM //Note that the code used in the paper uses density instead of temperature for describing the thermal state!
+  macro initu(i)[i, i, i, i, i]//EOM
+  func Pk = [P2, P2, P2, P2, P1]; // Note that species and thermal fields/equations are discretized by P1 elements in the paper!
+// Define forcing vector and FE space (for resolvent analysis)
+  macro deff(f)[f, f#y]//EOM
+  macro initf(i)[i, i]//EOM
+  func Pkf = [P2, P2];
+// Define quantities for mesh adaptation and plotting in Paraview
+  macro adaptu(u)[u, u#y], u#Y, u#T, u#p//EOM
+  macro adaptf(f)[f, f#y] //EOM
+// Name and order for real Paraview outputs
+  string ParaviewDataName = "velocity species temperature pressure";
+  string ParaviewDataNamef = "momentum";
+  int[int] ParaviewOrder = [1, 1, 1, 1];
+  int[int] ParaviewOrderf = [1];
+// Name and order for complex Paraview outputs
+  string ParaviewDataNamec = "velocity_r species_r temperature_r pressure_r";
+  ParaviewDataNamec = ParaviewDataNamec + " velocity_i species_i temperature_i pressure_i";
+  string ParaviewDataNamefc = "momentum_r momentum_i";
+  int[int] ParaviewOrderc = [ParaviewOrder,ParaviewOrder];
+  int[int] ParaviewOrderfc = [ParaviewOrderf,ParaviewOrderf];
+  // Initial conditions (if no file)
+  macro InitialConditions()[0, 0, 0.04256, 300, 0]//EOM
+// Boundary labels
+  int BCnull = 0;
+  int BCaxis = 1;
+  int BCopen = 2;
+  int BClateral = 3;
+  int BCwall = 4;
+  int BCchannel = 5;
+  int BCinflow = 6;
+  int BCcenterbody = 7;
+// Define solution monitors to extract
+macro getmonitors(){
+  monitors["Re"] = params["U0"]*0.011*params["p0"]/(params["Rs"]*300)/(params["As"]*300.0^0.5/(1.0 + params["Ts"]/300.0));
+  monitors["ux(2.7D,1.2D)"] = ubg(0.0297, 0.0132); /* unit: [m/s] */
+  monitors["omegadotT"] = -int2d(Thg)(y*params["Dh0f"]*params["Ar"]*(params["p0"]/(params["Rs"]*ubgT))^(params["nCH4"] + params["nO2"])*(ubgY/params["WCH4"])^params["nCH4"]*(params["YO2"]/params["WO2"])^params["nO2"]*exp(-params["Ta"]/ubgT)); /* unit: [kW] */
+} // EOM

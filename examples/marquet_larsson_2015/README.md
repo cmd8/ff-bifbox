@@ -9,7 +9,7 @@ pages = {400-412},
 year = {2015},
 note = {Trends in Hydrodynamic Instability in honour of Patrick Huerre's 65th birthday},
 issn = {0997-7546},
-doi = {https://doi.org/10.1016/j.euromechflu.2014.05.005},
+doi = {10.1016/j.euromechflu.2014.05.005},
 author = {O. Marquet and M. Larsson},
 }
 ```
