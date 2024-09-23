@@ -6,7 +6,7 @@ This file shows an example `ff-bifbox` workflow for reproducing the results in t
   author = {Wang, Chuhan and Douglas, Christopher M. and Guan, Yu and Xu, Chunxiao and Lesshafft, Lutz},
   journal={Journal of Fluid Mechanics},
   publisher={Cambridge University Press},
-  notes={(accepted)}
+  notes={(accepted)},
   year={2024},
   DOI={10.48550/arXiv.2404.17396},
 }

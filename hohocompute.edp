@@ -313,6 +313,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       broadcast(processor(0), omega2);
       updatelambda(param, lambda1);
       updatelambda(param2, lambda2);
+      sym = 0;
       R = vR(0, XMh, tgv = -1);
       complex[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
@@ -362,6 +363,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       ChangeNumbering(J, um3[], q2ma, inverse = true);
       updatelambda(param, lambda1 + eps);
       updatelambda(param2, lambda2);
+      sym = 0;
       complex[int] Jl1 = vR(0, XMh, tgv = -1);
       sym = sym1;
       ik.im = sym1;
@@ -375,6 +377,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       complex[int] Kl1 = vJ(0, XMh, tgv = -10);
       updatelambda(param, lambda1);
       updatelambda(param2, lambda2 + eps2);
+      sym = 0;
       complex[int] Jl2 = vR(0, XMh, tgv = -1);
       sym = sym1;
       ik.im = sym1;
