@@ -6,9 +6,10 @@ This file shows an example `ff-bifbox` workflow for reproducing the results in t
   author = {Wang, Chuhan and Douglas, Christopher M. and Guan, Yu and Xu, Chunxiao and Lesshafft, Lutz},
   journal={Journal of Fluid Mechanics},
   publisher={Cambridge University Press},
-  notes={(accepted)},
+  volume={998},
+  pages={A23}
   year={2024},
-  DOI={10.48550/arXiv.2404.17396},
+  DOI={10.1017/jfm.2024.869},
 }
 ```
 The commands below illustrate how to perform a bifurcation analysis of a lean premixed V-flame in an axisymmetric annular jet using `ff-bifbox`.
