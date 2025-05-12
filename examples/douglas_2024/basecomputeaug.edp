@@ -172,9 +172,11 @@ func int funcJ(real[int]& qPETSc) {
     return 0;
 }
 // set up Mat parameters
-set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition self ", setup = 1);
+set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full"
+                + " -prefix_push fieldsplit_1_ -ksp_type preonly -pc_type redundant -redundant_pc_type lu -prefix_pop"
+                + " -prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", setup = 1);
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
-set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = Ja);
+set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent = Ja);
 // Initialize
 real[int] q;
 ChangeNumbering(J, ub[], q);

@@ -65,7 +65,7 @@ FreeFem++ -v 0 examples/douglas_2024/example1_suppmat.edp
 
 ## Perform parallel computations for Grabowski--Berger vortex flow using `ff-bifbox`
 ### Steady axisymmetric dynamics
-1. Compute reference base states on the largest mesh at Re = 200, S = 0.85 to S = 1.3 from default guess, also save on truncated mesh.
+1. Compute reference base states on the largest mesh at Re = 200, S = 0.85 to S = 1.3 from default guess.
 ```
 ln -sf examples/douglas_2024/eqns_meliga_etal_2012.idp eqns.idp
 ln -sf examples/douglas_2024/settings_meliga_etal_2012.idp settings.idp
