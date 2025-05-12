@@ -187,9 +187,13 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, alpha0, beta0;
   }
 // set up Mat parameters
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
-set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu", setup = 1);
-set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa, setup = 1);
-set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
+set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full"
+                 + " -prefix_push fieldsplit_1_ -ksp_type preonly -pc_type redundant -redundant_pc_type lu -prefix_pop"
+                 + " -prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -prefix_pop"
+                 + " -prefix_push fieldsplit_0_fieldsplit_1_ -ksp_type preonly -pc_type redundant -redundant_pc_type lu -prefix_pop"
+                 + " -prefix_push fieldsplit_0_fieldsplit_0_ " + KSPparams + " -prefix_pop", setup = 1);
+set(Ja, prefix = "fieldsplit_0_", setup = 1, parent = Jaa);
+set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
 // PREDICTOR
 real[int] qa;
 ChangeNumbering(J, ub[], qa);
@@ -366,8 +370,8 @@ while (!stopflag){
       Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
       Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; // make dummy Jacobian
       IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
-      set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ " + KSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
-      set(Ja, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu -prefix_pop", prefix = "fieldsplit_0_", parent = Jaa);
+      set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
+      set(Ja, prefix = "fieldsplit_0_", parent = Jaa);
       qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
       if(mpirank == 0) {

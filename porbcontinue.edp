@@ -204,11 +204,16 @@ blocks = min(blocks, 1+Nh);
 for (int nh = 0; nh < Nh; nh++) fieldlabels((1+2*nh)*J.n:(3+2*nh)*J.n-1) = 1.0 + max(0, blocks + nh - Nh);
 string HBKSPparams = KSPparams;
 if (blocks > 1) HBKSPparams = "-ksp_type gmres -ksp_norm_type unpreconditioned -ksp_pc_side right -pc_type fieldsplit -pc_fieldsplit_type symmetric_multiplicative -fieldsplit_pc_type lu -ksp_gmres_cgs_refinement_type refine_ifneeded";
-set(JHBaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu", setup = 1);
-if (zerofreq) set(JHBa, sparams = "-prefix_push fieldsplit_0_ " + HBKSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = JHBaa, fields = fieldlabels);
+string ssparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full"
+                + " -prefix_push fieldsplit_1_ -ksp_type preonly -pc_type redundant -redundant_pc_type lu -prefix_pop"
+                + " -prefix_push fieldsplit_0_ " + (zerofreq ? "" : ("-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -prefix_pop"
+                + " -prefix_push fieldsplit_0_fieldsplit_1_ -ksp_type preonly -pc_type redundant -redundant_pc_type lu -prefix_pop"
+                + " -prefix_push fieldsplit_0_fieldsplit_0_ ")) + HBKSPparams + " -prefix_pop";
+set(JHBaa, sparams = ssparams, setup = 1);
+if (zerofreq) set(JHBa, prefix = "fieldsplit_0_", fields = fieldlabels);
 else {
-  set(JHBa, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu -prefix_pop", prefix = "fieldsplit_0_", parent = JHBaa, setup = 1);
-  set(JHB, sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ " + HBKSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = JHBa, fields = fieldlabels);
+  set(JHBa, prefix = "fieldsplit_0_", setup = 1, parent = JHBaa);
+  set(JHB, prefix = "fieldsplit_0_fieldsplit_0_", fields = fieldlabels, parent = JHBa);
 }
 // PREDICTOR
 real[int] qa(JHB.n);
@@ -428,10 +433,10 @@ while (!stopflag){
       JlPMa = Adapt3;
       yqPMa = Adapt4;
       JHBaa = [[JHBa, JlPMa],[yqPMa', -1.0]]; // make dummy Jacobian
-      if (zerofreq) set(JHBa, sparams = "-prefix_push fieldsplit_0_ " + HBKSPparams + " -prefix_pop", prefix = "fieldsplit_0_", parent = JHBaa, fields = fieldlabels);
+      if (zerofreq) set(JHBa, prefix = "fieldsplit_0_", fields = fieldlabels, parent = JHBaa);
       else {
-        set(JHB, sparams = "-prefix_push fieldsplit_0_fieldsplit_0_ " + HBKSPparams + " -prefix_pop", prefix = "fieldsplit_0_fieldsplit_0_", parent = JHBa, fields = fieldlabels);
-        set(JHBa, sparams = "-prefix_push fieldsplit_0_ -ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full -fieldsplit_1_ksp_type preonly -fieldsplit_1_pc_type redundant -fieldsplit_1_redundant_pc_type lu -prefix_pop", prefix = "fieldsplit_0_", parent = JHBaa);
+        set(JHB, prefix = "fieldsplit_0_fieldsplit_0_", fields = fieldlabels, parent = JHBa);
+        set(JHBa, prefix = "fieldsplit_0_", parent = JHBaa);
       }
       qa.resize(JHBaa.n);
       {
