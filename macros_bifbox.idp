@@ -124,7 +124,7 @@ iso = bool(getARGV("-anisomax", 1.0) <= 1.0),
 anisomax = getARGV("-anisomax", 1.0),
 rescaling = bool(getARGV("-rescaling", 1)),
 power = getARGV("-power", 1.0),
-thetamax = getARGV("-thetamax", 10)
+thetamax = getARGV("-thetamax", 10.0)
 //EOM
 
 macro StepAdaptMonitors(Rvec, qa, qap, yqP, yqP0)
