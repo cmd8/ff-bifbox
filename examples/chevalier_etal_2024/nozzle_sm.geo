@@ -1,4 +1,13 @@
-// This file is adapted from Quentin Chevalier's geometry found at https://github.com/hawkspar/openfoam/blob/main/nozzle/nozzle.geo
+//
+// nozzle_sm.geo
+// Chris Douglas
+// christopher.douglas@duke.edu
+//
+// This file can be used with Gmsh to create a mesh for the turbulent swirling jet as in
+// [Chevalier et al, TCFD, (2024)].
+//
+// This file is adapted from Quentin Chevalier's geometry found at
+// https://github.com/hawkspar/openfoam/blob/main/nozzle/nozzle.geo
 R = 1;
 L = 50*R;
 H = 15*R;
