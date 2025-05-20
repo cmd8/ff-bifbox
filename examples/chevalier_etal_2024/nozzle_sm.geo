@@ -98,7 +98,7 @@ Physical Line ("WALL") = {9,17,27,19,28,29,280};
 Physical Line ("IN1") = {18};
 
 // Surfaces
-Line Loop(1) = {1,2,36,6,7,8,9,-27,28,280,29,-19,17,18};
+Line Loop(1) = {1,2,36,6:9,-27,28,280,29,-19,17,18};
 Plane Surface(1) = {1};
 Line {10:16,20:26,30:35} In Surface{1};
 
