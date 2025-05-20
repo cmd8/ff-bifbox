@@ -4,7 +4,7 @@
 // christopher.douglas@duke.edu
 //
 // Define KSP parameters
-  string KSPparams = "-ksp_type preonly -pc_type lu -mat_mumps_icntl_13 1";
+  string KSPparams = "-ksp_type preonly -pc_type lu";
 // term macros ------------------------------------------------------
   macro vdotu(v, u) ( y*(v*u + v#y*u#y + v#z*u#z) ) //EOM
 
