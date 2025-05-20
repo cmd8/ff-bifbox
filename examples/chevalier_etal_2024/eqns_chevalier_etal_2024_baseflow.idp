@@ -1,0 +1,133 @@
+//
+// eqns_chevalier_etal_2024.idp
+// Chris Douglas
+// christopher.douglas@duke.edu
+//
+// Define KSP parameters
+  string KSPparams = "-ksp_type preonly -pc_type lu";
+// term macros ------------------------------------------------------
+  macro vdotu(v, u) ( y*(v*u + v#y*u#y + v#z*u#z) ) //EOM
+  macro fdotg(f, g) ( y*f*g ) //EOM
+
+  macro div(ik, u) ( y*(dx(u) + dy(u#y)) + u#y + (ik)*u#z ) // velocity divergence
+
+  macro ugradf(U, ik, f) ( y*(U*dx(f) + U#y*dy(f)) + (ik)*U#z*f ) // EOM
+
+  macro ugradu(v, U, ik, u) (  v  *(y*(U*dx(u  ) + U#y*dy(u  )) + U#z* (ik)*u         )
+                             + v#y*(y*(U*dx(u#y) + U#y*dy(u#y)) + U#z*((ik)*u#y - u#z))
+                             + v#z*(y*(U*dx(u#z) + U#y*dy(u#z)) + U#z*((ik)*u#z + u#y)) ) // scaled convection term
+
+  macro diff(ij, g, ik, f) ( y*(dx(g)*dx(f) + dy(g)*dy(f)) + (ij)*(ik)*g*f/y ) // EOM
+
+  macro visc(ij, v, ik, u) ( 2.0*y*dx(v  )*dx(u  )              +     y*dy(v  )*(dx(u#y) + dy(u  ))          +      (ij)*v         *( dx(u#z) + (ik)/y*u)
+                               + y*dx(v#y)*(dx(u#y) + dy(u  ))  + 2.0*y*dy(v#y)*dy(u#y)                      +     ((ij)*v#y - v#z)*(((ik)*u#y - u#z)/y + dy(u#z) )
+                               +   dx(v#z)*((ik)*u + y*dx(u#z)) +       dy(v#z)*((ik)*u#y - u#z + y*dy(u#z)) + 2.0*((ij)*v#z + v#y)*((ik)*u#z + u#y)/y             ) // EOM
+  // S-A macros from NASA: https://turbmodels.larc.nasa.gov/spalart.html#sanoft2
+  real SAsig = 2.0/3.0;
+  real SAcb1 = 0.1355;
+  real SAcb2 = 0.622;
+  real SAcv1 = 7.1;
+  real SAcs = 0.3; // S limiter used in OpenFOAM: https://www.openfoam.com/documentation/guides/latest/api/TurbulenceModels_2turbulenceModels_2RAS_2SpalartAllmaras_2SpalartAllmaras_8C_source.html
+  real SAkap = 0.41;
+  real SAcw1 = SAcb1/(SAkap^2.0) + (1.0 + SAcb2)/SAsig;
+  real SAcw2 = 0.3;
+  real SAcw3 = 2.0;
+
+  macro SAfv1(u) ( (u#v^3.0)/(u#v^3.0 + (SAcv1*params["1/Re"])^3.0) ) // EOM
+  macro SAfv1p(u, du) ( 3.0*u#v^2.0*du#v/(((u#v/(SAcv1*params["1/Re"]))^3.0 + 1.0)*(u#v^3.0 + (SAcv1*params["1/Re"])^3.0)) )// EOM
+
+  macro SAdist() (min((y >  1.0)*(  (x >= 0)*sqrt(x^2 + (y - 1.0)^2)
+                              + (x > -0.05 && x < 0)*(y - 1.0 + 0.0001*x/0.05) 
+                              + (x <= -0.05)*(y - 1.0001) )
+                + (y <= 1.0)*(  (x >  0)*sqrt(x^2 + (1.0 - y)^2)
+                              + (x <= 0)*(1.0 - y) ), dist(0, y - 20.0), dist(x + 1.0, 0)))// EOM
+
+  macro SAS(u) ( max(real(SAOme(u) + y*u#v*SAfv2(u)/(SAkap*SAdist)^2.0), real(SAcs*SAOme(u))) ) // EOM
+  macro SASp(u, ik, du) ( 
+    (real(SAOme(u) + y*u#v*SAfv2(u)/(SAkap*SAdist)^2.0) > real(SAcs*SAOme(u)))*(SAOmep(u, ik, du) + y*(du#v*SAfv2(u) + u#v*SAfv2p(u, du))/(SAkap*SAdist)^2.0)
+  + (real(SAOme(u) + y*u#v*SAfv2(u)/(SAkap*SAdist)^2.0) <= real(SAcs*SAOme(u)))*SAcs*SAOmep(u, ik, du)
+  ) // EOM
+
+  macro SAfv2(u) (1.0 - u#v/(params["1/Re"] + u#v*SAfv1(u))) // EOM
+  macro SAfv2p(u, du) ( (u#v^2.0*SAfv1p(u, du) - params["1/Re"]*du#v)/(params["1/Re"] + u#v*SAfv1(u))^2.0 ) // EOM
+
+  macro SAfw(u) (SAg(u)*((1.0 + SAcw3^6.0)/(SAg(u)^6.0 + SAcw3^6))^(1.0/6.0)) // EOM
+  macro SAfwp(u, ik, du) ( SAgp(u, ik, du)*(((1.0 + SAcw3^6.0)/(SAg(u)^6.0 + SAcw3^6))^(1.0/6.0) - SAg(u)^6.0*((1.0 + SAcw3^6.0)/(SAg(u)^6.0 + SAcw3^6))^(-5.0/6.0)*((1.0 + SAcw3^6.0)/(SAg(u)^6.0 + SAcw3^6)^2.0)) ) // EOM
+
+  macro SAg(u) (SAr(u) + SAcw2*(SAr(u)^6.0 - SAr(u))) // EOM
+  macro SAgp(u, ik, du) ((1.0 + SAcw2*(6.0*SAr(u)^5.0 - 1.0))*SArp(u, ik, du)) // EOM
+
+  macro SAr(u) (min(real(y*u#v/(SAS(u)*(SAkap*SAdist)^2.0)), 10.0)) // EOM
+  macro SArp(u, ik, du) ( (real(y*u#v/(SAS(u)*(SAkap*SAdist)^2.0))<10.0)*y*(du#v/(SAS(u)*(SAkap*SAdist)^2.0) - u#v*SASp(u, ik, du)/(SAS(u)*SAkap*SAdist)^2.0) ) // EOM
+
+  macro SAOme(u) ( max(real(sqrt((y*dy(u#z) + u#z)^2.0 + (y*dx(u#z))^2.0 + (y*(dx(u#y) - dy(u)))^2.0)), y*1.0e-12) ) // EOM
+  macro SAOmep(u, ik, du) ( ((y*dy(u#z) + u#z)*(y*dy(du#z) + du#z - (ik)*du#y) + (-y*dx(u#z))*((ik)*du - y*dx(du#z)) + (y*(dx(u#y) - dy(u)))*(y*(dx(du#y) - dy(du))))/SAOme(u) ) // EOM
+
+// Boundary conditions
+  macro Uinlet tanh(6.0*(1.0 - y^2.0)) //EOM
+  macro Ucoflow 2.0*0.05*(y - 1.0001)/18.9999*(1.0 - 0.5*(y - 1.0001)/18.9999) //EOM
+
+  macro BoundaryConditions(u, U)
+    on(BClat, BCin2, u = U - Ucoflow, u#y = U#y, u#z = U#z, u#v = U#v - 1.0e-6)
+    + on(BCin1, u = U - Uinlet, u#y = U#y, u#z = U#z - params["S"]*y*Uinlet, u#v = U#v - 1.0e-6)
+    + on(BCwall, u = U, u#y = U#y, u#z = U#z, u#v = U#v)
+    + on(BCaxis, u#y = U#y, u#z = U#z)
+  // EOM
+  macro HomBoundaryConditions(u)
+    on(BCwall, BClat, BCin1, BCin2, u = 0, u#y = 0, u#z = 0, u#v = 0)
+    + on((abs(int(sym(0))) != 1)*BCaxis, u#y = 0, u#z = 0)
+    + on((abs(int(sym(0))) >  0)*BCaxis, u = 0)
+  // EOM
+// RESIDUAL OPERATOR
+  varf vR(defu(dum), defu(v))
+    = int2d(Th)(
+      vv*(ugradf(ub, 0, ubv) - SAcb1*SAS(ub)*max(ubv, 0.0) + y*SAcw1*SAfw(ub)*(max(ubv, 0.0)/SAdist)^2.0) 
+      + ((params["1/Re"] + max(ubv, 0.0))*diff(0, vv, 0, ubv) - vv*SAcb2*diff(0, ubv, 0, ubv)*(ubv>=0))/SAsig
+      + ugradu(v, ub, 0, ub) - div(0, v)*ubp + (params["1/Re"] + max(ubv, 0.0)*SAfv1(ub))*visc(0, v, 0, ub)
+      - vp*div(0, ub)
+    )
+    + BoundaryConditions(dum, ub);
+
+// JACOBIAN OPERATOR
+  varf vJ(defu(dum), defu(v))
+    = int2d(Th)(
+      iomega*( fdotg(vv, umv) + vdotu(v, um) )
+      + vv*(ugradf(ub, ik(0), umv) + ugradf(um, 0, ubv) - SAcb1*(SAS(ub)*umv + SASp(ub, ik(0), um)*ubv)*(ubv>0)
+      + y*SAcw1*max(ubv, 0.0)*(2.0*SAfw(ub)*umv + SAfwp(ub, ik(0), um)*ubv)/(SAdist^2.0))
+      + ((params["1/Re"] + max(ubv, 0.0))*diff(-ik(0), vv, ik(0), umv) + (ubv>0)*umv*diff(-ik(0), vv, 0, ubv) - 2.0*vv*SAcb2*diff(0, ubv, ik(0), umv)*(ubv>=0))/SAsig
+      + ugradu(v, um, 0, ub) + ugradu(v, ub, ik(0), um) - div(-ik(0), v)*ump + (params["1/Re"] + max(ubv, 0.0)*SAfv1(ub))*visc(-ik(0), v, ik(0), um) + (ubv>0)*(umv*SAfv1(ub) + ubv*SAfv1p(ub, um))*visc(-ik(0), v, 0, ub)
+      - vp*div(ik(0), um)
+    )
+    + int2d(Th)(
+      iomega*( fdotg(vv, dumv) + vdotu(v, dum) )
+      + vv*(ugradf(ub, ik(0), dumv) + ugradf(dum, 0, ubv) - SAcb1*(SAS(ub)*dumv + SASp(ub, ik(0), dum)*ubv)*(ubv>0)
+      + y*SAcw1*max(ubv, 0.0)*(2.0*SAfw(ub)*dumv + SAfwp(ub, ik(0), dum)*ubv)/(SAdist^2.0))
+      + ((params["1/Re"] + max(ubv, 0.0))*diff(-ik(0), vv, ik(0), dumv) + (ubv>0)*dumv*diff(-ik(0), vv, 0, ubv) - 2.0*vv*SAcb2*diff(0, ubv, ik(0), dumv)*(ubv>=0))/SAsig
+      + ugradu(v, dum, 0, ub) + ugradu(v, ub, ik(0), dum) - div(-ik(0), v)*dump + (params["1/Re"] + max(ubv, 0.0)*SAfv1(ub))*visc(-ik(0), v, ik(0), dum) + (ubv>0)*(dumv*SAfv1(ub) + ubv*SAfv1p(ub, dum))*visc(-ik(0), v, 0, ub)
+      - vp*div(ik(0), dum)
+    )
+    + HomBoundaryConditions(dum);
+
+// MASS OPERATOR
+  varf vM(defu(dum), defu(v))
+    = int2d(Th)( fdotg(vv, dumv) + vdotu(v, dum) )
+    + int2d(Th)( fdotg(vv, umv) + vdotu(v, um) )
+    + HomBoundaryConditions(dum);
+
+// FORCING/RESPONSE OPERATORS
+  varf vMq(defu(dum), defu(v))
+    = int2d(Th)( vdotu(v, dum) );
+
+  varf vMf(deff(fm), deff(v))
+    = int2d(Th)( vdotu(v, fm) );
+
+  varf vP(deff(fm), defu(v))
+    = int2d(Th)( vdotu(v, fm) );
+
+// HESSIAN OPERATOR
+  varf vH(defu(dum), defu(v))
+    = HomBoundaryConditions(dum);
+
+// TRESSIAN OPERATOR
+  varf vT(defu(dum), defu(v))
+    = HomBoundaryConditions(dum);
