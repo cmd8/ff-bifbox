@@ -195,15 +195,15 @@ set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type sc
 set(Ja, prefix = "fieldsplit_0_", setup = 1, parent = Jaa);
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_fieldsplit_0_", parent = Ja);
 // PREDICTOR
-real[int] qa;
-ChangeNumbering(J, ub[], qa);
+real[int] qa0;
+ChangeNumbering(J, ub[], qa0);
 ChangeNumbering(J, um[], qm);
 ChangeNumbering(J, uma[], qma);
 ChangeNumbering(J, uma[], qma, inverse = true);
 if(mpirank == 0) {
-  qa.resize(Jaa.n);
-  qa(qa.n-2) = lambda1;
-  qa(qa.n-1) = lambda2;
+  qa0.resize(Jaa.n);
+  qa0(qa0.n-2) = lambda1;
+  qa0(qa0.n-1) = lambda2;
 }
 {
   updatelambda(param, lambda1 + eps);
@@ -251,11 +251,11 @@ if(mpirank == 0) {
   beta0 = beta;
 }
 while (!stopflag){
-  real[int] qa0 = qa;
-  real h, hl = (yqP'*yqP);
+  real h, hl = (yqP0'*yqP0);
   mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
   h = h0/sqrt(h + 1.0);
-  qa(0:Ja.n-1) -= (h*yqP);
+  real[int] qa = qa0;
+  qa(0:Ja.n-1) -= (h*yqP0);
   if (mpirank == 0) {
     qa(qa.n-1) += h;
     lambda1 = qa(qa.n-2);
@@ -476,6 +476,7 @@ while (!stopflag){
     Mq = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, Mq, pP);
     yqP0 = yqP;
+    qa0 = qa;
     alpha0 = alpha[paramnames[0]];
     beta0 = beta;
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
@@ -489,6 +490,5 @@ while (!stopflag){
       if(acos(abs(cosalpha)) >= anglemax) cout << "\tAngle exceeds " << (anglemax*180./pi) << " degrees." << endl;
     }
     h0 /= fmax;
-    qa = qa0;
   }
 }

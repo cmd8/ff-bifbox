@@ -165,11 +165,11 @@ set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type sch
                 + " -prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", setup = 1);
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent = Ja);
 // PREDICTOR
-real[int] qa;
-ChangeNumbering(J, ub[], qa);
+real[int] qa0;
+ChangeNumbering(J, ub[], qa0);
 if(mpirank == 0) {
-  qa.resize(J.n+1);
-  qa(qa.n-1) = lambda;
+  qa0.resize(J.n+1);
+  qa0(qa0.n-1) = lambda;
 }
 broadcast(processor(0), lambda);
 {
@@ -185,11 +185,11 @@ broadcast(processor(0), lambda);
   yqP0 = yqP;
 }
 while (!stopflag){
-  real[int] qa0 = qa;
-  real h, hl = (yqP'*yqP);
+  real h, hl = (yqP0'*yqP0);
   mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
   h = h0/sqrt(h + 1.0);
-  qa(0:J.n-1) -= (h*yqP);
+  real[int] qa = qa0;
+  qa(0:J.n-1) -= (h*yqP0);
   if (mpirank == 0) {
     qa(qa.n-1) += h; // -= (-1.0*h)
     lambda = qa(qa.n-1);
@@ -295,6 +295,7 @@ while (!stopflag){
     savebase(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, ((count % savecount == 0) || forcesave || stopflag), true);
     forcesave = false;
     yqP0 = yqP;
+    qa0 = qa;
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
   }
   else {
@@ -306,6 +307,5 @@ while (!stopflag){
       if(acos(abs(cosalpha)) >= anglemax) cout << "\tAngle exceeds " << (anglemax*180./pi) << " degrees." << endl;
     }
     h0 /= fmax;
-    qa = qa0;
   }
 }
