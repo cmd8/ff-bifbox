@@ -31,8 +31,9 @@ real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 0.5);
 real deltamax = getARGV("-dmax", 4.0);
 real anglemax = getARGV("-amax", 30.)*pi/180.0;
-int monotone = getARGV("-mono", 1);
+real monotone = getARGV("-mono", 1.0);
 real eps = getARGV("-eps", 1.0e-7);
+bool stricttangent = bool(getARGV("-stricttangent", 1));
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic");
 int refactor = getARGV("-refact", snesmaxit);
@@ -108,56 +109,51 @@ sym = 0;
 real[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 real iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
-bool adapt = false;
+bool adaptflag, adapt = false;
 if(meshout != "")  adapt = true;  // if output meshfile is given, adapt mesh
 meshout = meshin; // if no adaptation
 // Build bordered block matrix from only Mat components
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Mat Ja = [[J, JlPM], [yqPM', -1.0]]; // make dummy Jacobian
-real[int] R(ub[].n), yqP(J.n), yqP0(J.n), qap(Ja.n);
-int it, internalit, adaptflag;
-real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta;
+real[int] R(ub[].n), yqP(J.n), yqP0(J.n);
+int ret, it;
+real f, kappa, cosalpha, res, delta, maxdelta;
 // FUNCTIONS
-  func real[int] funcRa(real[int]& qa) {
+  func PetscScalar[int] funcRa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
       R = vR(0, XMh, tgv = -1);
-      real[int] Ra;
+      PetscScalar[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       if(mpirank == 0) {
         Ra.resize(J.n+1); // Append 0 to residual vector on proc 0
         Ra(Ra.n-1) = 0.0;
       }
-      StepAdaptMonitors(Ra, qa, qap, yqP, yqP0);
-      if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << (it == 0 ? (",\th0 = " + h0 ) : (",\t||dx|| = " + delta + ",\tangle = " + (sign(cosalpha)*acos(abs(cosalpha))*180./pi))) << ",\t" + param + " = " << lambda << "." << endl;
       return Ra;
   }
 
-  func int funcJa(real[int]& qa) {
-      ++it;
-      internalit = 0;
-      qap = qa;
-      resp = res;
-      deltap = delta;
+  func int funcJa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda + eps);
-      real[int] Jl = vR(0, XMh, tgv = -1);
+      PetscScalar[int] Jl = vR(0, XMh, tgv = -1);
       updatelambda(param, lambda);
       Jl -= R;
       Jl /= eps;
       if (it == 1 | refactor >= it) J = vJ(XMh, XMh, tgv = -1);
       ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
-      matrix tempPms = [[yqP]]; // dense array to sparse matrix
+      matrix<PetscScalar> tempPms = [[yqP]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       KSPSolve(J, yqP, yqP); // compute tangent vector in PETSc numbering
       tempPms = [[yqP]]; // dense array to sparse matrix
       ChangeOperator(yqPM, tempPms, parent = Ja); // send to Mat
       return 0;
   }
+  
+  ConvergenceCheck(param + " = " + lambda);
 // set up Mat parameters
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
 set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full"
@@ -171,19 +167,9 @@ if(mpirank == 0) {
   qa0.resize(J.n+1);
   qa0(qa0.n-1) = lambda;
 }
-broadcast(processor(0), lambda);
-{
-  updatelambda(param, lambda + eps);
-  real[int] Jl = vR(0, XMh, tgv = -1);
-  updatelambda(param, lambda);
-  R = vR(0, XMh, tgv = -1);
-  Jl -= R;
-  Jl /= eps;
-  J = vJ(XMh, XMh, tgv = -1);
-  ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
-  KSPSolve(J, yqP, yqP);
-  yqP0 = yqP;
-}
+R = vR(0, XMh, tgv = -1);
+funcJa(qa0);
+yqP0 = yqP;
 while (!stopflag){
   real h, hl = (yqP0'*yqP0);
   mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
@@ -197,11 +183,8 @@ while (!stopflag){
   broadcast(processor(0), lambda);
   updatelambda(param, lambda);
   // CORRECTOR LOOP
-  int ret;
-  it = 0;
-  internalit = 0;
-  adaptflag = 0;
-  SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
+  adaptflag = false;
+  SNESSolve(Ja, funcJa, funcRa, qa, convergence = funcConvergence, reason = ret,
             sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_converged_reason -options_left no -snes_max_it " + snesmaxit); // solve nonlinear problem with SNES
   if (ret > 0) {
     ++count;
@@ -276,11 +259,8 @@ while (!stopflag){
       yqP0.resize(J.n);
       yqP0 = yqP;
       qa0.resize(qa.n);
-      qap.resize(qa.n);
-      it = 0;
-      internalit = 0;
-      adaptflag = 1;
-      SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
+      adaptflag = true;
+      SNESSolve(Ja, funcJa, funcRa, qa, convergence = funcConvergence, reason = ret,
                 sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_converged_reason -options_left no"); // solve nonlinear problem with SNES
       assert(ret > 0);
       if(mpirank==0) { // Save adapted mesh
@@ -294,18 +274,10 @@ while (!stopflag){
     updatelambda(param, lambda);
     savebase(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, ((count % savecount == 0) || forcesave || stopflag), true);
     forcesave = false;
+    if (stricttangent) funcJa(qa);
     yqP0 = yqP;
     qa0 = qa;
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
   }
-  else {
-    if (mpirank == 0){
-      if(res*(monotone!=0) >= resp) cout << "\tResidual norm failed to decrease. Reattempting with smaller step." << endl;
-      if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;
-      if(it >= snesmaxit) cout << "\tFailed to converge within limit of " + snesmaxit + " iterations. Reattempting with smaller step." << endl;
-      if(maxdelta >= deltamax) cout << "\tStep size exceeds " << deltamax << "." << endl;
-      if(acos(abs(cosalpha)) >= anglemax) cout << "\tAngle exceeds " << (anglemax*180./pi) << " degrees." << endl;
-    }
-    h0 /= fmax;
-  }
+  else h0 /= fmax;
 }

@@ -36,9 +36,10 @@ real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 1.0);
 real deltamax = getARGV("-dmax", 4.0);
 real anglemax = getARGV("-amax", 30.)*pi/180.0;
-int monotone = getARGV("-mono", 0);
+real monotone = getARGV("-mono", 0.0);
 real eps = getARGV("-eps", 1.0e-7);
 real eps2 = getARGV("-eps2", 1.0e-7);
+bool stricttangent = bool(getARGV("-stricttangent", 1));
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 real[int] sym1(sym.n);
@@ -104,7 +105,7 @@ createMatu(Th, J, Pk);
 complex[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 complex iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
-bool adapt = false;
+bool adaptflag, adapt = false;
 if(meshout != "") adapt = true;  // if output meshfile is given, adapt mesh
 meshout = meshin; // if no adaptation
 // Build bordered block matrix from only Mat components
@@ -112,12 +113,12 @@ Mat<complex> JlPM(J.n, mpirank == 0 ? (2-zerofreq) : 0), gqPM(J.n, mpirank == 0 
 Mat<complex> JlPMa(J.n + (mpirank == 0 ? (2-zerofreq) : 0), mpirank == 0 ? 1 : 0), yqPMa(J.n + (mpirank == 0 ? (2-zerofreq) : 0), mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]], Jaa = [[Ja, JlPMa], [yqPMa', -1.0]]; // make dummy Jacobian
 
-complex[int] R(um[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(Ja.n), yqP0(Ja.n), qap(Jaa.n);
-int it, internalit, adaptflag;
-real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, omega0;
+complex[int] R(um[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n), yqP(Ja.n), yqP0(Ja.n);
+int ret, it;
+real f, kappa, cosalpha, res, delta, maxdelta, omega0;
 complex alpha0, beta0;
 // FUNCTIONS
-  func complex[int] funcRa(complex[int]& qa) {
+  func PetscScalar[int] funcRa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
         lambda1 = real(qa(qa.n-(3-zerofreq))); // Extract parameter value from state vector on proc 0
@@ -131,7 +132,7 @@ complex alpha0, beta0;
       updatelambda(param2, lambda2);
       sym = 0;
       R = vR(0, XMh, tgv = -1);
-      complex[int] Ra;
+      PetscScalar[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       sym = sym1;
       iomega = 1i*omega;
@@ -139,7 +140,7 @@ complex alpha0, beta0;
       J = vJ(XMh, XMh, tgv = -2);
       KSPSolve(J, pP, qm);
       KSPSolveHermitianTranspose(J, qP, qma);
-      complex ginv, ginvl = (qP'*qm);
+      PetscScalar ginv, ginvl = (qP'*qm);
       mpiAllReduce(ginvl, ginv, mpiCommWorld, mpiSUM);
       qm /= ginv; // rescale direct mode
       qma /= conj(ginv); // rescale adjoint mode
@@ -149,17 +150,10 @@ complex alpha0, beta0;
         if (!zerofreq) Ra(Ra.n-2) = imag(1.0/ginv);
         Ra(Ra.n-1) = 0.0;
       }
-      StepAdaptMonitors(Ra, qa, qap, yqP, yqP0);
-      if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << (it == 0 ? (",\th0 = " + h0) : (",\t||dx|| = " + delta + ",\tangle = " + (sign(cosalpha)*acos(abs(cosalpha))*180./pi))) << ",\t" + param + " = " << lambda1 << ",\t" + param2 + " = " << lambda2 << ",\tomega = " << omega << "." << endl;
       return Ra;
   }
 
-  func int funcJa(complex[int]& qa) {
-      ++it;
-      internalit = 0;
-      qap = qa;
-      resp = res;
-      deltap = delta;
+  func int funcJa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
         lambda1 = real(qa(qa.n-(3-zerofreq))); // Extract parameter value from state vector on proc 0
@@ -176,28 +170,28 @@ complex alpha0, beta0;
       updatelambda(param, lambda1 + eps);
       updatelambda(param2, lambda2);
       sym = 0;
-      complex[int] Jl1 = vR(0, XMh, tgv = -1);
+      PetscScalar[int] Jl1 = vR(0, XMh, tgv = -1);
       sym = sym1;
-      complex[int] Hl1 = vJ(0, XMh, tgv = -10);
+      PetscScalar[int] Hl1 = vJ(0, XMh, tgv = -10);
       updatelambda(param, lambda1);
       updatelambda(param2, lambda2 + eps2);
       sym = 0;
-      complex[int] Jl2 = vR(0, XMh, tgv = -1);
+      PetscScalar[int] Jl2 = vR(0, XMh, tgv = -1);
       sym = sym1;
-      complex[int] Hl2 = vJ(0, XMh, tgv = -10);
+      PetscScalar[int] Hl2 = vJ(0, XMh, tgv = -10);
       updatelambda(param2, lambda2);
       Jl1 -= R;
       Jl2 -= R;
       Jl1 /= eps;
       Jl2 /= eps2;
-      complex[int] temp1(J.n), temp2(J.n), bm = vJ(0, XMh, tgv = -10);
+      PetscScalar[int] temp1(J.n), temp2(J.n), bm = vJ(0, XMh, tgv = -10);
       Hl1 -= bm;
       Hl2 -= bm;
       Hl1 /= eps;
       Hl2 /= eps2;
       ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
       temp1.im = 0.0;
-      matrix<complex> tempPms;
+      matrix<PetscScalar> tempPms;
       if(zerofreq) tempPms = [[temp1]];
       else tempPms = [[temp1, 0]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
@@ -210,17 +204,17 @@ complex alpha0, beta0;
       if(zerofreq) tempPms = [[temp1]];
       else tempPms = [[temp1, temp2]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-      complex gl1 = J(uma[], Hl1);
+      PetscScalar gl1 = J(uma[], Hl1);
       if(zerofreq) tempPms = [[real(gl1)]];
       else {
         bm = vM(0, XMh, tgv = -10);
-        complex gw = J(uma[], bm);
+        PetscScalar gw = J(uma[], bm);
         tempPms = [[real(gl1), -imag(gw)], [imag(gl1), real(gw)]];
       }
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       ChangeNumbering(J, Jl2, temp1); // FreeFEM to PETSc
       yqP(0:J.n-1) = temp1;
-      complex gl2 = J(uma[], Hl2);
+      PetscScalar gl2 = J(uma[], Hl2);
       if(mpirank == 0) {
         yqP(yqP.n-(2-zerofreq)) = real(gl2);
         if(!zerofreq) yqP(yqP.n-1) = imag(gl2);
@@ -237,6 +231,8 @@ complex alpha0, beta0;
       ChangeOperator(yqPMa, tempPms, parent = Jaa); // send to Mat
       return 0;
   }
+
+  ConvergenceCheck(param + " = " + lambda1 + ",\t" + param2 + " = " + lambda2 + ",\tomega = " + omega);
 // set up Mat parameters
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
 set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full"
@@ -258,85 +254,19 @@ if(mpirank == 0) {
   if(!zerofreq) qa0(qa0.n-2) = omega;
   qa0(qa0.n-1) = lambda2;
 }
-{
-  sym = 0;
-  R = vR(0, XMh, tgv = -1);
-  sym = sym1;
-  ik.im = sym1;
-  iomega = 1i*omega;
-  updatelambda(param, lambda1 + eps);
-  updatelambda(param2, lambda2);
-  sym = 0;
-  complex[int] Jl1 = vR(0, XMh, tgv = -1);
-  sym = sym1;
-  complex[int] Hl1 = vJ(0, XMh, tgv = -10);
-  updatelambda(param, lambda1);
-  updatelambda(param2, lambda2 + eps2);
-  sym = 0;
-  complex[int] Jl2 = vR(0, XMh, tgv = -1);
-  sym = sym1;
-  complex[int] Hl2 = vJ(0, XMh, tgv = -10);
-  updatelambda(param2, lambda2);
-  Jl1 -= R;
-  Jl2 -= R;
-  Jl1 /= eps;
-  Jl2 /= eps2;
-  complex[int] temp1(J.n), temp2(J.n), bm = vJ(0, XMh, tgv = -10);
-  Hl1 -= bm;
-  Hl2 -= bm;
-  Hl1 /= eps;
-  Hl2 /= eps2;
-  ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
-  temp1.im = 0.0;
-  matrix<complex> tempPms;
-  if(zerofreq) tempPms = [[temp1]];
-  else tempPms = [[temp1, 0]]; // dense array to sparse matrix
-  ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-  sym = 0;
-  H = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
-  sym = sym1;
-  MatMultHermitianTranspose(H, qma, temp1); // gqr,i
-  if(!zerofreq) temp2.re = -temp1.im;
-  temp1.im = 0.0;
-  if(zerofreq) tempPms = [[temp1]];
-  else tempPms = [[temp1, temp2]]; // dense array to sparse matrix
-  ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-  complex gl1 = J(uma[], Hl1);
-  if (zerofreq) tempPms = [[real(gl1)]];
-  else {
-    bm = vM(0, XMh, tgv = -10);
-    complex gw = J(uma[], bm);
-    tempPms = [[real(gl1), -imag(gw)], [imag(gl1), real(gw)]];
-  }
-  ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-  ChangeNumbering(J, Jl2, temp1); // FreeFEM to PETSc
-  yqP(0:J.n-1) = temp1;
-  complex gl2 = J(uma[], Hl2);
-  if (mpirank == 0) {
-    yqP(yqP.n-(2-zerofreq)) = real(gl2);
-    if(!zerofreq) yqP(yqP.n-1) = imag(gl2);
-  }
-  tempPms = [[yqP]]; // dense array to sparse matrix
-  ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
-  ik = 0.0;
-  iomega = 0.0;
-  sym = 0;
-  J = vJ(XMh, XMh, tgv = -1);
-  sym = sym1;
-  KSPSolve(Ja, yqP, yqP);
-  tempPms = [[yqP]]; // dense array to sparse matrix
-  ChangeOperator(yqPMa, tempPms, parent = Jaa); // send to Mat
-  ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-  bm = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, bm, qP);
-  ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-  bm = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, bm, pP);
-  yqP0 = yqP;
-  omega0 = omega;
-  alpha0 = alpha[paramnames[0]];
-  beta0 = beta;
-}
+sym = 0;
+R = vR(0, XMh, tgv = -1);
+funcJa(qa0);
+ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+R = vM(0, XMh, tgv = -10);
+ChangeNumbering(J, R, qP);
+ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
+R = vM(0, XMh, tgv = -10);
+ChangeNumbering(J, R, pP);
+yqP0 = yqP;
+omega0 = omega;
+alpha0 = alpha[paramnames[0]];
+beta0 = beta;
 while (!stopflag){
   real h, hl = real(yqP0'*yqP0);
   mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
@@ -355,11 +285,8 @@ while (!stopflag){
   updatelambda(param, lambda1);
   updatelambda(param2, lambda2);
   // CORRECTOR LOOP
-  int ret;
-  it = 0;
-  internalit = 0;
-  adaptflag = 0;
-  SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
+  adaptflag = false;
+  SNESSolve(Jaa, funcJa, funcRa, qa, convergence = funcConvergence, reason = ret,
             sparams = "-snes_linesearch_type " + sneslinesearchtype + " -options_left no -snes_converged_reason -snes_max_it " + snesmaxit); // solve nonlinear problem with SNES
   if (ret > 0) {
     ++count;
@@ -505,11 +432,8 @@ while (!stopflag){
       yqP0.resize(Ja.n);
       yqP0 = yqP;
       qa0.resize(qa.n);
-      qap.resize(qa.n);
-      it = 0;
-      internalit = 0;
-      adaptflag = 1;
-      SNESSolve(Jaa, funcJa, funcRa, qa, reason = ret,
+      adaptflag = true;
+      SNESSolve(Jaa, funcJa, funcRa, qa, convergence = funcConvergence, reason = ret,
                 sparams = "-snes_linesearch_type " + sneslinesearchtype + " -options_left no -snes_converged_reason"); // solve nonlinear problem with SNES
       assert(ret > 0);
       if(mpirank==0) { // Save adapted mesh
@@ -682,6 +606,7 @@ while (!stopflag){
     ChangeNumbering(J, um[], qm, inverse = true);
     savehopf(fileout + "_" + count + (forcesave ? "specialpt" : ""), fileout, meshout, sym1, omega, alpha, beta, ((count % savecount == 0) || forcesave || stopflag), true);
     forcesave = false;
+    if (stricttangent) funcJa(qa);
     ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     Mq = vM(0, XMh, tgv = -10);
@@ -695,14 +620,5 @@ while (!stopflag){
     alpha0 = alpha[paramnames[0]];
     beta0 = beta;
   }
-  else {
-    if(mpirank == 0){
-      if(res*(monotone!=0) >= resp) cout << "\tResidual norm failed to decrease. Reattempting with smaller step." << endl;
-      if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;
-      if(it >= snesmaxit) cout << "\tFailed to converge within limit of " + snesmaxit + " iterations. Reattempting with smaller step." << endl;
-      if(maxdelta >= deltamax) cout << "\tStep size exceeds " << deltamax << "." << endl;
-      if(acos(abs(cosalpha)) >= anglemax) cout << "\tAngle exceeds " << (anglemax*180./pi) << " degrees." << endl;
-    }
-    h0 /= fmax;
-  }
+  else h0 /= fmax;
 }

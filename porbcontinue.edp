@@ -33,8 +33,9 @@ real fmax = getARGV("-fmax", 2.0);
 real kappamax = getARGV("-kmax", 0.5);
 real deltamax = getARGV("-dmax", 4.0);
 real anglemax = getARGV("-amax", 30.)*pi/180.0;
-int monotone = getARGV("-mono", 1);
+real monotone = getARGV("-mono", 1.0);
 real eps = getARGV("-eps", 1e-7);
+bool stricttangent = bool(getARGV("-stricttangent", 1));
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 int Nh = getARGV("-Nh", 0); //if 0 will try to get from file, otherwise fail
@@ -114,7 +115,7 @@ createMatu(Th, J, Pk);
 complex[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 complex iomega, iomega2, iomega3;
 include "eqns.idp"
-bool adapt = false;
+bool adaptflag, adapt = false;
 if(meshout != "")  adapt = true;  // if output meshfile is given, adapt mesh
 meshout = meshin; // if no adaptation
 // Build bordered block matrix from only Mat components
@@ -124,11 +125,11 @@ else JHBa = [[JHB, dwHB],[dwHB', 0]];
 Mat JlPMa(JHBa.n, mpirank == 0 ? 1 : 0), yqPMa(JHBa.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Mat JHBaa = [[JHBa, JlPMa],[yqPMa', -1.0]]; // make dummy Jacobian
 
-real[int] RHB(JHB.n), yqP(JHBa.n), yqP0(JHBa.n), qap(JHBaa.n);
-int it, internalit, adaptflag;
-real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, omega0;
+real[int] RHB(JHB.n), yqP(JHBa.n), yqP0(JHBa.n);
+int ret, it;
+real f, kappa, cosalpha, res, delta, maxdelta, omega0;
 // FUNCTIONS
-  func real[int] funcRa(real[int]& qPETSc) {
+  func PetscScalar[int] funcRa(PetscScalar[int]& qPETSc) {
       ChangeNumbering(J, ub[], qPETSc(0:J.n-1), inverse = true, exchange = true);
       for (int harm = 0; harm < Nh; harm++)
         ChangeNumbering([J, J], [uh(:, harm).re, uh(:, harm).im], qPETSc((1+2*harm)*J.n:(3+2*harm)*J.n-1), inverse = true, exchange = true);
@@ -139,24 +140,17 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, omega0;
       broadcast(processor(0), omega);
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
-      real[int] RPETSc(qPETSc.n);
+      PetscScalar[int] RPETSc(qPETSc.n);
       ResidualHB(RHB, J, ub, uh, sym1, omega);
       RPETSc = RHB;
       if(mpirank == 0){ 
         if(!zerofreq) RPETSc(RPETSc.n-2) = 0.0;
         RPETSc(RPETSc.n-1) = 0.0;
       }
-      StepAdaptMonitors(RPETSc, qPETSc, qap, yqP, yqP0);
-      if(mpirank == 0) cout << "  " + text1 + ":\t||R|| = " << res << (it == 0 ? (",\th0 = " + h0) : (",\t||dx|| = " + delta + ",\tangle = " + (sign(cosalpha)*acos(abs(cosalpha))*180./pi))) << ",\t" + param + " = " << lambda << ",\tomega = " << omega << "." << endl;
       return RPETSc;
   }
 
-  func int funcJa(real[int]& qPETSc) {
-      ++it;
-      internalit = 0;
-      qap = qPETSc;
-      resp = res;
-      deltap = delta;
+  func int funcJa(PetscScalar[int]& qPETSc) {
       ChangeNumbering(J, ub[], qPETSc(0:J.n-1), inverse = true, exchange = true);
       for (int harm = 0; harm < Nh; harm++)
         ChangeNumbering([J, J], [uh(:, harm).re, uh(:, harm).im], qPETSc((1+2*harm)*J.n:(3+2*harm)*J.n-1), inverse = true, exchange = true);
@@ -167,7 +161,7 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, omega0;
       broadcast(processor(0), omega);
       broadcast(processor(0), lambda);
       updatelambda(param, lambda + eps);
-      real[int] JlHB(RHB.n);
+      PetscScalar[int] JlHB(RHB.n);
       ResidualHB(JlHB, J, ub, uh, sym1, omega);
       updatelambda(param, lambda);
       JlHB -= RHB;
@@ -175,7 +169,7 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, omega0;
       if (it == 1 | refactor >= it) JacobianHB(JHB, J, ub, uh, sym1, omega);
       if (zerofreq) JHBa = JHB;
       else {
-        real[int] Mtemp = 0, MqHB((1+2*Nh)*J.n);
+        PetscScalar[int] Mtemp = 0, MqHB((1+2*Nh)*J.n);
         for (int nh = 0; nh < Nh; nh++) {
           sym = (1+nh)*sym1;
           um[] = 1i*(1+nh)*uh(:, nh);
@@ -183,20 +177,22 @@ real f, kappa, cosalpha, res, resp, delta, deltap, maxdelta, omega0;
           ChangeNumbering([J, J], [Mc.re, Mc.im], Mtemp);
           MqHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = Mtemp;
         }
-        matrix tempPms = [[MqHB]];
+        matrix<PetscScalar> tempPms = [[MqHB]];
         ChangeOperator(dwHB, tempPms, parent = JHBa); // send to Mat
       }
       if (mpirank == 0 && !zerofreq) {
         JlHB.resize(JHBa.n);
         JlHB(JlHB.n-1) = 0.0;
       }
-      matrix tempPms = [[JlHB]]; // dense array to sparse matrix
+      matrix<PetscScalar> tempPms = [[JlHB]]; // dense array to sparse matrix
       ChangeOperator(JlPMa, tempPms, parent = JHBaa); // send to Mat
       KSPSolve(JHBa, JlHB, yqP); // compute tangent vector in PETSc numbering
       tempPms = [[yqP]]; // dense array to sparse matrix
       ChangeOperator(yqPMa, tempPms, parent = JHBaa); // send to Mat
       return 0;
   }
+  
+  ConvergenceCheck(param + " = " + lambda + ",\tomega = " + omega);
 // set up Mat parameters
 real[int] fieldlabels((1+2*Nh)*J.n);
 fieldlabels = 1.0;
@@ -235,32 +231,8 @@ if(mpirank == 0){
   qa0(qa0.n-1) = lambda;
 }
 if (fileext != "hopf" && fileext != "foho" && fileext != "hoho"){
-  updatelambda(param, lambda + eps);
-  real[int] Jl(JHB.n), Jltemp(JHB.n);
-  ResidualHB(Jl, J, ub, uh, sym1, omega);
-  updatelambda(param, lambda);
-  ResidualHB(Jltemp, J, ub, uh, sym1, omega);
-  Jl -= Jltemp;
-  Jl /= eps;
-  JacobianHB(JHB, J, ub, uh, sym1, omega);
-  if (zerofreq) JHBa = JHB;
-  else {
-    real[int] Mtemp = 0, MqHB((1+2*Nh)*J.n);
-    for (int nh = 0; nh < Nh; nh++) {
-      sym = (1+nh)*sym1;
-      um[] = 1i*(1+nh)*uh(:, nh);
-      complex[int] Mc = vM(0, XMh, tgv = -10);
-      ChangeNumbering([J, J], [Mc.re, Mc.im], Mtemp);
-      MqHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = Mtemp;
-    }
-    matrix tempPms = [[MqHB]];
-    ChangeOperator(dwHB, tempPms, parent = JHBa); // send to Mat
-  }
-  if (!zerofreq && mpirank == 0) {
-    Jl.resize(JHBa.n);
-    Jl(Jl.n-1) = 0.0;
-  }    
-  KSPSolve(JHBa, Jl, yqP);
+  ResidualHB(RHB, J, ub, uh, sym1, omega);
+  funcJa(qa0);
   yqP0 = yqP;
   omega0 = omega;
 }
@@ -287,11 +259,8 @@ while (!stopflag){
   broadcast(processor(0), lambda);
   updatelambda(param, lambda);
   // CORRECTOR LOOP
-  int ret;
-  it = 0;
-  internalit = 0;
-  adaptflag = 0;
-  SNESSolve(JHBaa, funcJa, funcRa, qa, reason = ret,
+  adaptflag = false;
+  SNESSolve(JHBaa, funcJa, funcRa, qa, convergence = funcConvergence, reason = ret,
             sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_converged_reason -options_left no -snes_max_it " + snesmaxit); // solve nonlinear problem with SNES
   if (ret > 0) {
     ++count;
@@ -461,11 +430,8 @@ while (!stopflag){
       yqP0.resize(JHBa.n);
       yqP0 = yqP;
       qa0.resize(qa.n);
-      qap.resize(qa.n);
-      it = 0;
-      internalit = 0;
-      adaptflag = 1;
-      SNESSolve(JHBaa, funcJa, funcRa, qa, reason = ret,
+      adaptflag = true;
+      SNESSolve(JHBaa, funcJa, funcRa, qa, convergence = funcConvergence, reason = ret,
                 sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_converged_reason -options_left no"); // solve nonlinear problem with SNES
       assert(ret > 0);
       if(mpirank==0) { // Save adapted mesh
@@ -485,18 +451,10 @@ while (!stopflag){
     updatelambda(param, lambda);
     saveporb(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, sym1, omega, Nh, ((count % savecount == 0) || forcesave || stopflag), true);
     forcesave = false;
+    if (stricttangent) funcJa(qa);
     yqP0 = yqP;
     qa0 = qa;
     omega0 = omega;
   }
-  else {
-    if (mpirank == 0){
-      if(res*(monotone!=0) >= resp) cout << "\tResidual norm failed to decrease. Reattempting with smaller step." << endl;
-      if(kappa >= kappamax) cout << "\tContraction rate exceeds " << kappamax << ". Reattempting with smaller step." << endl;
-      if(it >= snesmaxit) cout << "\tFailed to converge within limit of " + snesmaxit + " iterations. Reattempting with smaller step." << endl;
-      if(maxdelta >= deltamax) cout << "\tStep size exceeds " << deltamax << "." << endl;
-      if(acos(abs(cosalpha)) >= anglemax) cout << "\tAngle exceeds " << (anglemax*180./pi) << " degrees." << endl;
-    }
-    h0 /= fmax;
-  }
+  else h0 /= fmax;
 }
