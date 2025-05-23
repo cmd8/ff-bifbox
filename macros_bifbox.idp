@@ -127,37 +127,45 @@ power = getARGV("-power", 1.0),
 thetamax = getARGV("-thetamax", 10.0)
 //EOM
 
-macro StepAdaptMonitors(Rvec, qa, qap, yqP, yqP0)
-  real ipl = real(Rvec'*Rvec);
-  mpiAllReduce(ipl, res, mpiCommWorld, mpiSUM);
-  res = sqrt(res);
-  string text1;
-  if (!adaptflag) text1 = count + "-" + it;
-  else text1 = "A" + (count-1) + "-" + it;
-  if(internalit > 0) text1 = text1 + ">" + internalit;
-  if (it == 0){
-    kappa = 0.0;
-    maxdelta = 0.0;
-    cosalpha = 0.0;
-    delta = abs(h0);
+macro ConvergenceCheck(printtxt)
+  func int funcConvergence(int iter, real qnorm, real dqnorm, real fnorm, PetscScalar[int]& qa, PetscScalar[int]& dqa) {
+    it = iter;
+    ret = 0;
+    real resp = 0.0;
+    if (it == 0){
+      kappa = 0.0;
+      maxdelta = 0.0;
+      cosalpha = 0.0;
+      delta = abs(h0);
+    }
+    else {
+      resp = res;
+      real deltap = delta;
+      delta = dqnorm;
+      real ip1, ip1l = real(yqP0'*yqP), ip2, ip2l = real(yqP0'*yqP0), ip3, ip3l = real(yqP'*yqP);
+      mpiAllReduce(ip1l, ip1, mpiCommWorld, mpiSUM);
+      mpiAllReduce(ip2l, ip2, mpiCommWorld, mpiSUM);
+      mpiAllReduce(ip3l, ip3, mpiCommWorld, mpiSUM);
+      cosalpha = (ip1 + 1.0)/sqrt((ip2 + 1.0)*(ip3 + 1.0));
+      kappa = max(delta/deltap, kappa);
+      maxdelta = max(delta, maxdelta);
+    }
+    res = fnorm;
+    f = max(acos(abs(cosalpha))/anglemax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
+    if(mpirank == 0) cout << "  " + (adaptflag ? "A" + (count-1) : count) + "-" + it + ":\t||R|| = " + fnorm + (it == 0 ? (",\th0 = " + h0 ) : (",\t||dx|| = " + delta + ",\tangle = " + (sign(cosalpha)*acos(abs(cosalpha))*180./pi))) + ",\t" + printtxt << "." << endl;
+    if (it > 0 && !adaptflag && (f > fmax || it-1 >= snesmaxit || monotone > resp/res)){
+      ret = -12;
+      if(mpirank==0){
+        if(monotone > resp/res) cout << "\tResidual contraction factor exceeds " << monotone << "." << endl;
+        if(kappa > kappamax) cout << "\tStep contraction factor exceeds " << kappamax << "." << endl;
+        if(it > snesmaxit) cout << "\tFailed to converge within " + snesmaxit + " iterations." << endl;
+        if(maxdelta > deltamax) cout << "\tStep norm exceeds " << deltamax << "." << endl;
+        if(acos(abs(cosalpha)) > anglemax) cout << "\tTangent angle change exceeds " << (anglemax*180./pi) << " degrees." << endl;
+      }
+    }
+    return ret;
   }
-  else {
-    PetscScalar[int] qdiff = qa - qap;
-    ipl = real(qdiff'*qdiff);
-    mpiAllReduce(ipl, delta, mpiCommWorld, mpiSUM);
-    delta = sqrt(delta);
-    real ip1, ip1l = real(yqP0'*yqP), ip2, ip2l = real(yqP0'*yqP0), ip3, ip3l = real(yqP'*yqP);
-    mpiAllReduce(ip1l, ip1, mpiCommWorld, mpiSUM);
-    mpiAllReduce(ip2l, ip2, mpiCommWorld, mpiSUM);
-    mpiAllReduce(ip3l, ip3, mpiCommWorld, mpiSUM);
-    cosalpha = (ip1 + 1.0)/sqrt((ip2 + 1.0)*(ip3 + 1.0));
-    kappa = max(delta/deltap, kappa);
-    maxdelta = max(delta, maxdelta);
-  }
-  f = max(acos(abs(cosalpha))/anglemax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
-  if (it > 0 && !adaptflag && (f > fmax || it-1 >= snesmaxit || res*(monotone!=0) > resp)) Rvec(0) = NaN();
-  ++internalit;
-//EOM
+// EOM
 
 macro ResidualHB(RHB, J, ub, uh, sym1, omega) {
   sym = 0;
