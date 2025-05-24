@@ -32,7 +32,7 @@ ln -sf examples/brokof_etal_2024/settings_brokof_etal_2024.idp settings.idp
 
 ## Build initial meshes
 `ff-bifbox` uses FreeFEM for adaptive meshing during the solution process, but it needs an initial mesh to adaptively refine.
-#### CASE 1: Gmsh is installed - build initial mesh directly from .geo files
+#### CASE 1: Gmsh is installed - build initial mesh directly from `.geo` files
 ```
 FreeFem++-mpi -v 0 importgmsh.edp -gmshdir examples/brokof_etal_2024 -dir $workdir -mi duct.geo
 ```
@@ -43,12 +43,12 @@ FreeFem++-mpi -v 0 examples/brokof_etal_2024/duct.edp -mo $workdir/duct
 
 ## Perform parallel computations using `ff-bifbox`
 ### Zeroth order
-1. Compute an initial base state at Re = 200 on the created mesh from default guess
+1. Compute an initial base state at $Re=200$ on the created mesh from default guess
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -mi duct.msh -fo ignite_0 -Re 200 -Pe 70 -Ma 0.01 -gamma 1.4 -dT 5.67 -Da 1 -Ze 0 -L 1
 ```
 
-2. Gradually ignite the base flow via continuation of Da and Ze. (slow!)
+2. Gradually ignite the base flow via continuation of $Da$ and $Ze$. (slow!)
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_0.base -fo ignite_1 -Ze 1 -mo ignite_1
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_1.base -fo ignite_2 -Ze 2 -Da 2 -mo ignite_2
@@ -63,7 +63,7 @@ ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_9.base -fo ig
 ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi ignite_10.base -fo ignite -param Da -count 10 -h0 10 -maxcount -1 -scount 5 -mo ignite -paramtarget 1700 -dmax 10
 ```
 
-3. Compute Re = 200, 500, 800 base flow fields at L = 0.5, 1, 5.0. (Change `ignite_190.base` to `ignite_xxx.base` where `xxx` is the highest count value from the continuation.)
+3. Compute $Re=200$, $500$, $800$ base flow fields at $L=0.5$, $1$, $5.0$. (Change `ignite_190.base` to `ignite_xxx.base` where `xxx` is the highest count value from the continuation.)
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_190.base -fo Re200L1 -Da 1700 -mo Re200L1 -hmax 0.1
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re200L1.base -fo Re500L1 -Re 500 -mo Re500L1 -hmax 0.1
@@ -79,7 +79,7 @@ ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re500L5.base -fo Re8
 ```
 
 ### First order
-1. Compute the FTFs and forced response fields at St = 1. Note that, according to the settings file, the `-sym` argument activates the acoustic characteristic BC in this setup (it does not influence the modes' symmetry).
+1. Compute the FTFs and forced response fields at $St=1$. Note that, according to the settings file, the `-sym` argument activates the acoustic characteristic BC in this setup (it does not influence the modes' symmetry).
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -fo Re800L0p5 -mo Re800L0p5 -hmax 0.05
 ff-mpirun -np $nproc respcompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rin 0 -Rout -1 -sym 1 -omega 0 -nomega 64 -omegaf 12.6
@@ -94,7 +94,7 @@ ff-mpirun -np $nproc respcompute.edp -v 0 -dir $workdir -fi Re800L5.base -so Re8
 ff-mpirun -np $nproc respcompute.edp -v 0 -dir $workdir -fi Re800L5.base -fo Re800L5 -Rin 0 -Rout -1 -sym 1 -omega 6.28318530718 -pv 1
 ```
 
-2. Compute the eigenspectra at Re = 200, 500, 800 for L = 0.5 for various Rout values.
+2. Compute the eigenspectra at $Re=200$, $500$, $800$ for $L=0.5$ for various $R_{\text{out}}$ values.
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -fo Re200L0p5 -mo Re200L0p5 -hmax 0.05
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout 0 -sym 1 -eps_target 0.5+6i -eps_nev 50
@@ -117,7 +117,7 @@ ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so R
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi Re800L0p5.base -so Re800L0p5 -Rout -1 -sym 1 -eps_target 0.5+6i -eps_nev 50
 ```
 
-3. Perform resolvent analysis at Re = 200, 500, 800 for L = 0.5 for tuned Rout values where sigma ~ -0.45.
+3. Perform resolvent analysis at $Re=200$, $500$, $800$ for $L=0.5$ for tuned $R_{\text{out}}$ values where $\sigma\sim-0.45$.
 ```
 ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re200L0p5.base -so Re200L0p5 -Rout -0.24125 -sym 1 -omega 0.1 -omegaf 12.6 -nomega 127
 ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi Re500L0p5.base -so Re500L0p5 -Rout -0.70125 -sym 1 -omega 0.1 -omegaf 12.6 -nomega 127

@@ -31,11 +31,11 @@ ln -sf examples/fani_etal_2018/settings_fani_etal_2018.idp settings.idp
 
 ## Build initial meshes
 `ff-bifbox` uses FreeFEM for adaptive meshing during the solution process, but it needs an initial mesh to adaptively refine.
-#### CASE 1: Gmsh is installed - build initial mesh directly from .geo files
+#### CASE 1: Gmsh is installed - build initial mesh directly from `.geo` files
 ```
 FreeFem++-mpi -v 0 importgmsh.edp -gmshdir examples/fani_etal_2018 -dir $workdir -mi cylinder.geo
 ```
-Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
+Note: since no `-mo` argument is specified, the output files (`.msh`) inherit the names of their parents (`.geo`).
 #### CASE 2: Gmsh is not installed - build initial mesh using BAMG in FreeFEM
 ```
 FreeFem++-mpi -v 0 examples/fani_etal_2018/cylinder.edp -mo $workdir/cylinder
@@ -43,29 +43,29 @@ FreeFem++-mpi -v 0 examples/fani_etal_2018/cylinder.edp -mo $workdir/cylinder
 
 ## Perform parallel computations using `ff-bifbox`
 ### Zeroth order
-1. Compute base state on the created mesh at Re = 10 from default guess
+1. Compute base state on the created mesh at $Re=10$ from default guess
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -mi cylinder.msh -fo cylinder -1/Re 0.1 -1/Pr 1.38888888889 -Ma^2 0.04 -gamma 1.4
 ```
 
-2. Continue base state along the parameter 1/Re with adaptive remeshing
+2. Continue base state along the parameter $1/Re$ with adaptive remeshing
 ```
 ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi cylinder.base -fo cylinder -param 1/Re -h0 -1 -scount 2 -maxcount 14 -mo cylinder -thetamax 5
 ```
 
-3. Compute base states at Re ~ 50 and Re = 150 with guesses from continuation
+3. Compute base states at $Re\sim50$ and $Re=150$ with guesses from continuation
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi cylinder_8.base -fo cylinder50 -1/Re 0.021
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi cylinder_14.base -fo cylinder150 -1/Re 0.0066666666667
 ```
 
-4. Adapt mesh to the Re = 150 solution with a maximum triangle size restriction
+4. Adapt mesh to the $Re=150$ solution with a maximum triangle size restriction
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi cylinder150.base -fo cylinder150 -mo cylinder150 -thetamax 5 -hmax 5 -pv 1
 ```
 
 ### First order
-1. Compute leading direct eigenmode at Re ~ 50 and Re = 150
+1. Compute leading direct eigenmode at $Re\sim50$ and $Re=150$
 ```
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi cylinder50.base -fo cylinder50 -eps_target 0.1+0.7i -sym 1 -eps_pos_gen_non_hermitian
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi cylinder150.base -fo cylinder150 -eps_target 0.2+0.8i -sym 1 -pv 1 -eps_pos_gen_non_hermitian
@@ -77,14 +77,14 @@ NOTE: Here, the `-sym` argument specifies the asymmetric (1) or symmetric (0) re
 ff-mpirun -np $nproc hopfcompute.edp -v 0 -dir $workdir -fi cylinder50.mode -fo cylinder -param 1/Re -nf 0
 ```
 
-3. Adapt the mesh to the critical solution, save .vtu files for Paraview
+3. Adapt the mesh to the critical solution, save `.vtu` files for Paraview
 ```
 ff-mpirun -np $nproc hopfcompute.edp -v 0 -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -param 1/Re -thetamax 5 -pv 1
 ```
 
-4. Continue the neutral Hopf curve in the (1/Re,Ma^2)-plane with adaptive remeshing
+4. Continue the neutral Hopf curve in the $(1/Re,Ma^2)$-plane with adaptive remeshing
 ```
 ff-mpirun -np $nproc hopfcontinue.edp -v 0 -dir $workdir -fi cylinder.hopf -fo cylinder -mo cylinderhopf -adaptto bda -thetamax 5 -param Ma^2 -param2 1/Re -h0 -1 -scount 3 -maxcount 12
 ```
 
-NOTE: the signs and normalizations of the normal form coefficients used in `hopfcompute.edp` are different than those of the Stuart-Landau coefficients in Sipp and Lebedev JFM (2007).
+NOTE: the signs and normalizations of the normal form coefficients used in `hopfcompute.edp` are different than those of the Stuart-Landau coefficients in [Sipp and Lebedev JFM (2007)](../sipp_lebedev_2007/).

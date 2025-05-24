@@ -30,11 +30,11 @@ ln -sf examples/meliga_etal_2012/settings_meliga_etal_2012.idp settings.idp
 
 ## Build initial meshes
 `ff-bifbox` uses FreeFEM for adaptive meshing during the solution process, but it needs an initial mesh to adaptively refine.
-#### CASE 1: Gmsh is installed - build initial mesh directly from .geo files
+#### CASE 1: Gmsh is installed - build initial mesh directly from `.geo` files
 ```
 FreeFem++-mpi -v 0 importgmsh.edp -gmshdir examples/meliga_etal_2012 -dir $workdir -mi vortex.geo
 ```
-Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
+Note: since no `-mo` argument is specified, the output files (`.msh`) inherit the names of their parents (`.geo`).
 #### CASE 2: Gmsh is not installed - build initial mesh using BAMG in FreeFEM
 ```
 FreeFem++-mpi -v 0 examples/meliga_etal_2012/vortex.edp -mo $workdir/vortex
@@ -43,11 +43,11 @@ FreeFem++-mpi -v 0 examples/meliga_etal_2012/vortex.edp -mo $workdir/vortex
 ## Perform parallel computations using `ff-bifbox`
 
 ### Steady axisymmetric dynamics
-1. Compute base states on the created mesh at Re = 200 from default guess
+1. Compute base states on the created mesh at $Re=200$ from default guess
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -mi vortex.msh -fo vortex -1/Re 0.005 -S 0
 ```
-2. Continue base state along the parameter S with adaptive remeshing
+2. Continue base state along the parameter $S$ with adaptive remeshing
 ```
 ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi vortex.base -fo vortex -param S -h0 1 -scount 4 -maxcount 40 -mo vortexadapt
 ```
@@ -69,7 +69,7 @@ ff-mpirun -np $nproc hohocompute.edp -v 0 -dir $workdir -fo vortexDH -fi vortexm
 ff-mpirun -np $nproc hohocompute.edp -v 0 -dir $workdir -fo vortexDH -fi vortexDH.hoho -param S -param2 1/Re -adaptto bda -mo vortexm1m2adapt
 ```
 
-4. Compute Hopf-Hopf point assuming 2:1 resonant interaction
+4. Compute Hopf-Hopf point assuming $2:1$ resonant interaction
 ```
 ff-mpirun -np $nproc hohocompute.edp -v 0 -dir $workdir -fo vortexDH21res -fi vortexDH.hoho -param S -param2 1/Re -res1x 2
 ```

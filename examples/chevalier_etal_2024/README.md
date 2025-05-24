@@ -31,12 +31,12 @@ ln -sf examples/chevalier_etal_2024/settings_chevalier_etal_2024.idp settings.id
 
 ## Build initial meshes
 `ff-bifbox` uses FreeFEM for adaptive meshing during the solution process, but it needs an initial mesh to adaptively refine.
-#### Build initial mesh directly from .geo files using Gmsh
+#### Build initial mesh directly from `.geo` files using Gmsh
 ```
 FreeFem++-mpi -v 0 importgmsh.edp -gmshdir examples/chevalier_etal_2024 -dir $workdir -mi nozzle_lg.geo
 FreeFem++-mpi -v 0 importgmsh.edp -gmshdir examples/chevalier_etal_2024 -dir $workdir -mi nozzle_sm.geo
 ```
-Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
+Note: since no `-mo` argument is specified, the output files (`.msh`) inherit the names of their parents (`.geo`).
 
 ## Perform parallel computations using `ff-bifbox`
 ### Steady axisymmetric dynamics of the mean flow with modeled turbulence
@@ -106,7 +106,7 @@ ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi S1p0Re200000lg.base 
 ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi S1p0Re200000lg.base -so S1p0Re200000 -omega -6.3 -nomega 127 -omegaf 6.3 -sym -2 -eps_nev 1 -strict 1 -mi nozzle_sm.msh
 ```
 
-3. Compute dominant resolvent forcing and response modes for $Re=200,000$, $S=1$, $St=0.004$, and $m=\pm2$ as in the paper in Figs 8,9,10. NOTE: $\omega=2\pi{}St$, and, due to the SO(2) symmetry, (S,m,St)=(S,-m,-St). Again, forcing is NOT restricted to the jet region, which can lead to significant differences due to spurious variations in the outer coflow surrounding the jet.
+3. Compute dominant resolvent forcing and response modes for $Re=200,000$, $S=1$, $St=0.004$, and $m=\pm2$ as in the paper in Figs 8,9,10. NOTE: $\omega=2\pi{}St$, and, due to the SO(2) symmetry, $(S,m,St)=(S,-m,-St)$. Again, forcing is NOT restricted to the jet region, which can lead to significant differences due to spurious variations in the outer coflow surrounding the jet.
 ```
 ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi S1p0Re200000lg.base -mo S1p0Re200000St0p004 -omega -0.02513274 -nomega 2 -omegaf 0.02513274 -sym -2 -eps_nev 1 -strict 1 -mi nozzle_sm.msh -pv 1
 ```

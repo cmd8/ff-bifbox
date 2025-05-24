@@ -32,11 +32,11 @@ ln -sf examples/wang_etal_2024/settings_wang_etal_2024.idp settings.idp
 
 ## Build initial meshes
 `ff-bifbox` uses FreeFEM for adaptive meshing during the solution process, but it needs an initial mesh to adaptively refine.
-#### CASE 1: Gmsh is installed - build initial mesh directly from .geo files
+#### CASE 1: Gmsh is installed - build initial mesh directly from `.geo` files
 ```
 FreeFem++-mpi -v 0 importgmsh.edp -gmshdir examples/wang_etal_2024 -dir $workdir -mi Vflame.geo
 ```
-Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
+Note: since no `-mo` argument is specified, the output files (`.msh`) inherit the names of their parents (`.geo`).
 #### CASE 2: Gmsh is not installed - build initial mesh using BAMG in FreeFEM
 ```
 FreeFem++-mpi -v 0 examples/wang_etal_2024/Vflame.edp -mo $workdir/Vflame
@@ -52,7 +52,7 @@ ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi nonreacting_0.base -
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi nonreacting_1.base -fo nonreacting -U0 2.2 -pv 1 -mo nonreacting
 ```
 
-2. Turn on chemistry and ignite the U0 = 2.2 m/s flow at an elevated centrebody temperature and lower combustion enthalpy. Then perform continuation back to reference parameters. Coarse meshes are used for computational efficiency and stabilizing artificial dissipation. 
+2. Turn on chemistry and ignite the $U_0=2.2$ m/s flow at an elevated centrebody temperature and lower combustion enthalpy. Then perform continuation back to reference parameters. Coarse meshes are used for computational efficiency and stabilizing artificial dissipation. 
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi nonreacting.base -fo ignite_0 -Tr 1000 -Ar 1.1e7 -Dh0f -100 -mo ignite_0 -snes_rtol 0 -err 0.05
 ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi ignite_0.base -fo ignite -param Dh0f -h0 -200 -mo ignite -dmax 100 -err 0.1 -scount 5 -paramtarget -804.084 -maxcount -1
@@ -60,7 +60,7 @@ ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_960.base -fo 
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignited.base -fo U02p2 -pv 1 -snes_rtol 0 -snes_linesearch_type l2 -mo U02p2
 ```
 
-3. Save base flows in 0.1 m/s increments for U0 = 2.3 m/s to U0 = 3.8 m/s. Dissipation from mesh coarsening is used to aid convergence at each step before refining the coarse solutions on the reference mesh.
+3. Save base flows in 0.1 m/s increments for $U_0=2.3$ m/s to $U_0=3.8$ m/s. Dissipation from mesh coarsening is used to aid convergence at each step before refining the coarse solutions on the reference mesh.
 ```
 for i in {3..9}
 do
@@ -80,32 +80,32 @@ done
 ```
 
 ### Global linear analysis
-4. Compute global eigenspectra at Re = 1978, Re = 2282, Re = 2586, and Re = 2891. Notably, unlike in the paper, the present results do not identify any criticality of the leading flame-tip eigenmode at Re = 2815. The source of this disagreement is not known. 
+4. Compute global eigenspectra at $Re=1978$, $Re=2282$, $Re=2586$, and $Re=2891$. Notably, unlike in the paper, the present results do not identify any criticality of the leading flame-tip eigenmode at $Re=2815$. The source of this disagreement is not known. 
 ```
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi U02p6.base -so Re1978 -eps_nev 25 -eps_target 25+250i -ntarget 8 -targetf 50+2000i
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi U03p0.base -so Re2282 -eps_nev 25 -eps_target 25+250i -ntarget 8 -targetf 50+2000i
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi U03p4.base -so Re2586 -eps_nev 25 -eps_target 25+250i -ntarget 8 -targetf 50+2000i
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi U03p8.base -so Re2891 -eps_nev 25 -eps_target 25+250i -ntarget 8 -targetf 50+2000i
 ```
-5. Compute leading flame-tip eigenmode at Re = 2282 
+5. Compute leading flame-tip eigenmode at $Re=2282$ 
 ```
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi U03p0.base -fo Re2282flametip -eps_target 1+600i -pv 1
 ```
 
-6. Compute optimal gain curve in velocity 2-norm at Re = 2282 and Re = 2586.
+6. Compute optimal gain curve in velocity 2-norm at $Re=2282$ and $Re=2586$.
 ```
 ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi U03p0.base -so Re2282 -omega 20 -omegaf 2000 -nomega 100
 ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi U03p4.base -so Re2586 -omega 20 -omegaf 2000 -nomega 100
 ```
 
-7. Compute optimal response at Re = 2586 for St = 0.31 and St = 0.68.
+7. Compute optimal response at $Re=2586$ for $St=0.31$ and $St=0.68$.
 ```
 ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi U03p4.base -fo Re2586St0p31 -omega 602 -pv 1
 ff-mpirun -np $nproc rslvcompute.edp -v 0 -dir $workdir -fi U03p4.base -fo Re2586St0p68 -omega 1320 -pv 1
 ```
 
 ### Nonlinear analysis
-8. Compute nonlinear dynamics at Re = 1978 in time domain. Here, the maximum velocity magnitude of the eigenmode and the base flow are rescaled to provide initial velocity perturbation amplitudes that correspond to the 20% and 50% amplitudes used in the paper. Nonetheless, since the phase was not explicitly specified, variations in the initial phase may cause these results to differ qualitatively from those in the paper.
+8. Compute nonlinear dynamics at $Re=1978$ in time domain. Here, the maximum velocity magnitude of the eigenmode and the base flow are rescaled to provide initial velocity perturbation amplitudes that correspond to the 20% and 50% amplitudes used in the paper. Nonetheless, since the phase was not explicitly specified, variations in the initial phase may cause these results to differ qualitatively from those in the paper.
 ```
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi U02p6.base -fo Re1978flametip -eps_target 1+600i -pv 1
 ff-mpirun -np 1 examples/wang_etal_2024/moderescale.edp -v 0 -dir $workdir -fi Re1978flametip.mode -fo Re1978flametip_scaled

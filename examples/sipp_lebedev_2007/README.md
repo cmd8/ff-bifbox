@@ -14,7 +14,7 @@ This file shows an example `ff-bifbox` workflow for reproducing the results of t
 ```
 The commands below illustrate how to perform a weakly nonlinear analysis of the 2D incompressible flow around a cylinder and an open cavity using `ff-bifbox`.
 
-Note that, in this example of Sipp and Lebedev, viscosity is parameterized by 1/Re instead of Re in order to make the equation system linear with respect to the control parameter. Though such scalings do improve the performance of predictor-corrector methods and weakly-nonlinear analysis, `ff-bifbox` does not require the system to be linear in the parameters.
+Note that, in this example of Sipp and Lebedev, viscosity is parameterized by $1/Re$ instead of $Re$ in order to make the equation system linear with respect to the control parameter. Though such scalings do improve the performance of predictor-corrector methods and weakly-nonlinear analysis, `ff-bifbox` does not require the system to be linear in the parameters.
 
 ## Setup environment for `ff-bifbox`
 1. Navigate to the main `ff-bifbox` directory.
@@ -34,12 +34,12 @@ ln -sf examples/sipp_lebedev_2007/settings_sipp_lebedev_2007.idp settings.idp
 
 ## Build initial meshes
 `ff-bifbox` uses FreeFEM for adaptive meshing during the solution process, but it needs an initial mesh to adaptively refine.
-#### CASE 1: Gmsh is installed - build initial mesh directly from .geo files
+#### CASE 1: Gmsh is installed - build initial mesh directly from `.geo` files
 ```
 FreeFem++-mpi -v 0 importgmsh.edp -gmshdir examples/sipp_lebedev_2007 -dir $workdir -mi cylinder.geo
 FreeFem++-mpi -v 0 importgmsh.edp -gmshdir examples/sipp_lebedev_2007 -dir $workdir -mi cavity.geo
 ```
-Note: since no `-mo` argument is specified, the output files (.msh) inherit the names of their parents (.geo).
+Note: since no `-mo` argument is specified, the output files (`.msh`) inherit the names of their parents (`.geo`).
 #### CASE 2: Gmsh is not installed - build initial mesh using BAMG in FreeFEM
 ```
 FreeFem++-mpi -v 0 examples/sipp_lebedev_2007/cylinder.edp -mo $workdir/cylinder
@@ -48,26 +48,26 @@ FreeFem++-mpi -v 0 examples/sipp_lebedev_2007/cavity.edp -mo $workdir/cavity
 
 ## Perform parallel computations using `ff-bifbox`
 ### Zeroth order
-1. Compute base states on the created meshes at Re = 10 from default guess
+1. Compute base states on the created meshes at $Re=10$ from default guess
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -mi cylinder.msh -fo cylinder -1/Re 0.1
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -mi cavity.msh -fo cavity -1/Re 0.1
 ```
 
-2. Continue base state along the parameter 1/Re with adaptive remeshing
+2. Continue base state along the parameter $1/Re$ with adaptive remeshing
 ```
 ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi cylinder.base -fo cylinder -param 1/Re -h0 -1 -scount 2 -maxcount 8 -mo cylinder -thetamax 5
 ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi cavity.base -fo cavity -param 1/Re -h0 -1 -scount 4 -maxcount 16 -mo cavity
 ```
 
-3. Compute base states at Re = 50 (cylinder) and Re = 4000 (cavity) with guess from continuation
+3. Compute base states at $Re=50$ (cylinder) and $Re=4000$ (cavity) with guess from continuation
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi cylinder_8.base -fo cylinder50 -1/Re 0.021
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi cavity_16.base -fo cavity4000 -1/Re 0.00025
 ```
 
 ### First & second order
-1. Compute leading direct eigenmode at Re = 50 (cylinder) and Re = 4000 (cavity)
+1. Compute leading direct eigenmode at $Re=50$ (cylinder) and $Re=4000$ (cavity)
 ```
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi cylinder50.base -fo cylinder50 -eps_target 0.1+0.8i -sym 1 -eps_pos_gen_non_hermitian
 ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi cavity4000.base -fo cavity4000 -eps_target 0.1+8.0i -sym 0 -eps_pos_gen_non_hermitian
@@ -80,7 +80,7 @@ ff-mpirun -np $nproc hopfcompute.edp -v 0 -dir $workdir -fi cylinder50.mode -fo 
 ff-mpirun -np $nproc hopfcompute.edp -v 0 -dir $workdir -fi cavity4000.mode -fo cavity -param 1/Re -nf 0
 ```
 
-3. Adapt the mesh to the critical solution, save .vtu files for Paraview
+3. Adapt the mesh to the critical solution, save `.vtu` files for Paraview
 ```
 ff-mpirun -np $nproc hopfcompute.edp -v 0 -dir $workdir -fi cylinder.hopf -fo cylinderadapt -mo cylinderhopf -adaptto bda -param 1/Re -thetamax 5 -pv 1 -wnl 1 
 ff-mpirun -np $nproc hopfcompute.edp -v 0 -dir $workdir -fi cavity.hopf -fo cavityadapt -mo cavityhopf -adaptto bda -param 1/Re -pv 1 -wnl 1
@@ -95,7 +95,7 @@ ff-mpirun -np $nproc porbcontinue.edp -v 0 -dir $workdir -fi cylinder.hopf -fo c
 ff-mpirun -np $nproc porbcontinue.edp -v 0 -dir $workdir -fi cavity.hopf -fo cavityNh2 -Nh 2 -mo cavityporb -param 1/Re -h0 -1 -scount 4 -maxcount 8
 ```
 
-2. Compute periodic orbits at Re = 50 (cylinder) and Re = 5000 (cavity) using 3rd-order Harmonic Balance with block Jacobi solver (Caution: memory intensive!)
+2. Compute periodic orbits at $Re=50$ (cylinder) and $Re=5000$ (cavity) using 3rd-order Harmonic Balance with block Jacobi solver (Caution: memory intensive!)
 ```
 ff-mpirun -np $nproc porbcompute.edp -v 0 -dir $workdir -fi cylinderNh2_10.porb -fo cylinder50Nh3 -Nh 3 -1/Re 0.02 -blocks 3
 ff-mpirun -np $nproc porbcompute.edp -v 0 -dir $workdir -fi cavityNh2_8.porb -fo cavity5000Nh3 -Nh 3 -1/Re 0.0002 -blocks 3
