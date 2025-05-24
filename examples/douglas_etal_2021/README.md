@@ -1,5 +1,5 @@
 # Incompressible Swirling Jet Example: Douglas etal, JFM, (2021)
-This file shows an example `ff-bifbox` workflow for reproducing the results in section 4 of the study:
+This file shows an example `ff-bifbox` workflow for reproducing the results of the study:
 ```
 @article{douglas_etal_2021,
   title={Nonlinear dynamics of fully developed swirling jets},
@@ -83,7 +83,7 @@ ff-mpirun -np $nproc foldcompute.edp -v 0 -dir $workdir -fi swirljet100_F.fold -
 ff-mpirun -np $nproc foldcontinue.edp -v 0 -dir $workdir -fi swirljet100_B.fold -fo swirljet -mo swirljetfold -adaptto bda -thetamax 1 -param 1/Re -param2 S -h0 4 -scount 4 -maxcount 32
 ```
 
-### Unsteady 3D dynamics
+### Bifurcations to unsteady, 3D dynamics
 8. Compute base state at $Re=133$, $S=1.8$ with guess from $Re=100$ continuation along $S$
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi swirljet100_10.base -fo swirljet1p8 -1/Re 0.0075 -S 1.8
@@ -124,3 +124,11 @@ ff-mpirun -np $nproc hohocompute.edp -v 0 -dir $workdir -fi swirljetm2m1.hoho -f
 cd $workdir && declare -a fohoguesslist=(*specialpt.hopf) && cd -
 ff-mpirun -np $nproc fohocompute.edp -v 0 -dir $workdir -fi ${fohoguesslist[0]} -fo swirljetm1 -param S -param2 1/Re -snes_divergence_tolerance 1e10
 ```
+
+### Periodic 3D dynamics
+15. Continue Hopf bifurcations along their periodic solutions with varying $S$ 
+```
+ff-mpirun -np $nproc porbcontinue.edp -v 0 -dir $workdir -fi swirljetm1.hopf -fo swirljetm1 -Nh 2 -mo swirljetm1porb -param S -thetamax 1 -h0 1 -scount 4 -maxcount 12 -blocks 2
+ff-mpirun -np $nproc porbcontinue.edp -v 0 -dir $workdir -fi swirljetm2.hopf -fo swirljetm2 -Nh 2 -mo swirljetm2porb -param S -thetamax 1 -h0 -1 -scount 4 -maxcount 12 -blocks 2
+```
+NOTE: in the actual paper, $N_h=4$ to $6$ was used to accurately resolve the periodic orbits. $N_h=2$ is used here to reduce computational cost.
