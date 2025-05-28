@@ -14,6 +14,8 @@
 // ff-mpirun -np 4 porbcompute.edp -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
+// IMPORTANT: This implementation is currently only valid for quadratically
+// nonlinear systems.
 //
 load "iovtk"
 load "PETSc"
@@ -263,14 +265,10 @@ func int funcJHB(real[int]& qPETSc) {
     JacobianHB(JHB, J, ub, uh, sym1, omega);
     if (zerofreq) JHBa = JHB;
     else {
-      real[int] Mtemp = 0, MqHB((1+2*Nh)*J.n);
-      for (int nh = 0; nh < Nh; nh++) {
-        sym = (1+nh)*sym1;
-        um[] = 1i*(1+nh)*uh(:, nh);
-        complex[int] Mc = vM(0, XMh, tgv = -10);
-        ChangeNumbering([J, J], [Mc.re, Mc.im], Mtemp);
-        MqHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = Mtemp;
-      }
+      real[int] MqHB((1+2*Nh)*J.n);
+      ResidualHB(MqHB, J, ub, uh, sym1, omega + eps);
+      MqHB -= RHB;
+      MqHB /= eps;
       matrix tempPms = [[MqHB]];
       ChangeOperator(dwHB, tempPms, parent = JHBa); // send to Mat
     }

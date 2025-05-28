@@ -11,6 +11,8 @@
 // ff-mpirun -np 4 porbcontinue.edp -fi <FILEIN> -param <PARAM> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
+// IMPORTANT: This adaptation is currently only valid for quadratically
+// nonlinear systems.
 //
 load "iovtk"
 load "PETSc"
@@ -169,14 +171,10 @@ real f, kappa, cosalpha, res, delta, maxdelta, omega0;
       if (it == 1 | refactor >= it) JacobianHB(JHB, J, ub, uh, sym1, omega);
       if (zerofreq) JHBa = JHB;
       else {
-        PetscScalar[int] Mtemp = 0, MqHB((1+2*Nh)*J.n);
-        for (int nh = 0; nh < Nh; nh++) {
-          sym = (1+nh)*sym1;
-          um[] = 1i*(1+nh)*uh(:, nh);
-          complex[int] Mc = vM(0, XMh, tgv = -10);
-          ChangeNumbering([J, J], [Mc.re, Mc.im], Mtemp);
-          MqHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = Mtemp;
-        }
+        PetscScalar[int] MqHB((1+2*Nh)*J.n);
+        ResidualHB(MqHB, J, ub, uh, sym1, omega + eps);
+        MqHB -= RHB;
+        MqHB /= eps;
         matrix<PetscScalar> tempPms = [[MqHB]];
         ChangeOperator(dwHB, tempPms, parent = JHBa); // send to Mat
       }
