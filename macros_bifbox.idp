@@ -170,12 +170,12 @@ macro ConvergenceCheck(printtxt)
 macro ResidualHB(RHB, J, ub, uh, sym1, omega) {
   sym = 0;
   real[int] Rtemp, R = vR(0, XMh, tgv = -1);
-  for (int nh = 0; nh < Nh; nh++){
-    um[] = uh(:, nh);
+  for (int j = 0; j < Nh; j++){
+    um[] = uh(:, j);
     um2[] = conj(um[]);
-    ik.im = (1+nh)*(sym1);
+    ik.im = (1+j)*(sym1);
     ik2 = conj(ik);
-    iomega = 1i*(1+nh)*(omega);
+    iomega = 1i*(1+j)*(omega);
     iomega2 = -iomega;
     complex[int] Rc = vH(0, XMh, tgv = -10);
     R += Rc.re;
@@ -185,16 +185,16 @@ macro ResidualHB(RHB, J, ub, uh, sym1, omega) {
   for (int nh = 0; nh < Nh; ++nh) {
     complex[int] Rc(ub[].n);
     sym = (1+nh)*(sym1);
-    for (int harm = 0; harm < Nh; harm++){
-      um[] = uh(:, harm);
-      ik.im = (1+harm)*(sym1);
-      iomega = 1i*(1+harm)*(omega);
-      if (harm == nh) Rc += vJ(0, XMh, tgv = -1);
+    for (int j = 0; j < Nh; j++){
+      um[] = uh(:, j);
+      ik.im = (1+j)*(sym1);
+      iomega = 1i*(1+j)*(omega);
+      if (j == nh) Rc += vJ(0, XMh, tgv = -1);
       else {
-        ik2.im = (nh-harm)*(sym1);
-        iomega2 = 1i*(nh-harm)*(omega);
-        if (harm < nh) um2[] = 0.5*uh(:, nh-harm-1);
-        else /*if (harm > nh)*/ um2[] = conj(uh(:, harm-nh-1));
+        ik2.im = (nh-j)*(sym1);
+        iomega2 = 1i*(nh-j)*(omega);
+        if (j < nh) um2[] = 0.5*uh(:, nh-j-1);
+        else um2[] = conj(uh(:, j-nh-1));
         Rc += vH(0, XMh, tgv = -10);
       }
     }
@@ -211,11 +211,11 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
     matrix An1r = Cmat.re, An2r, An3r, An1i, An2i, An3i;
     Mat row1(J), row2, row3, A1(J), A2(J), temp;
     row1 = An1r;
-    for (int n = 0; n < Nh; n++){
-      um[] = 2.0*uh(:, n);
-      ik.im = (1+n)*(sym1);
-      ik2.im = -(1+n)*(sym1);
-      iomega = 1i*(1+n)*(omega);
+    for (int j = 0; j < Nh; j++){
+      um[] = 2.0*uh(:, j);
+      ik.im = (1+j)*(sym1);
+      ik2.im = -(1+j)*(sym1);
+      iomega = 1i*(1+j)*(omega);
       iomega2 = -iomega;
       Cmat = vH(XMh, XMh, tgv = -10);
       An1r = Cmat.re;
@@ -225,12 +225,12 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
       temp = [[row1, A1, A2]];
       MatConvert(temp, row1);
     }
-    for (int n = 0; n < Nh; n++){
-      sym = (1+n)*(sym1);
-      um[] = uh(:, n);
-      ik.im = (1+n)*(sym1);
+    for (int nh = 0; nh < Nh; nh++){
+      sym = (1+nh)*(sym1);
+      um[] = uh(:, nh);
+      ik.im = (1+nh)*(sym1);
       ik2 = 0;
-      iomega = 1i*(1+n)*(omega);
+      iomega = 1i*(1+nh)*(omega);
       iomega2 = 0;
       Cmat = vH(XMh, XMh, tgv = -10);
       An1r = Cmat.re;
@@ -240,29 +240,29 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
       MatConvert(A1, row2);
       MatConvert(A2, row3);
       for (int j = 0; j < Nh; j++){
-        if (j == n) {
-          iomega = 1i*(1+n)*(omega);
-          ik.im = (1+n)*(sym1);
+        if (j == nh) {
+          iomega = 1i*(1+nh)*(omega);
+          ik.im = (1+nh)*(sym1);
           Cmat = vJ(XMh, XMh, tgv = -1);
         }
         else {
-          ik.im = (n-j)*(sym1);
+          ik.im = (nh-j)*(sym1);
           ik2.im = (1+j)*(sym1);
-          iomega = 1i*(n-j)*(omega);
+          iomega = 1i*(nh-j)*(omega);
           iomega2 = 1i*(1+j)*(omega);
-          if (j < n) um[] = uh(:, n-j-1);
-          else /*if (j > n)*/ um[] = conj(uh(:, j-n-1));
+          if (j < nh) um[] = uh(:, nh-j-1);
+          else um[] = conj(uh(:, j-nh-1));
           Cmat = vH(XMh, XMh, tgv = -10);
         }
         An2r = Cmat.re;
         An2i = Cmat.im;
         An3r = -An2i;
         An3i = Cmat.re;
-        if (1+j+n < Nh) {
-          um[] = uh(:, 1+n+j);
-          ik.im = (2+n+j)*(sym1);
+        if (1+j+nh < Nh) {
+          um[] = uh(:, 1+nh+j);
+          ik.im = (2+nh+j)*(sym1);
           ik2.im = -(1+j)*(sym1);
-          iomega = 1i*(2+n+j)*(omega);
+          iomega = 1i*(2+nh+j)*(omega);
           iomega2 = -1i*(1+j)*(omega);
           Cmat = vH(XMh, XMh, tgv = -10);
           An2r += Cmat.re;
