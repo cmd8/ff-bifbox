@@ -11,7 +11,7 @@
 // ff-mpirun -np 4 porbcontinue.edp -fi <FILEIN> -param <PARAM> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
-// IMPORTANT: This adaptation is currently only valid for quadratically
+// IMPORTANT: This implementation is currently only valid for quadratically
 // nonlinear systems.
 //
 load "iovtk"
