@@ -172,9 +172,9 @@ real f, kappa, cosalpha, res, delta, maxdelta, omega0;
       if (zerofreq) JHBa = JHB;
       else {
         PetscScalar[int] MqHB((1+2*Nh)*J.n);
-        ResidualHB(MqHB, J, ub, uh, sym1, omega + eps);
+        ResidualHB(MqHB, J, ub, uh, sym1, 0);
         MqHB -= RHB;
-        MqHB /= eps;
+        MqHB /= -omega;
         matrix<PetscScalar> tempPms = [[MqHB]];
         ChangeOperator(dwHB, tempPms, parent = JHBa); // send to Mat
       }

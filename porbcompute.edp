@@ -266,9 +266,9 @@ func int funcJHB(real[int]& qPETSc) {
     if (zerofreq) JHBa = JHB;
     else {
       real[int] MqHB((1+2*Nh)*J.n);
-      ResidualHB(MqHB, J, ub, uh, sym1, omega + eps);
+      ResidualHB(MqHB, J, ub, uh, sym1, 0);
       MqHB -= RHB;
-      MqHB /= eps;
+      MqHB /= -omega;
       matrix tempPms = [[MqHB]];
       ChangeOperator(dwHB, tempPms, parent = JHBa); // send to Mat
     }
