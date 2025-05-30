@@ -240,6 +240,7 @@ complex iomega, iomega2, iomega3;
 include "eqns.idp" // load equations
 // Build bordered block matrix from only Mat components
 Mat JHBa, JHB((1+2*Nh)*J.n, (1+2*Nh)*J.n), dwHB((1+2*Nh)*J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
+real[int] RHB(JHB.n);
 if(zerofreq) JHBa = JHB;
 else JHBa = [[JHB, dwHB],[dwHB',0]];
 // Function to build residual operator in PETSc numbering
@@ -250,7 +251,8 @@ else JHBa = [[JHB, dwHB],[dwHB',0]];
       if(mpirank == 0 && !zerofreq) omega = qPETSc(qPETSc.n-1); 
       broadcast(processor(0), omega);
       real[int] RPETSc(JHBa.n);
-      ResidualHB(RPETSc, J, ub, uh, sym1, omega);
+      ResidualHB(RHB, J, ub, uh, sym1, omega);
+      RPETSc(0:JHB.n-1) = RHB;
       if(mpirank == 0 && !zerofreq) RPETSc(RPETSc.n-1) = 0.0;
       return RPETSc;
   }
