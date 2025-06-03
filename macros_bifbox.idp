@@ -241,16 +241,16 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
     iomega = 0;
     matrix<complex> Cmat = vJ(XMh, XMh, tgv = -1);
     matrix An2r = Cmat.re, An3r, An2i, An3i;
-    Mat row1(J), row2, row3, A1(J), A2(J), temp;
+    Mat row1(J), A1(J), A2(J), temp;
+    ik3 = 0;
+    iomega3 = 0;
     for (int j = 0; j < Nh; j++){
       um[] = uh(:, j);
       um2[] = conj(um[]);
       ik.im = (1+j)*(sym1);
       ik2 = conj(ik);
-      ik3 = 0;
       iomega = 1i*(1+j)*(omega);
       iomega2 = -iomega;
-      iomega3 = 0;
       Cmat = vT(XMh, XMh, tgv = -10);
       An2r += Cmat.re;
     }
@@ -321,10 +321,9 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
           An2i += Cmat.im;
         }
       }
-      ChangeOperator(A1, An2r);
-      ChangeOperator(A2, An2i);
-      MatConvert(A1, row2);
-      MatConvert(A2, row3);
+      Mat row2(J), row3(J);
+      ChangeOperator(row2, An2r);
+      ChangeOperator(row3, An2i);
       for (int j = 0; j < Nh; j++) {
         if (j == nh) {
           iomega = 1i*(1+nh)*(omega);
