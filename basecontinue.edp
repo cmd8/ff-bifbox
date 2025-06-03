@@ -116,7 +116,7 @@ meshout = meshin; // if no adaptation
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Mat Ja = [[J, JlPM], [yqPM', -1.0]]; // make dummy Jacobian
 real[int] R(ub[].n), yqP(J.n), yqP0(J.n);
-int ret, it;
+int ret, it = 1;
 real f, kappa, cosalpha, res, delta, maxdelta;
 // FUNCTIONS
   func PetscScalar[int] funcRa(PetscScalar[int]& qa) {
@@ -176,12 +176,7 @@ while (!stopflag){
   h = h0/sqrt(h + 1.0);
   real[int] qa = qa0;
   qa(0:J.n-1) -= (h*yqP0);
-  if (mpirank == 0) {
-    qa(qa.n-1) += h; // -= (-1.0*h)
-    lambda = qa(qa.n-1);
-  }
-  broadcast(processor(0), lambda);
-  updatelambda(param, lambda);
+  if (mpirank == 0) qa(qa.n-1) += h; // -= (-1.0*h)
   // CORRECTOR LOOP
   adaptflag = false;
   SNESSolve(Ja, funcJa, funcRa, qa, convergence = funcConvergence, reason = ret,
@@ -274,6 +269,7 @@ while (!stopflag){
     updatelambda(param, lambda);
     savebase(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, ((count % savecount == 0) || forcesave || stopflag), true);
     forcesave = false;
+    it = 1;
     if (stricttangent) funcJa(qa);
     yqP0 = yqP;
     qa0 = qa;

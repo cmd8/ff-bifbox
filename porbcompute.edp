@@ -14,7 +14,7 @@
 // ff-mpirun -np 4 porbcompute.edp -fi <FILEIN> -fo <FILEOUT> -mo <MESHOUT>
 //
 // NOTE: This file should not be changed unless you know what you're doing.
-// IMPORTANT: This implementation is currently only valid for quadratically
+// IMPORTANT: This implementation is currently only valid for cubically
 // nonlinear systems.
 //
 load "iovtk"
@@ -31,7 +31,7 @@ int select = getARGV("-select", 1);
 bool zerofreq = getARGV("-zero", 0);
 string adaptto = getARGV("-adaptto", "0");
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
-int Nh = getARGV("-Nh", 0); //if 0 will try to get from file, otherwise fail
+int Nh = getARGV("-Nh", 0); //if 0, will read Nh from file. In practice, Nh must be at least 1, otherwise use basecompute.edp
 int blocks = getARGV("-blocks", 1); //if blocks = 1, use monolithic LU; if blocks = N w/ 2 <= N <= Nh+1, use block preconditioner with N blocks
 real[int] sym1(sym.n);
 real omega;
@@ -44,14 +44,13 @@ string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshroot, meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshout); // trim extension from output mesh, if given
-if (fileext != "porb") Nh = max(1, Nh);
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub);
-XMh<complex> defu(um), defu(uma), defu(um2), defu(um3);
-complex[int, int] uh(um[].n, Nh);
+XMh<complex> defu(um), defu(um2), defu(um3);
+complex[int, int] uh(um[].n, max(1, Nh));
 if (fileext == "porb") {
   ub[] = loadporb(fileroot, meshin, uh, sym1, omega, Nh);
 }
@@ -219,7 +218,6 @@ else { // if output meshfile is given, adapt mesh
   J = Adapt;
   defu(ub) = initu(0.0); // set local values to zero
   defu(um) = initu(0.0); // set local values to zero
-  defu(uma) = initu(0.0); // set local values to zero
   defu(um2) = initu(0.0); // set local values to zero
   defu(um3) = initu(0.0); // set local values to zero
   uh.resize(um[].n, Nh);
@@ -244,13 +242,13 @@ real[int] RHB(JHB.n);
 if(zerofreq) JHBa = JHB;
 else JHBa = [[JHB, dwHB],[dwHB',0]];
 // Function to build residual operator in PETSc numbering
-  func real[int] funcRHB(real[int]& qPETSc) {
+  func real[int] funcRHB(PetscScalar[int]& qPETSc) {
       ChangeNumbering(J, ub[], qPETSc(0:J.n-1), inverse = true, exchange = true);
-      for (int harm = 0; harm < Nh; harm++)
-        ChangeNumbering([J, J], [uh(:, harm).re, uh(:, harm).im], qPETSc((1+2*harm)*J.n:(3+2*harm)*J.n-1), inverse = true, exchange = true);
+      for (int nh = 0; nh < Nh; nh++)
+        ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qPETSc((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true, exchange = true);
       if(mpirank == 0 && !zerofreq) omega = qPETSc(qPETSc.n-1); 
       broadcast(processor(0), omega);
-      real[int] RPETSc(JHBa.n);
+      PetscScalar[int] RPETSc(JHBa.n);
       ResidualHB(RHB, J, ub, uh, sym1, omega);
       RPETSc(0:JHB.n-1) = RHB;
       if(mpirank == 0 && !zerofreq) RPETSc(RPETSc.n-1) = 0.0;
@@ -258,20 +256,20 @@ else JHBa = [[JHB, dwHB],[dwHB',0]];
   }
 
 // Function to build Jacobian operator in PETSc numbering
-func int funcJHB(real[int]& qPETSc) {
+func int funcJHB(PetscScalar[int]& qPETSc) {
     ChangeNumbering(J, ub[], qPETSc(0:J.n-1), inverse = true, exchange = true);
-    for (int harm = 0; harm < Nh; harm++)
-      ChangeNumbering([J, J], [uh(:, harm).re, uh(:, harm).im], qPETSc((1+2*harm)*J.n:(3+2*harm)*J.n-1), inverse = true, exchange = true);
+    for (int nh = 0; nh < Nh; nh++)
+      ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qPETSc((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true, exchange = true);
     if(mpirank == 0 && !zerofreq) omega = qPETSc(qPETSc.n-1); 
     broadcast(processor(0), omega);
     JacobianHB(JHB, J, ub, uh, sym1, omega);
     if (zerofreq) JHBa = JHB;
     else {
-      real[int] MqHB((1+2*Nh)*J.n);
+      PetscScalar[int] MqHB(JHB.n);
       ResidualHB(MqHB, J, ub, uh, sym1, 0);
       MqHB -= RHB;
       MqHB /= -omega;
-      matrix tempPms = [[MqHB]];
+      matrix<PetscScalar> tempPms = [[MqHB]];
       ChangeOperator(dwHB, tempPms, parent = JHBa); // send to Mat
     }
     return 0;
@@ -297,10 +295,10 @@ real[int] qHB(JHBa.n);
   ChangeNumbering(J, ub[], q);
   qHB(0:J.n-1) = q;
 }
-for (int harm = 0; harm < Nh; harm++){
+for (int nh = 0; nh < Nh; nh++){
   real[int] qm;
-  ChangeNumbering([J, J], [uh(:, harm).re, uh(:, harm).im], qm);
-  qHB((1+2*harm)*J.n:(3+2*harm)*J.n-1) = qm;
+  ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qm);
+  qHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = qm;
 }
 if(mpirank == 0 && !zerofreq) qHB(qHB.n-1) = omega;
 int ret;
@@ -313,8 +311,8 @@ if(ret > 0) { // Save solution if solver converged and output file is given
     savemesh(Thg, workdir + meshout);
   }
   ChangeNumbering(J, ub[], qHB(0:J.n-1), inverse = true);
-  for (int harm = 0; harm < Nh; harm++)
-    ChangeNumbering([J, J], [uh(:, harm).re, uh(:, harm).im], qHB((1+2*harm)*J.n:(3+2*harm)*J.n-1), inverse = true);
+  for (int nh = 0; nh < Nh; nh++)
+    ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qHB((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true);
   if(mpirank == 0 && !zerofreq) omega = qHB(qHB.n-1); 
   broadcast(processor(0), omega);
   saveporb(fileout, "", meshout, sym1, omega, Nh, true, true);
