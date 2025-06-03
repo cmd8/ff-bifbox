@@ -431,6 +431,7 @@ while (!stopflag){
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
     saveporb(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, sym1, omega, Nh, ((count % savecount == 0) || forcesave || stopflag), true);
+    if (stopflag) break;
     forcesave = false;
     it = 1;
     if (stricttangent) funcJa(qa);

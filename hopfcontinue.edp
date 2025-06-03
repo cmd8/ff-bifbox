@@ -595,6 +595,7 @@ while (!stopflag){
     ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
     ChangeNumbering(J, um[], qm, inverse = true);
     savehopf(fileout + "_" + count + (forcesave ? "specialpt" : ""), fileout, meshout, sym1, omega, alpha, beta, ((count % savecount == 0) || forcesave || stopflag), true);
+    if (stopflag) break;
     forcesave = false;
     it = 1;
     if (stricttangent) funcJa(qa);
