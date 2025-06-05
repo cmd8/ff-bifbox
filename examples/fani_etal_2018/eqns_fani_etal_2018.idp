@@ -64,6 +64,16 @@
     + int2d(Th)( vR*umR + ubR*(vdotu(v, um) + vT*umT) )
     + HomBoundaryConditions(dum);
 
+// MASS DERIVATIVE OPERATOR
+  varf vdM(defu(dum), defu(v))
+    = int2d(Th)( um2R*(vT*umT + vdotu(v, um)) + umR*(vT*um2T + vdotu(v, um2)) )
+    + int2d(Th)( dumR*(vT*umT + vdotu(v, um)) + umR*(vT*dumT + vdotu(v, dum)) )
+    + HomBoundaryConditions(dum);
+
+// MASS 2ND DERIVATIVE OPERATOR
+  varf vddM(defu(dum), defu(v))
+    = HomBoundaryConditions(dum);
+
 // FORCING/RESPONSE OPERATORS
   varf vMq(defu(dum), defu(v))
     = int2d(Th)(

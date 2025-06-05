@@ -39,7 +39,7 @@ string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic");
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
 string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
-if((fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls") && basefilein == ""){
+if((fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls" || fileext == "floq") && basefilein == ""){
   basefilein = readbasename(workdir + filein);
   basefileext = parsefilename(basefilein, basefileroot);
 }
@@ -149,6 +149,17 @@ if (count == 0){
     ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);
     for (int nh = 0; nh < Nh; nh++) um[] += (2.0*qh(:,nh).re);
   }
+  else if(fileext == "floq") {
+  int Nh=1;
+  complex[int, int] qh(um[].n, 2);
+  complex eigenvalue;
+  real[int] symtemp(sym.n);
+  complex[int] qm(um[].n);
+  real omega;
+  qm = loadfloq(fileroot, meshin, qh, sym, eigenvalue, symtemp, omega, Nh);
+  qm *= exp(1i*phase);
+  um[] = 2.0*qm.re;
+}
   else {
     defu(ub) = InitialConditions;
     setparams(paramnames, params);

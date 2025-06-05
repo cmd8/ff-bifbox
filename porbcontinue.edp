@@ -44,7 +44,7 @@ int Nh = getARGV("-Nh", 0); //if 0, will read Nh from file. In practice, Nh must
 int blocks = getARGV("-blocks", 1); //if blocks = 1, use monolithic LU; if blocks = N w/ 2 <= N <= Nh+1, use block preconditioner with N blocks
 int refactor = getARGV("-refact", snesmaxit);
 real paramtarget = getARGV("-paramtarget",1.0);
-real[int] sym1(sym.n);
+real[int] sym0(sym.n);
 real omega;
 bool stopflag = false;
 bool forcesave = false;
@@ -52,6 +52,10 @@ bool forcesave = false;
 // Load mesh, make FE basis
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
+if(fileext == "floq"){
+  filein = readbasename(workdir + filein);
+  fileext = parsefilename(filein, fileroot);
+}
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshroot, meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshroot); // trim extension from output mesh, if given
@@ -69,13 +73,13 @@ XMh<complex> defu(um), defu(um2), defu(um3);
 complex[int, int] uh(um[].n, max(1, Nh));
 if(count == 0) {
   if (fileext == "porb") {
-    ub[] = loadporb(fileroot, meshin, uh, sym1, omega, Nh);
+    ub[] = loadporb(fileroot, meshin, uh, sym0, omega, Nh);
   }
   else if(fileext == "hopf") {
     complex[string] alpha;
     complex beta;
     complex[int] qma;
-    ub[] = loadhopf(fileroot, meshin, um[], qma, sym1, omega, alpha, beta);
+    ub[] = loadhopf(fileroot, meshin, um[], qma, sym0, omega, alpha, beta);
     uh(:, 0) = um[];
   }
   else if(fileext == "foho") {
@@ -86,7 +90,7 @@ if(count == 0) {
     complex gamma12, gamma13;
     real[int] q2m, q2ma;
     complex[int] qma;
-    ub[] = loadfoho(fileroot, meshin, um[], qma, q2m, q2ma, sym1, omega, alpha, alpha2, beta, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
+    ub[] = loadfoho(fileroot, meshin, um[], qma, q2m, q2ma, sym0, omega, alpha, alpha2, beta, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
     uh(:, 0) = um[];
   }
   else if(fileext == "hoho") {
@@ -95,17 +99,17 @@ if(count == 0) {
     complex beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
     complex[int] qma, qNm, qNma;
     if(select == 1){
-      ub[] = loadhoho(fileroot, meshin, um[], qma, qNm, qNma, sym1, sym, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+      ub[] = loadhoho(fileroot, meshin, um[], qma, qNm, qNma, sym0, sym, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
     }
     else if(select == 2){
-      ub[] = loadhoho(fileroot, meshin, qNm, qNma, um[], qma, sym, sym1, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+      ub[] = loadhoho(fileroot, meshin, qNm, qNma, um[], qma, sym, sym0, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
     }
     uh(:, 0) = um[];  
   }
-  saveporb(filein, (savecount > 0 ? fileout : ""), meshin, sym1, omega, Nh, false, false);
+  saveporb(filein, (savecount > 0 ? fileout : ""), meshin, sym0, omega, Nh, false, false);
 }
 else {
-  ub[] = loadporb(fileroot + "_" + count, meshin, uh, sym1, omega, Nh);
+  ub[] = loadporb(fileroot + "_" + count, meshin, uh, sym0, omega, Nh);
 }
 Nh = max(1, Nh); // Nh must be at least 1, otherwise use basecompute.edp
 real lambda = getlambda(param);
@@ -142,7 +146,7 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
       PetscScalar[int] RPETSc(qPETSc.n);
-      ResidualHB(RHB, J, ub, uh, sym1, omega);
+      ResidualHB(RHB, J, ub, uh, sym0, omega);
       RPETSc = RHB;
       if(mpirank == 0){ 
         if(!zerofreq) RPETSc(RPETSc.n-2) = 0.0;
@@ -163,7 +167,7 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       broadcast(processor(0), lambda);
       updatelambda(param, lambda + eps);
       PetscScalar[int] JlHB(RHB.n);
-      ResidualHB(JlHB, J, ub, uh, sym1, omega);
+      ResidualHB(JlHB, J, ub, uh, sym0, omega);
       updatelambda(param, lambda);
       JlHB -= RHB;
       JlHB /= eps;
@@ -173,13 +177,11 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       }
       matrix<PetscScalar> tempPms = [[JlHB]]; // dense array to sparse matrix
       ChangeOperator(JlPMa, tempPms, parent = JHBaa); // send to Mat
-      if (it == 1 | refactor >= it) JacobianHB(JHB, J, ub, uh, sym1, omega);
+      if (it == 1 | refactor >= it) JacobianHB(JHB, J, ub, uh, sym0, omega);
       if (zerofreq) JHBa = JHB;
       else {
         PetscScalar[int] MqHB(JHB.n);
-        ResidualHB(MqHB, J, ub, uh, sym1, 0);
-        MqHB -= RHB;
-        MqHB /= -omega;
+        domegaResidualHB(MqHB, J, ub, uh, sym0);
         tempPms = [[MqHB]];
         ChangeOperator(dwHB, tempPms, parent = JHBa); // send to Mat
       }
@@ -214,25 +216,23 @@ real[int] qa0(JHBaa.n);
   real[int] temp;
   ChangeNumbering(J, ub[], temp);
   qa0(0:J.n-1) = temp;
-}
-if(mpirank == 0){
-  if(!zerofreq) qa0(qa0.n-2) = omega;
-  qa0(qa0.n-1) = lambda;
-}
-if (fileext == "porb") {
-  for (int nh = 0; nh < Nh; nh++){
-    real[int] temp;
-    ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], temp);
-    qa0((1+2*nh)*J.n:(3+2*nh)*J.n-1) = temp;
+  if(mpirank == 0){
+    if(!zerofreq) qa0(qa0.n-2) = omega;
+    qa0(qa0.n-1) = lambda;
   }
-  ResidualHB(RHB, J, ub, uh, sym1, omega);
-  funcJa(qa0);
-  yqP0 = yqP;
-}
-else {
-  real[int] temp;
-  ChangeNumbering([J, J],[um[].re, um[].im], temp);
-  yqP0(J.n:3*J.n-1) = temp;
+  if (fileext == "porb") {
+    for (int nh = 0; nh < Nh; nh++){
+      ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], temp);
+      qa0((1+2*nh)*J.n:(3+2*nh)*J.n-1) = temp;
+    }
+    ResidualHB(RHB, J, ub, uh, sym0, omega);
+    funcJa(qa0);
+    yqP0 = yqP;
+  }
+  else {
+    ChangeNumbering([J, J],[um[].re, um[].im], temp);
+    yqP0(J.n:3*J.n-1) = temp;
+  }
 }
 while (!stopflag){
   real h, hl = (yqP0'*yqP0);
@@ -394,11 +394,10 @@ while (!stopflag){
         real[int] temp;
         ChangeNumbering(J, ub[], temp);
         qa(0:J.n-1) = temp;
-      }
-      for (int nh = 0; nh < Nh; nh++){
-        real[int] temp;
-        ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], temp);
-        qa((1+2*nh)*J.n:(3+2*nh)*J.n-1) = temp;
+        for (int nh = 0; nh < Nh; nh++){
+          ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], temp);
+          qa((1+2*nh)*J.n:(3+2*nh)*J.n-1) = temp;
+        }
       }
       if(mpirank == 0) {
         if(!zerofreq) {
@@ -430,7 +429,7 @@ while (!stopflag){
     broadcast(processor(0), omega);
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
-    saveporb(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, sym1, omega, Nh, ((count % savecount == 0) || forcesave || stopflag), true);
+    saveporb(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, sym0, omega, Nh, ((count % savecount == 0) || forcesave || stopflag), true);
     if (stopflag) break;
     forcesave = false;
     it = 1;

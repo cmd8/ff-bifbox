@@ -54,7 +54,7 @@ complex beta1, gamma12, gamma13;
 string fileroot1, fileext1 = parsefilename(filein, fileroot1); //extract file name and extension
 string fileroot2, fileext2 = parsefilename(filein2, fileroot2); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if((fileext1 == "mode" || fileext1 == "resp" || fileext1 == "rslv" || fileext1 == "tdls") && basefilein == "") basefilein = readbasename(workdir + filein);
+if((fileext1 == "mode" || fileext1 == "resp" || fileext1 == "rslv" || fileext1 == "tdls" || fileext1 == "floq") && basefilein == "") basefilein = readbasename(workdir + filein);
 string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshroot, meshext = parsefilename(meshin, meshroot);
@@ -119,6 +119,13 @@ else if(fileext1 == "porb") {
   complex[int, int] qh(um[].n, 1);
   ub[].re = loadporb(fileroot1, meshin, qh, sym1, omega, Nh);
   um[] = qh(:, 0);
+}
+else if(fileext1 == "floq") {
+  int Nh=1;
+  complex[int, int] qh(um[].n, 2);
+  complex eigenvalue;
+  real[int] symtemp(sym.n);
+  um[] = loadfloq(fileroot1, meshin, qh, sym1, eigenvalue, symtemp, omega, Nh);
 }
 else assert(false); // invalid input filetype
 if (basefileext == "base") {

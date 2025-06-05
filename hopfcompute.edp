@@ -130,7 +130,7 @@ complex beta;
 // Load mesh, make FE basis
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if((fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls") && basefilein == "") basefilein = readbasename(workdir + filein);
+if((fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls" || fileext == "floq") && basefilein == "") basefilein = readbasename(workdir + filein);
 string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshroot, meshext = parsefilename(meshin, meshroot);
@@ -180,6 +180,13 @@ else if(fileext == "porb") {
   complex[int, int] qh(um[].n, Nh);
   ub[].re = loadporb(fileroot, meshin, qh, sym1, omega, Nh);
   um[] = qh(:, 0);
+}
+else if(fileext == "floq") {
+  int Nh=1;
+  complex[int, int] qh(um[].n, 2);
+  complex eigenvalue;
+  real[int] symtemp(sym.n);
+  um[] = loadfloq(fileroot, meshin, qh, sym1, eigenvalue, symtemp, omega, Nh);
 }
 else assert(false); // invalid input filetype
 if (basefileext == "base") {

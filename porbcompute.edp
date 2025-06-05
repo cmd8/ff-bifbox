@@ -33,13 +33,13 @@ string adaptto = getARGV("-adaptto", "0");
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 int Nh = getARGV("-Nh", 0); //if 0, will read Nh from file. In practice, Nh must be at least 1, otherwise use basecompute.edp
 int blocks = getARGV("-blocks", 1); //if blocks = 1, use monolithic LU; if blocks = N w/ 2 <= N <= Nh+1, use block preconditioner with N blocks
-real[int] sym1(sym.n);
+real[int] sym0(sym.n);
 real omega;
 
 // Load mesh, make FE basis
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if((fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls") && basefilein == "") basefilein = readbasename(workdir + filein);
+if((fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls" || fileext == "floq") && basefilein == "") basefilein = readbasename(workdir + filein);
 string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
 if(meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 string meshroot, meshext = parsefilename(meshin, meshroot);
@@ -52,13 +52,13 @@ XMh defu(ub);
 XMh<complex> defu(um), defu(um2), defu(um3);
 complex[int, int] uh(um[].n, max(1, Nh));
 if (fileext == "porb") {
-  ub[] = loadporb(fileroot, meshin, uh, sym1, omega, Nh);
+  ub[] = loadporb(fileroot, meshin, uh, sym0, omega, Nh);
 }
 else if (fileext == "hopf") {
   complex[string] alpha;
   complex beta;
   complex[int] qma;
-  ub[] = loadhopf(fileroot, meshin, um[], qma, sym1, omega, alpha, beta);
+  ub[] = loadhopf(fileroot, meshin, um[], qma, sym0, omega, alpha, beta);
   uh(:, 0) = um[];
 }
 else if (fileext == "foho") {
@@ -69,7 +69,7 @@ else if (fileext == "foho") {
   complex gamma12, gamma13;
   real[int] q2m, q2ma;
   complex[int] qma;
-  ub[] = loadfoho(fileroot, meshin, um[], qma, q2m, q2ma, sym1, omega, alpha, alpha2, beta, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
+  ub[] = loadfoho(fileroot, meshin, um[], qma, q2m, q2ma, sym0, omega, alpha, alpha2, beta, beta22, beta23, gamma12, gamma13, gamma22, gamma23);
   uh(:, 0) = um[];
 }
 else if(fileext == "hoho") {
@@ -78,25 +78,32 @@ else if(fileext == "hoho") {
   complex beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23;
   complex[int] qma, qNm, qNma;
   if(select == 1){
-    ub[] = loadhoho(fileroot, meshin, um[], qma, qNm, qNma, sym1, sym, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+    ub[] = loadhoho(fileroot, meshin, um[], qma, qNm, qNma, sym0, sym, omega, omegaN, alpha, alphaN, beta, betaN, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
   }
   else if(select == 2){
-    ub[] = loadhoho(fileroot, meshin, qNm, qNma, um[], qma, sym, sym1, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
+    ub[] = loadhoho(fileroot, meshin, qNm, qNma, um[], qma, sym, sym0, omegaN, omega, alphaN, alpha, betaN, beta, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
   }
   uh(:, 0) = um[];
 }
 else if (fileext == "mode") {
   complex eigenvalue;
-  uh(:, 0) = loadmode(fileroot, meshin, sym1, eigenvalue);
+  uh(:, 0) = loadmode(fileroot, meshin, sym0, eigenvalue);
   omega = imag(eigenvalue);
 }
 else if (fileext == "resp") {
-  uh(:, 0) = loadresp(fileroot, meshin, sym1, omega);
+  uh(:, 0) = loadresp(fileroot, meshin, sym0, omega);
 }
 else if (fileext == "rslv") {
   real gain;
   complex[int] fm;
-  uh(:, 0) = loadrslv(fileroot, meshin, fm, sym1, omega, gain);
+  uh(:, 0) = loadrslv(fileroot, meshin, fm, sym0, omega, gain);
+}
+else if (fileext == "floq") {
+  complex[int, int] qh(um[].n, 2*Nh);
+  complex eigenvalue;
+  real[int] symtemp(sym.n);
+  uh(:, 0) = loadfloq(fileroot, meshin, qh, sym0, eigenvalue, symtemp, omega, Nh);
+  omega = imag(eigenvalue);
 }
 else assert(false); // invalid input filetype
 if (zerofreq) omega = 0;
@@ -154,12 +161,12 @@ if(meshout == "") meshout = meshin; // if no adaptation
 else { // if output meshfile is given, adapt mesh
   adapt = true;
   meshout = meshout + "." + meshext;
-  real[int] q, qm;
+  real[int] q;
   ChangeNumbering(J, ub[], q);
   ChangeNumbering(J, ub[], q, inverse = true);
   for (int nh = 0; nh < Nh; nh++){
-    ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qm);
-    ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qm, inverse = true);
+    ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], q);
+    ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], q, inverse = true);
   }
   XMhg defu(uG), defu(u1rG), defu(u1iG), defu(u2rG), defu(u2iG), defu(tempu), defu(tempu2);
   real[int, int] uhrG(uG[].n, Nh), uhiG(uG[].n, Nh); // create private global FE functions
@@ -249,7 +256,7 @@ else JHBa = [[JHB, dwHB],[dwHB',0]];
       if(mpirank == 0 && !zerofreq) omega = qPETSc(qPETSc.n-1); 
       broadcast(processor(0), omega);
       PetscScalar[int] RPETSc(JHBa.n);
-      ResidualHB(RHB, J, ub, uh, sym1, omega);
+      ResidualHB(RHB, J, ub, uh, sym0, omega);
       RPETSc(0:JHB.n-1) = RHB;
       if(mpirank == 0 && !zerofreq) RPETSc(RPETSc.n-1) = 0.0;
       return RPETSc;
@@ -262,20 +269,18 @@ func int funcJHB(PetscScalar[int]& qPETSc) {
       ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qPETSc((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true, exchange = true);
     if(mpirank == 0 && !zerofreq) omega = qPETSc(qPETSc.n-1); 
     broadcast(processor(0), omega);
-    JacobianHB(JHB, J, ub, uh, sym1, omega);
+    JacobianHB(JHB, J, ub, uh, sym0, omega);
     if (zerofreq) JHBa = JHB;
     else {
       PetscScalar[int] MqHB(JHB.n);
-      ResidualHB(MqHB, J, ub, uh, sym1, 0);
-      MqHB -= RHB;
-      MqHB /= -omega;
+      domegaResidualHB(MqHB, J, ub, uh, sym0);
       matrix<PetscScalar> tempPms = [[MqHB]];
       ChangeOperator(dwHB, tempPms, parent = JHBa); // send to Mat
     }
     return 0;
 }
 // set up Mat parameters
-real[int] fieldlabels((1+2*Nh)*J.n);
+real[int] fieldlabels(JHB.n);
 fieldlabels(0: J.n-1) = 1.0;
 blocks = min(blocks, 1+Nh);
 for (int nh = 0; nh < Nh; nh++) fieldlabels((1+2*nh)*J.n:(3+2*nh)*J.n-1) = 1.0 + max(0, blocks + nh - Nh);
@@ -294,11 +299,10 @@ real[int] qHB(JHBa.n);
   real[int] q;
   ChangeNumbering(J, ub[], q);
   qHB(0:J.n-1) = q;
-}
-for (int nh = 0; nh < Nh; nh++){
-  real[int] qm;
-  ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qm);
-  qHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = qm;
+  for (int nh = 0; nh < Nh; nh++){
+    ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], q);
+    qHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = q;
+  }
 }
 if(mpirank == 0 && !zerofreq) qHB(qHB.n-1) = omega;
 int ret;
@@ -315,5 +319,5 @@ if(ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qHB((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true);
   if(mpirank == 0 && !zerofreq) omega = qHB(qHB.n-1); 
   broadcast(processor(0), omega);
-  saveporb(fileout, "", meshout, sym1, omega, Nh, true, true);
+  saveporb(fileout, "", meshout, sym0, omega, Nh, true, true);
 }

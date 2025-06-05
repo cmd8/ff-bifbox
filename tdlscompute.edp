@@ -35,7 +35,7 @@ string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
 string basefileroot, basefileext = parsefilename(basefilein, basefileroot);
-if((fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls") && basefilein == ""){
+if((fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls" || fileext == "floq") && basefilein == ""){
   basefilein = readbasename(workdir + filein);
   basefileext = parsefilename(basefilein, basefileroot);
 }
