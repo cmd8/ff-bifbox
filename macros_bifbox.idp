@@ -167,13 +167,13 @@ macro ConvergenceCheck(printtxt)
   }
 // EOM
 
-macro ResidualHB(RHB, J, ub, uh, sym1, omega) {
+macro ResidualHB(RHB, J, ub, uh, sym0, omega) {
   sym = 0;
   real[int] Rtemp, R = vR(0, XMh, tgv = -1);
   for (int j = 0; j < Nh; j++){
     um[] = uh(:, j);
     um2[] = conj(um[]);
-    ik.im = (1+j)*(sym1);
+    ik.im = (1+j)*(sym0);
     ik2 = conj(ik);
     iomega = 1i*(1+j)*(omega);
     iomega2 = -iomega;
@@ -182,8 +182,8 @@ macro ResidualHB(RHB, J, ub, uh, sym1, omega) {
     for (int k = 0; k < Nh-j-1; k++){
       um2[] = uh(:, k);
       um3[] = conj(uh(:, 1+j+k));
-      ik2.im = (1+k)*(sym1);
-      ik3.im = -(2+j+k)*(sym1);
+      ik2.im = (1+k)*(sym0);
+      ik3.im = -(2+j+k)*(sym0);
       iomega2 = 1i*(1+k)*(omega);
       iomega3 = -1i*(2+j+k)*(omega);
       Rc = vT(0, XMh, tgv = -10);
@@ -194,16 +194,16 @@ macro ResidualHB(RHB, J, ub, uh, sym1, omega) {
   RHB(0:J.n-1) = Rtemp;
   for (int nh = 0; nh < Nh; ++nh) {
     complex[int] Rc(ub[].n);
-    sym = (1+nh)*(sym1);
+    sym = (1+nh)*(sym0);
     for (int j = 0; j < Nh; j++){
       um[] = uh(:, j);
-      ik.im = (1+j)*(sym1);
+      ik.im = (1+j)*(sym0);
       iomega = 1i*(1+j)*(omega);
       if (j == nh) Rc += vJ(0, XMh, tgv = -1);
       else {
         if (j < nh) um2[] = 0.5*uh(:, nh-j-1);
         else um2[] = conj(uh(:, j-nh-1));
-        ik2.im = (nh-j)*(sym1);
+        ik2.im = (nh-j)*(sym0);
         iomega2 = 1i*(nh-j)*(omega);
         Rc += vH(0, XMh, tgv = -10);
       }
@@ -212,8 +212,8 @@ macro ResidualHB(RHB, J, ub, uh, sym1, omega) {
           um2[] = 0.5*uh(:, k);
           if (k < nh-j-1) um3[] = uh(:, nh-j-k-2)/3.0;
           else um3[] = conj(uh(:, j+k-nh));
-          ik2.im = (1+k)*(sym1);
-          ik3.im = (nh-j-k-1)*(sym1);
+          ik2.im = (1+k)*(sym0);
+          ik3.im = (nh-j-k-1)*(sym0);
           iomega2 = 1i*(1+k)*(omega);
           iomega3 = 1i*(nh-j-k-1)*(omega);
           Rc += vT(0, XMh, tgv = -10);
@@ -222,8 +222,8 @@ macro ResidualHB(RHB, J, ub, uh, sym1, omega) {
           um2[] = conj(uh(:, k));
           um3[] = conj(uh(:, j-k-nh-2));
           um3[] *= 0.5;
-          ik2.im = -(1+k)*(sym1);
-          ik3.im = -(j-k-nh-1)*(sym1);
+          ik2.im = -(1+k)*(sym0);
+          ik3.im = -(j-k-nh-1)*(sym0);
           iomega2 = -1i*(1+k)*(omega);
           iomega3 = -1i*(j-k-nh-1)*(omega);
           Rc += vT(0, XMh, tgv = -10);
@@ -235,43 +235,84 @@ macro ResidualHB(RHB, J, ub, uh, sym1, omega) {
   }
 }//EOM
 
-macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
+macro domegaResidualHB(MqHB, J, ub, uh, sym0) {
+  MqHB(0:J.n-1) = 0;
+  for (int nh = 0; nh < Nh; ++nh) {
+    real[int] Rtemp;
+    complex[int] Rc(ub[].n);
+    sym = (1+nh)*(sym0);
+    for (int j = 0; j < Nh; j++){
+      um[] = uh(:, j);
+      ik.im = (1+j)*(sym0);
+      if (j == nh) Rc += vM(0, XMh, tgv = -10);
+      else {
+        if (j < nh) um2[] = 0.5*uh(:, nh-j-1);
+        else um2[] = conj(uh(:, j-nh-1));
+        ik2.im = (nh-j)*(sym0);
+        Rc += vdM(0, XMh, tgv = -10);
+      }
+      for (int k = 0; k < Nh; k++) {
+        if (k != nh-j-1 && k < Nh+nh-j) {
+          um2[] = 0.5*uh(:, k);
+          if (k < nh-j-1) um3[] = uh(:, nh-j-k-2)/3.0;
+          else um3[] = conj(uh(:, j+k-nh));
+          ik2.im = (1+k)*(sym0);
+          ik3.im = (nh-j-k-1)*(sym0);
+          Rc += vddM(0, XMh, tgv = -10);
+        }
+        if (k < j-nh-1) {
+          um2[] = conj(uh(:, k));
+          um3[] = conj(uh(:, j-k-nh-2));
+          um3[] *= 0.5;
+          ik2.im = -(1+k)*(sym0);
+          ik3.im = -(j-k-nh-1)*(sym0);
+          Rc += vddM(0, XMh, tgv = -10);
+        }
+      }
+    }
+    Rc *= 1i*(1+nh);
+    ChangeNumbering([J, J], [Rc.re, Rc.im], Rtemp);
+    MqHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = Rtemp;
+  }
+}//EOM
+
+macro JacobianHB(JHB, J, ub, uh, sym0, omega) {
     sym = 0;
     ik = 0;
     iomega = 0;
+    Mat[int, int] JHBtemp(1+2*Nh, 1+2*Nh);
     matrix<complex> Cmat = vJ(XMh, XMh, tgv = -1);
     matrix An2r = Cmat.re, An3r, An2i, An3i;
-    Mat row1(J), A1(J), A2(J), temp;
     ik3 = 0;
     iomega3 = 0;
     for (int j = 0; j < Nh; j++){
       um[] = uh(:, j);
       um2[] = conj(um[]);
-      ik.im = (1+j)*(sym1);
+      ik.im = (1+j)*(sym0);
       ik2 = conj(ik);
       iomega = 1i*(1+j)*(omega);
       iomega2 = -iomega;
       Cmat = vT(XMh, XMh, tgv = -10);
       An2r += Cmat.re;
     }
-    ChangeOperator(row1, An2r);
+    constructor(JHBtemp(0, 0), J, An2r);
     for (int j = 0; j < Nh; j++){
       um[] = 2.0*uh(:, j);
-      ik.im = (1+j)*(sym1);
-      ik2.im = -(1+j)*(sym1);
+      ik.im = (1+j)*(sym0);
+      ik2.im = -(1+j)*(sym0);
       iomega = 1i*(1+j)*(omega);
       iomega2 = -iomega;
       Cmat = vH(XMh, XMh, tgv = -10);
       An2r = Cmat.re;
       An2i = Cmat.im;
-      ik3.im = -(1+j)*(sym1);
+      ik3.im = -(1+j)*(sym0);
       iomega3 = -1i*(1+j)*(omega);
       for (int k = 0; k < Nh; k++){
         if (k < Nh-j-1) {
           um[] = 2.0*uh(:, 1+j+k);
           um2[] = conj(uh(:, k));
-          ik.im = (2+j+k)*(sym1);
-          ik2.im = -(1+k)*(sym1);
+          ik.im = (2+j+k)*(sym0);
+          ik2.im = -(1+k)*(sym0);
           iomega = 1i*(2+j+k)*(omega);
           iomega2 = -1i*(1+k)*(omega);
           Cmat = vT(XMh, XMh, tgv = -10);
@@ -281,8 +322,8 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
         if (k < j) {
           um[] = uh(:, j-k-1);
           um2[] = uh(:, k);
-          ik.im = (j-k)*(sym1);
-          ik2.im = (1+k)*(sym1);
+          ik.im = (j-k)*(sym0);
+          ik2.im = (1+k)*(sym0);
           iomega = 1i*(j-k)*(omega);
           iomega2 = 1i*(1+k)*(omega);
           Cmat = vT(XMh, XMh, tgv = -10);
@@ -290,30 +331,28 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
           An2i += Cmat.im;
         }
       }
-      ChangeOperator(A1, An2r);
-      ChangeOperator(A2, An2i);
-      temp = [[row1, A1, A2]];
-      MatConvert(temp, row1);
+      constructor(JHBtemp(0, 1+2*j), J, An2r);
+      constructor(JHBtemp(0, 2+2*j), J, An2i);
     }
     for (int nh = 0; nh < Nh; nh++){
-      sym = (1+nh)*(sym1);
+      sym = (1+nh)*(sym0);
       um[] = uh(:, nh);
-      ik.im = (1+nh)*(sym1);
+      ik.im = sym;
       ik2 = 0;
-      ik3 = 0;
       iomega = 1i*(1+nh)*(omega);
       iomega2 = 0;
-      iomega3 = 0;
       Cmat = vH(XMh, XMh, tgv = -10);
       An2r = Cmat.re;
       An2i = Cmat.im;
+      ik3 = 0;
+      iomega3 = 0;
       for (int j = 0; j < Nh; j++) {
         if (j != nh) {
           um[] = uh(:, j);
           if (j < nh) um2[] = 0.5*uh(:, nh-j-1);
           else um2[] = conj(uh(:, j-nh-1));
-          ik.im = (1+j)*(sym1);
-          ik2.im = (nh-j)*(sym1);
+          ik.im = (1+j)*(sym0);
+          ik2.im = (nh-j)*(sym0);
           iomega = 1i*(1+j)*(omega);
           iomega2 = 1i*(nh-j)*(omega);
           Cmat = vT(XMh, XMh, tgv = -10);
@@ -321,20 +360,19 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
           An2i += Cmat.im;
         }
       }
-      Mat row2(J), row3(J);
-      ChangeOperator(row2, An2r);
-      ChangeOperator(row3, An2i);
+      constructor(JHBtemp(1+2*nh, 0), J, An2r);
+      constructor(JHBtemp(2+2*nh, 0), J, An2i);
       for (int j = 0; j < Nh; j++) {
         if (j == nh) {
           iomega = 1i*(1+nh)*(omega);
-          ik.im = (1+nh)*(sym1);
+          ik.im = sym;
           Cmat = vJ(XMh, XMh, tgv = -1);
         }
         else {
           if (j < nh) um[] = uh(:, nh-j-1);
           else um[] = conj(uh(:, j-nh-1));
-          ik.im = (nh-j)*(sym1);
-          ik2.im = (1+j)*(sym1);
+          ik.im = (nh-j)*(sym0);
+          ik2.im = (1+j)*(sym0);
           iomega = 1i*(nh-j)*(omega);
           iomega2 = 1i*(1+j)*(omega);
           Cmat = vH(XMh, XMh, tgv = -10);
@@ -345,8 +383,8 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
         An3i = Cmat.re;
         if (j < Nh-nh-1) {
           um[] = uh(:, 1+nh+j);
-          ik.im = (2+nh+j)*(sym1);
-          ik2.im = -(1+j)*(sym1);
+          ik.im = (2+nh+j)*(sym0);
+          ik2.im = -(1+j)*(sym0);
           iomega = 1i*(2+nh+j)*(omega);
           iomega2 = -1i*(1+j)*(omega);
           Cmat = vH(XMh, XMh, tgv = -10);
@@ -360,9 +398,9 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
             if (k < nh-j-1) um[] = 0.5*uh(:, nh-j-k-2);
             else um[] = conj(uh(:, j+k-nh));
             um2[] = uh(:, k);
-            ik.im = (nh-j-k-1)*(sym1);
-            ik2.im = (1+k)*(sym1);
-            ik3.im = (1+j)*(sym1);
+            ik.im = (nh-j-k-1)*(sym0);
+            ik2.im = (1+k)*(sym0);
+            ik3.im = (1+j)*(sym0);
             iomega = 1i*(nh-j-k-1)*(omega);
             iomega2 = 1i*(1+k)*(omega);
             iomega3 = 1i*(1+j)*(omega);
@@ -375,9 +413,9 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
           if (k < 1+j+nh && k > j+nh-Nh) {
             um[] = 0.5*uh(:, nh+j-k);
             um2[] = uh(:, k);
-            ik.im = (1+nh+j-k)*(sym1);
-            ik2.im = (1+k)*(sym1);
-            ik3.im = -(1+j)*(sym1);
+            ik.im = (1+nh+j-k)*(sym0);
+            ik2.im = (1+k)*(sym0);
+            ik3.im = -(1+j)*(sym0);
             iomega = 1i*(1+nh+j-k)*(omega);
             iomega2 = 1i*(1+k)*(omega);
             iomega3 = -1i*(1+j)*(omega);
@@ -391,9 +429,9 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
             um[] = conj(uh(:, j-k-nh-2));
             um[] *= 0.5;
             um2[] = conj(uh(:, k));
-            ik.im = -(j-k-nh-1)*(sym1);
-            ik2.im = -(1+k)*(sym1);
-            ik3.im = (1+j)*(sym1);
+            ik.im = -(j-k-nh-1)*(sym0);
+            ik2.im = -(1+k)*(sym0);
+            ik3.im = (1+j)*(sym0);
             iomega = -1i*(j-k-nh-1)*(omega);
             iomega2 = -1i*(1+k)*(omega);
             iomega3 = 1i*(1+j)*(omega);
@@ -406,9 +444,9 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
           if (k < Nh-nh-j-2) {
             um[] = uh(:, j+k+nh+2);
             um2[] = conj(uh(:, k));
-            ik.im = (3+j+k+nh)*(sym1);
-            ik2.im = -(1+k)*(sym1);
-            ik3.im = -(1+j)*(sym1);
+            ik.im = (3+j+k+nh)*(sym0);
+            ik2.im = -(1+k)*(sym0);
+            ik3.im = -(1+j)*(sym0);
             iomega = 1i*(3+j+k+nh)*(omega);
             iomega2 = -1i*(1+k)*(omega);
             iomega3 = -1i*(1+j)*(omega);
@@ -419,19 +457,533 @@ macro JacobianHB(JHB, J, ub, uh, sym1, omega) {
             An3i -= Cmat.re;
           }
         }
-        ChangeOperator(A1, An2r);
-        ChangeOperator(A2, An3r);
-        temp = [[row2, A1, A2]];
-        MatConvert(temp, row2);
-        ChangeOperator(A1, An2i);
-        ChangeOperator(A2, An3i);
-        temp = [[row3, A1, A2]];
-        MatConvert(temp, row3);
+        constructor(JHBtemp(1+2*nh, 1+2*j), J, An2r);
+        constructor(JHBtemp(1+2*nh, 2+2*j), J, An3r);
+        constructor(JHBtemp(2+2*nh, 1+2*j), J, An2i);
+        constructor(JHBtemp(2+2*nh, 2+2*j), J, An3i);
       }
-      temp = [[row1], [row2], [row3]];
-      MatConvert(temp, row1);
     }
-    JHB = row1;
+    Mat temp, convert(JHBtemp);
+    MatConvert(convert, temp);
+    JHB = temp;
+} // EOM
+
+macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
+    sym = (sym1);
+    ik.im = (sym1);
+    iomega = (shift);
+    Mat<complex>[int, int] JHBtemp(1+2*Nh, 1+2*Nh);
+    matrix<complex> Cmat, An3i, An2r = vJ(XMh, XMh, tgv = -2);
+    ik3.im = (sym1);
+    iomega3 = (shift);
+    for (int j = 0; j < Nh; j++){
+      um[] = uh(:, j);
+      um2[] = conj(um[]);
+      ik.im = (1+j)*(sym0);
+      ik2 = conj(ik);
+      iomega = 1i*(1+j)*(omega);
+      iomega2 = -iomega;
+      Cmat = vT(XMh, XMh, tgv = -20);
+      An2r += Cmat;
+    }
+    constructor(JHBtemp(0, 0), J, An2r);
+    for (int j = 0; j < Nh; j++){
+      um[] = uh(:, j);
+      ik.im = (1+j)*(sym0);
+      ik2.im = -(1+j)*(sym0) + (sym1);
+      iomega = 1i*(1+j)*(omega);
+      iomega2 = -iomega + (shift);
+      An3i = vH(XMh, XMh, tgv = -20);
+      um[] = conj(um[]);
+      ik.im *= -1.0;
+      ik2.im = (1+j)*(sym0) + (sym1);
+      iomega *= -1.0;
+      iomega2 = -iomega + (shift);
+      An2r = vH(XMh, XMh, tgv = -20);
+      for (int k = 0; k < Nh; k++){
+        if (k < Nh-j-1) {
+          um[] = uh(:, 1+j+k);
+          um2[] = conj(uh(:, k));
+          ik.im = (2+j+k)*(sym0);
+          ik2.im = -(1+k)*(sym0);
+          ik3.im = -(1+j)*(sym0) + (sym1);
+          iomega = 1i*(2+j+k)*(omega);
+          iomega2 = -1i*(1+k)*(omega);
+          iomega3 = -1i*(1+j)*(omega) + (shift);
+          Cmat = vT(XMh, XMh, tgv = -20);
+          An3i += Cmat;
+          um[] = conj(um[]);
+          um2[] = conj(um2[]);
+          ik.im *= -1.0;
+          ik2.im *= -1.0;
+          ik3.im = (1+j)*(sym0) + (sym1);
+          iomega *= -1.0;
+          iomega2 *= -1.0;
+          iomega3 = 1i*(1+j)*(omega) + (shift);
+          Cmat = vT(XMh, XMh, tgv = -20);
+          An2r += Cmat;
+        }
+        if (k < j) {
+          um[] = 0.5*uh(:, j-k-1);
+          um2[] = uh(:, k);
+          ik.im = (j-k)*(sym0);
+          ik2.im = (1+k)*(sym0);
+          ik3.im = -(1+j)*(sym0) + (sym1);
+          iomega = 1i*(j-k)*(omega);
+          iomega2 = 1i*(1+k)*(omega);
+          iomega3 = -1i*(1+j)*(omega) + (shift);
+          Cmat = vT(XMh, XMh, tgv = -20);
+          An3i += Cmat;
+          um[] = conj(um[]);
+          um2[] = conj(um2[]);
+          ik.im *= -1.0;
+          ik2.im *= -1.0;
+          ik3.im = (1+j)*(sym0) + (sym1);
+          iomega *= -1.0;
+          iomega2 *= -1.0;
+          iomega3 = 1i*(1+j)*(omega) + (shift);
+          Cmat = vT(XMh, XMh, tgv = -20);
+          An2r += Cmat;
+        }
+      }
+      constructor(JHBtemp(0, 1+2*j), J, An2r);
+      constructor(JHBtemp(0, 2+2*j), J, An3i);
+    }
+    for (int nh = 0; nh < Nh; nh++){
+      sym = (1+nh)*(sym0) + (sym1);
+      um[] = uh(:, nh);
+      ik.im = (1+nh)*(sym0);
+      ik2.im = (sym1);
+      iomega = 1i*(1+nh)*(omega);
+      iomega2 = (shift);
+      An2r = vH(XMh, XMh, tgv = -20);
+      sym = -(1+nh)*(sym0) + (sym1);
+      um[] = conj(um[]);
+      ik.im *= -1.0;
+      iomega *= -1.0;
+      An3i = vH(XMh, XMh, tgv = -20);
+      ik3.im = (sym1);
+      iomega3 = (shift);
+      for (int j = 0; j < Nh; j++) {
+        if (j != nh) {
+          sym = (1+nh)*(sym0) + (sym1);
+          um[] = uh(:, j);
+          if (j < nh) um2[] = 0.5*uh(:, nh-j-1);
+          else um2[] = conj(uh(:, j-nh-1));
+          ik.im = (1+j)*(sym0);
+          ik2.im = (nh-j)*(sym0);
+          iomega = 1i*(1+j)*(omega);
+          iomega2 = 1i*(nh-j)*(omega);
+          Cmat = vT(XMh, XMh, tgv = -20);
+          An2r += Cmat;
+          sym = -(1+nh)*(sym0) + (sym1);
+          um[] = conj(um[]);
+          um2[] = conj(um2[]);
+          ik.im *= -1.0;
+          ik2.im *= -1.0;
+          iomega *= -1.0;
+          iomega2 *= -1.0;
+          Cmat = vT(XMh, XMh, tgv = -20);
+          An3i += Cmat;
+        }
+      }
+      constructor(JHBtemp(1+2*nh, 0), J, An2r);
+      constructor(JHBtemp(2+2*nh, 0), J, An3i);
+      for (int j = 0; j < Nh; j++) {
+        matrix<complex> An3r(ub[].n,ub[].n), An2i(ub[].n,ub[].n);
+        if (j == nh) {
+          sym = (1+nh)*(sym0) + (sym1);
+          ik.im = sym;
+          iomega = 1i*(1+nh)*(omega) + (shift);
+          An2r = vJ(XMh, XMh, tgv = -2);
+          sym = -(1+nh)*(sym0) + (sym1);
+          ik.im = sym;
+          iomega = -1i*(1+nh)*(omega) + (shift);
+          An3i = vJ(XMh, XMh, tgv = -2);
+        }
+        else if (j < nh) {
+          sym = (1+nh)*(sym0) + (sym1);
+          um[] = uh(:, nh-j-1);
+          ik.im = (nh-j)*(sym0);
+          ik2.im = (1+j)*(sym0) + (sym1);
+          iomega = 1i*(nh-j)*(omega);
+          iomega2 = 1i*(1+j)*(omega) + (shift);
+          An2r = vH(XMh, XMh, tgv = -20);
+          sym = -(1+nh)*(sym0) + (sym1);
+          um[] = conj(um[]);
+          ik.im *= -1.0;
+          ik2.im = -(1+j)*(sym0) + (sym1);
+          iomega *= -1.0;
+          iomega2 = -1i*(1+j)*(omega) + (shift);
+          An3i = vH(XMh, XMh, tgv = -20);
+        }
+        else {
+          sym = (1+nh)*(sym0) + (sym1);
+          um[] = conj(uh(:, j-nh-1));
+          ik.im = (nh-j)*(sym0);
+          ik2.im = (1+j)*(sym0) + (sym1);
+          iomega = 1i*(nh-j)*(omega);
+          iomega2 = 1i*(1+j)*(omega) + (shift);
+          An2r = vH(XMh, XMh, tgv = -20);
+          sym = -(1+nh)*(sym0) + (sym1);
+          um[] = conj(um[]);
+          ik.im *= -1.0;
+          ik2.im = -(1+j)*(sym0) + (sym1);
+          iomega *= -1.0;
+          iomega2 = -1i*(1+j)*(omega) + (shift);
+          An3i = vH(XMh, XMh, tgv = -20);
+        }
+        if (j < Nh-nh-1) {
+          sym = (1+nh)*(sym0) + (sym1);
+          um[] = uh(:, 1+nh+j);
+          ik.im = (2+nh+j)*(sym0);
+          ik2.im = -(1+j)*(sym0) + (sym1);
+          iomega = 1i*(2+nh+j)*(omega);
+          iomega2 = -1i*(1+j)*(omega) + (shift);
+          An3r = vH(XMh, XMh, tgv = -20);
+          sym = -(1+nh)*(sym0) + (sym1);
+          um[] = conj(um[]);
+          ik.im *= -1.0;
+          ik2.im = (1+j)*(sym0) + (sym1);
+          iomega *= -1.0;
+          iomega2 = 1i*(1+j)*(omega) + (shift);
+          An2i = vH(XMh, XMh, tgv = -20);
+        }
+        for (int k = 0; k < Nh; k++) {
+          if (k != nh-j-1 && k < Nh+nh-j) {
+            sym = (1+nh)*(sym0) + (sym1);
+            if (k < nh-j-1) um[] = 0.5*uh(:, nh-j-k-2);
+            else um[] = conj(uh(:, j+k-nh));
+            um2[] = uh(:, k);
+            ik.im = (nh-j-k-1)*(sym0);
+            ik2.im = (1+k)*(sym0);
+            ik3.im = (1+j)*(sym0) + (sym1);
+            iomega = 1i*(nh-j-k-1)*(omega);
+            iomega2 = 1i*(1+k)*(omega);
+            iomega3 = 1i*(1+j)*(omega) + (shift);
+            Cmat = vT(XMh, XMh, tgv = -20);
+            An2r += Cmat;
+            sym = -(1+nh)*(sym0) + (sym1);
+            um[] = conj(um[]);
+            um2[] = conj(um2[]);
+            ik.im *= -1.0;
+            ik2.im *= -1.0;
+            ik3.im = -(1+j)*(sym0) + (sym1);
+            iomega *= -1.0;
+            iomega2 *= -1.0;
+            iomega3 = -1i*(1+j)*(omega) + (shift);
+            Cmat = vT(XMh, XMh, tgv = -20);
+            An3i += Cmat;
+          }
+          if (k < 1+j+nh && k > j+nh-Nh) {
+            sym = (1+nh)*(sym0) + (sym1);
+            um[] = 0.5*uh(:, nh+j-k);
+            um2[] = uh(:, k);
+            ik.im = (1+nh+j-k)*(sym0);
+            ik2.im = (1+k)*(sym0);
+            ik3.im = -(1+j)*(sym0) + (sym1);
+            iomega = 1i*(1+nh+j-k)*(omega);
+            iomega2 = 1i*(1+k)*(omega);
+            iomega3 = -1i*(1+j)*(omega) + (shift);
+            Cmat = vT(XMh, XMh, tgv = -20);
+            An3r += Cmat;
+            sym = -(1+nh)*(sym0) + (sym1);
+            um[] = conj(um[]);
+            um2[] = conj(um2[]);
+            ik.im *= -1.0;
+            ik2.im *= -1.0;
+            ik3.im = (1+j)*(sym0) + (sym1);
+            iomega *= -1.0;
+            iomega2 *= -1.0;
+            iomega3 = 1i*(1+j)*(omega) + (shift);
+            Cmat = vT(XMh, XMh, tgv = -20);
+            An2i += Cmat;
+          }
+          if (k < j-nh-1) {
+            sym = (1+nh)*(sym0) + (sym1);
+            um[] = conj(uh(:, j-k-nh-2));
+            um[] *= 0.5;
+            um2[] = conj(uh(:, k));
+            ik.im = -(j-k-nh-1)*(sym0);
+            ik2.im = -(1+k)*(sym0);
+            ik3.im = (1+j)*(sym0) + (sym1);
+            iomega = -1i*(j-k-nh-1)*(omega);
+            iomega2 = -1i*(1+k)*(omega);
+            iomega3 = 1i*(1+j)*(omega) + (shift);
+            Cmat = vT(XMh, XMh, tgv = -20);
+            An2r += Cmat;
+            sym = -(1+nh)*(sym0) + (sym1);
+            um[] = conj(um[]);
+            um2[] = conj(um2[]);
+            ik.im *= -1.0;
+            ik2.im *= -1.0;
+            ik3.im = -(1+j)*(sym0) + (sym1);
+            iomega *= -1.0;
+            iomega2 *= -1.0;
+            iomega3 = -1i*(1+j)*(omega) + (shift);
+            Cmat = vT(XMh, XMh, tgv = -20);
+            An3i += Cmat;
+          }
+          if (k < Nh-nh-j-2) {
+            sym = (1+nh)*(sym0) + (sym1);
+            um[] = uh(:, j+k+nh+2);
+            um2[] = conj(uh(:, k));
+            ik.im = (3+j+k+nh)*(sym0);
+            ik2.im = -(1+k)*(sym0);
+            ik3.im = -(1+j)*(sym0) + (sym1);
+            iomega = 1i*(3+j+k+nh)*(omega);
+            iomega2 = -1i*(1+k)*(omega);
+            iomega3 = -1i*(1+j)*(omega) + (shift);
+            Cmat = vT(XMh, XMh, tgv = -20);
+            An3r += Cmat;
+            sym = -(1+nh)*(sym0) + (sym1);
+            um[] = conj(um[]);
+            um2[] = conj(um2[]);
+            ik.im *= -1.0;
+            ik2.im *= -1.0;
+            ik3.im = (1+j)*(sym0) + (sym1);
+            iomega *= -1.0;
+            iomega2 *= -1.0;
+            iomega3 = 1i*(1+j)*(omega) + (shift);
+            Cmat = vT(XMh, XMh, tgv = -20);
+            An2i += Cmat;
+          }
+        }
+        constructor(JHBtemp(1+2*nh, 1+2*j), J, An2r);
+        constructor(JHBtemp(1+2*nh, 2+2*j), J, An3r);
+        constructor(JHBtemp(2+2*nh, 1+2*j), J, An2i);
+        constructor(JHBtemp(2+2*nh, 2+2*j), J, An3i);
+      }
+    }
+    Mat<complex> temp, convert(JHBtemp);
+    MatConvert(convert, temp);
+    JHB = temp;
+} // EOM
+
+macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
+    sym = (sym1);
+    ik.im = (sym1);
+    Mat<complex>[int, int] MHBtemp(1+2*Nh, 1+2*Nh);
+    matrix<complex> Cmat, An3i, An2r = vM(XMh, XMh, tgv = -20);
+    ik3.im = (sym1);
+    for (int j = 0; j < Nh; j++){
+      um[] = uh(:, j);
+      um2[] = conj(um[]);
+      ik.im = (1+j)*(sym0);
+      ik2 = conj(ik);
+      Cmat = vddM(XMh, XMh, tgv = -20);
+      An2r += Cmat;
+    }
+    constructor(MHBtemp(0, 0), J, An2r);
+    for (int j = 0; j < Nh; j++){
+      um[] = uh(:, j);
+      ik.im = (1+j)*(sym0);
+      ik2.im = -(1+j)*(sym0) + (sym1);
+      An3i = vdM(XMh, XMh, tgv = -20);
+      um[] = conj(um[]);
+      ik.im *= -1.0;
+      ik2.im = (1+j)*(sym0) + (sym1);
+      An2r = vdM(XMh, XMh, tgv = -20);
+      for (int k = 0; k < Nh; k++){
+        if (k < Nh-j-1) {
+          um[] = uh(:, 1+j+k);
+          um2[] = conj(uh(:, k));
+          ik.im = (2+j+k)*(sym0);
+          ik2.im = -(1+k)*(sym0);
+          ik3.im = -(1+j)*(sym0) + (sym1);
+          Cmat = vddM(XMh, XMh, tgv = -20);
+          An3i += Cmat;
+          um[] = conj(um[]);
+          um2[] = conj(um2[]);
+          ik.im *= -1.0;
+          ik2.im *= -1.0;
+          ik3.im = (1+j)*(sym0) + (sym1);
+          Cmat = vddM(XMh, XMh, tgv = -20);
+          An2r += Cmat;
+        }
+        if (k < j) {
+          um[] = 0.5*uh(:, j-k-1);
+          um2[] = uh(:, k);
+          ik.im = (j-k)*(sym0);
+          ik2.im = (1+k)*(sym0);
+          ik3.im = -(1+j)*(sym0) + (sym1);
+          Cmat = vddM(XMh, XMh, tgv = -20);
+          An3i += Cmat;
+          um[] = conj(um[]);
+          um2[] = conj(um2[]);
+          ik.im *= -1.0;
+          ik2.im *= -1.0;
+          ik3.im = (1+j)*(sym0) + (sym1);
+          Cmat = vddM(XMh, XMh, tgv = -20);
+          An2r += Cmat;
+        }
+      }
+      constructor(MHBtemp(0, 1+2*j), J, An2r);
+      constructor(MHBtemp(0, 2+2*j), J, An3i);
+    }
+    for (int nh = 0; nh < Nh; nh++){
+      sym = (1+nh)*(sym0) + (sym1);
+      um[] = uh(:, nh);
+      ik.im = (1+nh)*(sym0);
+      ik2.im = (sym1);
+      An2r = vdM(XMh, XMh, tgv = -20);
+      sym = -(1+nh)*(sym0) + (sym1);
+      um[] = conj(um[]);
+      ik.im *= -1.0;
+      ik2.im = (sym1);
+      An3i = vdM(XMh, XMh, tgv = -20);
+      ik3.im = (sym1);
+      for (int j = 0; j < Nh; j++) {
+        if (j != nh) {
+          sym = (1+nh)*(sym0) + (sym1);
+          um[] = uh(:, j);
+          if (j < nh) um2[] = 0.5*uh(:, nh-j-1);
+          else um2[] = conj(uh(:, j-nh-1));
+          ik.im = (1+j)*(sym0);
+          ik2.im = (nh-j)*(sym0);
+          Cmat = vddM(XMh, XMh, tgv = -20);
+          An2r += Cmat;
+          sym = -(1+nh)*(sym0) + (sym1);
+          um[] = conj(um[]);
+          um2[] = conj(um2[]);
+          ik.im *= -1.0;
+          ik2.im *= -1.0;
+          Cmat = vddM(XMh, XMh, tgv = -20);
+          An3i += Cmat;
+        }
+      }
+      constructor(MHBtemp(1+2*nh, 0), J, An2r);
+      constructor(MHBtemp(2+2*nh, 0), J, An3i);
+      for (int j = 0; j < Nh; j++) {
+        matrix<complex> An3r(ub[].n,ub[].n), An2i(ub[].n,ub[].n);
+        if (j == nh) {
+          sym = (1+nh)*(sym0) + (sym1);
+          ik.im = sym;
+          An2r = vM(XMh, XMh, tgv = -20);
+          sym = -(1+nh)*(sym0) + (sym1);
+          ik.im = sym;
+          An3i = vM(XMh, XMh, tgv = -20);
+        }
+        else if (j < nh) {
+          sym = (1+nh)*(sym0) + (sym1);
+          um[] = uh(:, nh-j-1);
+          ik.im = (nh-j)*(sym0);
+          ik2.im = (1+j)*(sym0) + (sym1);
+          An2r = vdM(XMh, XMh, tgv = -20);
+          sym = -(1+nh)*(sym0) + (sym1);
+          um[] = conj(um[]);
+          ik.im *= -1.0;
+          ik2.im = -(1+j)*(sym0) + (sym1);
+          An3i = vdM(XMh, XMh, tgv = -20);
+        }
+        else {
+          sym = (1+nh)*(sym0) + (sym1);
+          um[] = conj(uh(:, j-nh-1));
+          ik.im = (nh-j)*(sym0);
+          ik2.im = (1+j)*(sym0) + (sym1);
+          An2r = vdM(XMh, XMh, tgv = -20);
+          sym = -(1+nh)*(sym0) + (sym1);
+          um[] = conj(um[]);
+          ik.im *= -1.0;
+          ik2.im = -(1+j)*(sym0) + (sym1);
+          An3i = vdM(XMh, XMh, tgv = -20);
+        }
+        if (j < Nh-nh-1) {
+          sym = (1+nh)*(sym0) + (sym1);
+          um[] = uh(:, 1+nh+j);
+          ik.im = (2+nh+j)*(sym0);
+          ik2.im = -(1+j)*(sym0) + (sym1);
+          An3r = vdM(XMh, XMh, tgv = -20);
+          sym = -(1+nh)*(sym0) + (sym1);
+          um[] = conj(um[]);
+          ik.im *= -1.0;
+          ik2.im = (1+j)*(sym0) + (sym1);
+          An2i = vdM(XMh, XMh, tgv = -20);
+        }
+        for (int k = 0; k < Nh; k++) {
+          if (k != nh-j-1 && k < Nh+nh-j) {
+            sym = (1+nh)*(sym0) + (sym1);
+            if (k < nh-j-1) um[] = 0.5*uh(:, nh-j-k-2);
+            else um[] = conj(uh(:, j+k-nh));
+            um2[] = uh(:, k);
+            ik.im = (nh-j-k-1)*(sym0);
+            ik2.im = (1+k)*(sym0);
+            ik3.im = (1+j)*(sym0) + (sym1);
+            Cmat = vddM(XMh, XMh, tgv = -20);
+            An2r += Cmat;
+            sym = -(1+nh)*(sym0) + (sym1);
+            um[] = conj(um[]);
+            um2[] = conj(um2[]);
+            ik.im *= -1.0;
+            ik2.im *= -1.0;
+            ik3.im = -(1+j)*(sym0) + (sym1);
+            Cmat = vddM(XMh, XMh, tgv = -20);
+            An3i += Cmat;
+          }
+          if (k < 1+j+nh && k > j+nh-Nh) {
+            sym = (1+nh)*(sym0) + (sym1);
+            um[] = 0.5*uh(:, nh+j-k);
+            um2[] = uh(:, k);
+            ik.im = (1+nh+j-k)*(sym0);
+            ik2.im = (1+k)*(sym0);
+            ik3.im = -(1+j)*(sym0) + (sym1);
+            Cmat = vddM(XMh, XMh, tgv = -20);
+            An3r += Cmat;
+            sym = -(1+nh)*(sym0) + (sym1);
+            um[] = conj(um[]);
+            um2[] = conj(um2[]);
+            ik.im *= -1.0;
+            ik2.im *= -1.0;
+            ik3.im = (1+j)*(sym0) + (sym1);
+            Cmat = vddM(XMh, XMh, tgv = -20);
+            An2i += Cmat;
+          }
+          if (k < j-nh-1) {
+            sym = (1+nh)*(sym0) + (sym1);
+            um[] = conj(uh(:, j-k-nh-2));
+            um[] *= 0.5;
+            um2[] = conj(uh(:, k));
+            ik.im = -(j-k-nh-1)*(sym0);
+            ik2.im = -(1+k)*(sym0);
+            ik3.im = (1+j)*(sym0) + (sym1);
+            Cmat = vddM(XMh, XMh, tgv = -20);
+            An2r += Cmat;
+            sym = -(1+nh)*(sym0) + (sym1);
+            um[] = conj(um[]);
+            um2[] = conj(um2[]);
+            ik.im *= -1.0;
+            ik2.im *= -1.0;
+            ik3.im = -(1+j)*(sym0) + (sym1);
+            Cmat = vddM(XMh, XMh, tgv = -20);
+            An3i += Cmat;
+          }
+          if (k < Nh-nh-j-2) {
+            sym = (1+nh)*(sym0) + (sym1);
+            um[] = uh(:, j+k+nh+2);
+            um2[] = conj(uh(:, k));
+            ik.im = (3+j+k+nh)*(sym0);
+            ik2.im = -(1+k)*(sym0);
+            ik3.im = -(1+j)*(sym0) + (sym1);
+            Cmat = vddM(XMh, XMh, tgv = -20);
+            An3r += Cmat;
+            sym = -(1+nh)*(sym0) + (sym1);
+            um[] = conj(um[]);
+            um2[] = conj(um2[]);
+            ik.im *= -1.0;
+            ik2.im *= -1.0;
+            ik3.im = (1+j)*(sym0) + (sym1);
+            Cmat = vddM(XMh, XMh, tgv = -20);
+            An2i += Cmat;
+          }
+        }
+        constructor(MHBtemp(1+2*nh, 1+2*j), J, An2r);
+        constructor(MHBtemp(1+2*nh, 2+2*j), J, An3r);
+        constructor(MHBtemp(2+2*nh, 1+2*j), J, An2i);
+        constructor(MHBtemp(2+2*nh, 2+2*j), J, An3i);
+      }
+    }
+    Mat<complex> convert(MHBtemp);
+    MatConvert(convert, MHB);
 } // EOM
 
 // FUNCTIONS -------------------------------------------------------------------
@@ -1570,6 +2122,7 @@ macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monit
             defu(ums) = defu(cplxu);
             qmpv(:, nh) = ums[];
           }
+          Thgpv = movemesh(Thgs, [coordinatetransform]);
         }
         else Thgpv = movemesh(Thg, [coordinatetransform]);
         fespace XMhgpv(Thgpv, Pk);
@@ -1582,6 +2135,105 @@ macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monit
           ugr[] = ugc[].re;
           ugi[] = ugc[].im;
           savevtk(workdir + porbfileout + "_porb_harm" + nh + ".vtu", Thgpv, paraviewu(ugr), paraviewu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+        }
+      }
+    }
+  }
+}//EOM
+
+macro savefloq(floqfileout, statsfile, basefile, meshfile, evecs, evals, omega, Nh, sym0, sym1, saveflag){
+  if(mpirank == 0){
+    cout << "\teval(s) = [" + evals(0);
+    for (int kk = 1; kk < evals.n; ++kk) cout << ", " + evals(kk);
+    if(sym1.n > 0) cout << ", sym1 = " + listsym(sym1);
+    cout << ", omega = " + omega + ", Nh = " + Nh;
+    if(sym0.n > 0) cout << ", sym0 = " + listsym(sym0);
+    if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
+    if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+    cout << "." << endl;
+  }
+  if(mpirank == 0 && statsfile != "") {
+    cout << "  Saving " + evals.n + " Floquet eigenvalues to '" + statsfile + ".floq.stat' in '" + workdir + "'." << endl;
+    for (int ii = 0; ii < evals.n; ++ii){
+      ofstream file(workdir + statsfile + ".floq.stat", append);
+      file.precision(17);
+      file << basefile << "\t" << meshfile << "\t" << evals(ii);
+      if(sym1.n > 0) file << "\t" << listsym(sym1);
+      file << "\t" << omega << "\t" << Nh;
+      if(sym0.n > 0) file << "\t" << listsym(sym0);
+      if(paramnames[0] != ""){
+        for (int k = 0; k < paramnames.n; ++k){
+          file << "\t" << params[paramnames[k]];
+        }
+      }
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file << "\t" << monitors[monitornames[k]];
+        }
+      }
+      file << endl;
+      }
+    }
+  if(saveflag && floqfileout != ""){
+    XMhg<complex> defu(cplxu), defu(umg);
+    complex[int, int] uhmg(umg[].n, 1+2*Nh);
+    for (int ii = 0; ii < evals.n; ++ii){
+      for (int jj = 0; jj < (1+2*Nh); ++jj) {
+        um[] = evecs(jj*um[].n:(1+jj)*um[].n-1, ii);
+        cplxu[](restu) = um[];
+        mpiAllReduce(cplxu[], uhmg(:, jj), mpiCommWorld, mpiSUM);
+      }
+      string floqfileout0 = floqfileout + ((ii > 0) ? ("_" + ii) : "");
+      if (mpirank == 0){
+        cout << "  Saving '" + floqfileout0 + ".floq' over '" + basefile + "' on '" + meshfile + "' in '" + workdir + "'." << endl;
+        {
+          ofstream file(workdir + floqfileout0 + ".floq", binary);
+          file.precision(17);
+          file << "mesh\t" << meshfile << endl;
+          file << "file\t" << basefile << endl;
+          file << "eval\t" << evals(ii) << endl;
+          if(sym1.n > 0) file << "sym1\t" << listsym(sym1) << endl;
+          file << "omega\t" << omega << endl;
+          file << "Nh\t" << Nh << endl;
+          if(sym0.n > 0) file << "sym0\t" << listsym(sym0) << endl;
+          if(paramnames[0] != ""){
+            for (int k = 0; k < paramnames.n; ++k){
+              file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
+            }
+          }
+          if(monitornames[0] != ""){
+            for (int k = 0; k < monitornames.n; ++k){
+              file << monitornames[k] << "\t" << monitors[monitornames[k]] << endl;
+            }
+          }
+          for(int jj = 0; jj < (1+2*Nh); jj++) file << uhmg(:, jj) << endl;
+        }
+        if (paraviewflag > 0){
+          cout << "  Saving '" + floqfileout0 + "_floq_[comp0,comp1,comp2,...].vtu' in '" + workdir + "'." << endl;
+          meshN Thgpv;
+          complex[int, int] qmpv = uhmg;
+          if (paraviewflag > 1){
+            meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+            fespace XMhs(Thgs, Pk);
+            XMhs<complex> defu(ums);
+            qmpv.resize(ums[].n, uhmg.m);
+            for(int jj = 0; jj < (1+2*Nh); jj++){
+              cplxu[] = uhmg(:, jj);
+              defu(ums) = defu(cplxu);
+              qmpv(:, jj) = ums[];
+            }
+            Thgpv = movemesh(Thgs, [coordinatetransform]);
+          }
+          else Thgpv = movemesh(Thg, [coordinatetransform]);
+          fespace XMhgpv(Thgpv, Pk);
+          XMhgpv defu(ugr), defu(ugi);
+          XMhgpv<complex> defu(ugc);
+          for(int jj = 0; jj < (1+2*Nh); jj++){
+            ugc[] = qmpv(:, jj);
+            ugr[] = ugc[].re;
+            ugi[] = ugc[].im;
+            savevtk(workdir + floqfileout0 + "_floq_comp" + jj + ".vtu", Thgpv, paraviewu(ugr), paraviewu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+          }
         }
       }
     }
@@ -2205,6 +2857,76 @@ func real[int] loadporb(string inputfilename, string meshfilename, complex[int,i
       setparams(paramnames, params);
       real[int] qlocal = ubg[](restu);
       for (int nh = 0; nh < min(Nh, Nhfile); nh++) {
+        umg[] = uhg(:, nh);
+        qhlocal(:, nh) = umg[](restu);
+      }
+      return qlocal;
+    }
+
+func complex[int] loadfloq(string inputfilename, string meshfilename, complex[int,int] & qhlocal, real[int] & sym1, complex & eigenvalue, real[int] & sym0, real & omega, int & Nh) {
+      XMhg<complex> defu(ubg), defu(umg);
+      if (mpirank == 0) cout << "  Loading '" + inputfilename + ".floq' over '";
+      string filemesh, basefilename, dummy, symstr;
+      int Nhfile;
+      ifstream file(workdir + inputfilename + ".floq");
+      file >> dummy >> filemesh >> dummy >> basefilename >> dummy >> eigenvalue;
+      if (sym1.n > 0) {
+        file >> dummy >> symstr;
+        sym1 = parsesymstr(symstr);
+      }
+      file >> dummy >> omega >> dummy >> Nhfile;
+      if (sym0.n > 0) {
+        file >> dummy >> symstr;
+        sym0 = parsesymstr(symstr);
+      }
+      if (mpirank == 0) cout << basefilename + "' on '" + meshfilename + "' from '" + workdir + "'." << endl;
+      if(paramnames[0] != ""){
+        for (int k = 0; k < paramnames.n; ++k){
+          file >> paramnames[k] >> params[paramnames[k]];
+        }
+      }
+      if(monitornames[0] != ""){
+        for (int k = 0; k < monitornames.n; ++k){
+          file >> monitornames[k] >> monitors[monitornames[k]];
+        }
+      }
+      if(Nh == 0) {
+        Nh = Nhfile;
+        qhlocal.resize(qhlocal.n, 2*Nh);
+      }
+      complex[int,int] uhg(ubg[].n, 2*Nhfile);
+      if (mpirank == 0) {
+        cout << "\teval = " + eigenvalue;
+        if(sym1.n > 0) cout << ", sym1 = " + listsym(sym1);
+        cout << "\tomega = " + omega + ", Nh = " + Nhfile;
+        if(sym0.n > 0) cout << ", sym0 = " + listsym(sym0);
+        if(paramnames[0] != "") cout << ", " + listparams(paramnames, params);
+        if(monitornames[0] != "") cout << ", " + listparams(monitornames, monitors);
+        cout << "." << endl;
+      }
+      if (filemesh == meshfilename){ // no interpolation needed
+        file >> ubg[];
+        for (int nh = 0; nh < 2*Nhfile; nh++) {
+          file >> umg[];
+          uhg(:, nh) = umg[];
+        }
+      }
+      else { // must interpolate
+        if (mpirank == 0) cout << "\tMesh mismatch. Interpolating from '" << filemesh << "'." << endl;
+        meshN Thg1 = readmeshN(workdir + filemesh);
+        fespace XMhg1(Thg1, Pk);
+        XMhg1<complex> defu(ubg1), defu(umg1);
+        file >> ubg1[];
+        defu(ubg) = defu(ubg1);
+        for (int nh = 0; nh < 2*Nhfile; nh++) {
+          file >> umg1[];
+          defu(umg) = defu(umg1);
+          uhg(:, nh) = umg[];
+        }
+      }
+      setparams(paramnames, params);
+      complex[int] qlocal = ubg[](restu);
+      for (int nh = 0; nh < 2*min(Nh, Nhfile); nh++) {
         umg[] = uhg(:, nh);
         qhlocal(:, nh) = umg[](restu);
       }

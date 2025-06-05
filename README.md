@@ -87,9 +87,10 @@ See the [examples](https://github.com/cmd8/ff-bifbox/tree/main/examples) folder.
 - [x] Add support for 3-D problems with multiple symmetries
 - [x] Add harmonic balance framework for computation/continuation of periodic orbits
 - [x] Add time-domain linear simulation framework
-- [ ] Add Floquet analysis for periodic orbits
+- [x] Add Floquet analysis for periodic orbits
 - [ ] Add fold/Neimark-Sacker bifurcation computation/continuation for periodic orbits
 - [ ] Improve documentation and tutorials/examples
+- [ ] Release first stable version
 
 
 See the [open issues](https://github.com/cmd8/ff-bifbox/issues) for a full list of proposed features (and known issues).

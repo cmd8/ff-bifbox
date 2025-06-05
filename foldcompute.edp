@@ -46,7 +46,7 @@ real beta;
 // Load mesh, make FE basis
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
-if(fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls") {
+if(fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls" || fileext == "floq") {
   filein = readbasename(workdir + filein);
   fileext = parsefilename(filein, fileroot);
 }

@@ -126,9 +126,22 @@ ff-mpirun -np $nproc fohocompute.edp -v 0 -dir $workdir -fi ${fohoguesslist[0]} 
 ```
 
 ### Periodic 3D dynamics
-15. Continue Hopf bifurcations along their periodic solutions with varying $S$ 
+15. Continue periodic solutions along $S$ from their initial Hopf points using the harmonic balance method with $N_h=2$.
 ```
-ff-mpirun -np $nproc porbcontinue.edp -v 0 -dir $workdir -fi swirljetm1.hopf -fo swirljetm1 -Nh 2 -mo swirljetm1porb -param S -thetamax 1 -h0 1 -scount 4 -maxcount 12 -blocks 2
-ff-mpirun -np $nproc porbcontinue.edp -v 0 -dir $workdir -fi swirljetm2.hopf -fo swirljetm2 -Nh 2 -mo swirljetm2porb -param S -thetamax 1 -h0 -1 -scount 4 -maxcount 12 -blocks 2
+ff-mpirun -np $nproc porbcontinue.edp -v 0 -dir $workdir -fi swirljetm1.hopf -fo swirljetm1 -Nh 2 -mo swirljetm1porb -param S -thetamax 1 -h0 0.5 -scount 4 -maxcount 12
+ff-mpirun -np $nproc porbcontinue.edp -v 0 -dir $workdir -fi swirljetm2.hopf -fo swirljetm2 -Nh 2 -mo swirljetm2porb -param S -thetamax 1 -h0 -0.5 -scount 4 -maxcount 16
 ```
 NOTE: in the actual paper, $N_h=4$ to $6$ was used to accurately resolve the periodic orbits. $N_h=2$ is used here to reduce computational cost.
+
+16. Compute periodic solutions at $S=1.9$ ($|m|=1$) and $S=1.8$ ($|m|=2$) with $N_h=3$ using a block preconditioner.
+```
+ff-mpirun -np $nproc porbcompute.edp -v 0 -dir $workdir -fi swirljetm1_12.porb -fo swirljetm1 -Nh 3 -S 1.9 -blocks 3
+ff-mpirun -np $nproc porbcompute.edp -v 0 -dir $workdir -fi swirljetm2_16.porb -fo swirljetm2 -Nh 3 -S 1.8 -blocks 3
+```
+
+### Bifurcations to aperiodic 3D dynamics
+17. Compute Floquet stability of periodic solutions against each other 
+```
+ff-mpirun -np $nproc floqcompute.edp -v 0 -dir $workdir -fi swirljetm1.porb -fo swirljetm1 -Nh 3 -eps_target 0.1+0.3i -sym -2 -S 1.9 -blocks 3 -eps_pos_gen_non_hermitian
+ff-mpirun -np $nproc floqcompute.edp -v 0 -dir $workdir -fi swirljetm2.porb -fo swirljetm2 -Nh 3 -eps_target 0.02-0.75i -sym -1 -S 1.8 -blocks 3 -eps_pos_gen_non_hermitian
+```

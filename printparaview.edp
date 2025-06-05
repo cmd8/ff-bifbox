@@ -376,4 +376,43 @@ if (mpirank==0){
       savevtk(workdir + fileout + "_porb_harm" + harm + ".vtu", Thgpv, paraviewu(ugr), paraviewu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
     }
   }
+  else if (fileext == "floq"){
+    XMhg<complex> defu(umg);
+    restu = 0:XMhg.ndof-1;
+    int Nh=0;
+    real omega;
+    complex[int, int] qh(umg[].n, Nh);  
+    complex eigenvalue;
+    real[int] symtemp(sym.n);
+    umg[] = loadfloq(fileroot, meshin, qh, sym, eigenvalue, symtemp, omega, Nh);
+    cout << "  Saving '" + fileout + "_floq_[comp0,comp1,comp2,...].vtu' in '" + workdir + "'." << endl;
+    complex[int, int] qmpv(qh.n, qh.m+1);
+    qmpv(:, 0) = umg[];
+    for (int jj = 0; jj < 2*Nh; jj++){
+      umg[] = qh(:, jj);
+      qmpv(:, jj+1) = umg[];
+    }
+    if (paraviewflag > 1){
+      meshN Thgs = trunc(Thg, 1, split = paraviewflag);
+      fespace XMhs(Thgs, Pk);
+      XMhs<complex> defu(ums);
+      qmpv.resize(ums[].n, qmpv.m);
+      for(int jj = 0; jj < (1+2*Nh); jj++){
+        umg[] = qmpv(:, jj);
+        defu(ums) = defu(umg);
+        qmpv(:, jj) = ums[];
+      }
+      Thgpv = movemesh(Thgs, [coordinatetransform]);
+    }
+    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    fespace XMhgpv(Thgpv, Pk);
+    XMhgpv defu(ugr), defu(ugi);
+    XMhgpv<complex> defu(ugc);
+    for(int jj = 0; jj < (1+2*Nh); jj++){
+      ugc[] = qmpv(:, jj);
+      ugr[] = ugc[].re;
+      ugi[] = ugc[].im;
+      savevtk(workdir + fileout + "_floq_comp" + jj + ".vtu", Thgpv, paraviewu(ugr), paraviewu(ugi), dataname = ParaviewDataNamec, order = ParaviewOrderc);
+    }
+  }
 }
