@@ -656,7 +656,6 @@ JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, 0);
 JHB *= -1.0;
 MassHBcplx(MHB, J, ub, uh, sym0, sym1);
 
-/*
 real[int] fieldlabels(JHB.n);
 fieldlabels(0: J.n-1) = 1;
 blocks = min(blocks, 1+Nh);
@@ -679,4 +678,3 @@ for (int n = 0; n < ntarget; ++n){
     }
   savefloq(fileout + ((ntarget > 1) ? ("_" + n) : ""), statout, filein, meshin, vec, val, omega, Nh, sym0, sym1, (fileout != ""));
 }
-*/
