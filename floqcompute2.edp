@@ -58,9 +58,7 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
       Cmat = vT(XMh, XMh, tgv = -20);
       An2r += Cmat;
     }
-    Mat<complex> A0(J);
-    ChangeOperator(A0, An2r);
-    JHBtemp(0, 0) = A0;
+    constructor(JHBtemp(0, 0), J, An2r);
     for (int j = 0; j < Nh; j++){
       um[] = uh(:, j);
       ik.im = (1+j)*(sym0);
@@ -120,11 +118,8 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
           An2r += Cmat;
         }
       }
-      Mat<complex> A1r(J), A1i(J);
-      ChangeOperator(A1r, An2r);
-      JHBtemp(0, 1+2*j) = A1r;
-      ChangeOperator(A1i, An3i);
-      JHBtemp(0, 2+2*j) = A1i;
+      constructor(JHBtemp(0, 1+2*j), J, An2r);
+      constructor(JHBtemp(0, 2+2*j), J, An3i);
     }
     for (int nh = 0; nh < Nh; nh++){
       sym = (1+nh)*(sym0) + (sym1);
@@ -164,20 +159,17 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
           An3i += Cmat;
         }
       }
-      Mat<complex> A1r(J), A1i(J);
-      ChangeOperator(A1r, An2r);
-      JHBtemp(1+2*nh, 0) = A1r;
-      ChangeOperator(A1i, An3i);
-      JHBtemp(2+2*nh, 0) = A1i;
+      constructor(JHBtemp(1+2*nh, 0), J, An2r);
+      constructor(JHBtemp(2+2*nh, 0), J, An3i);
       for (int j = 0; j < Nh; j++) {
         matrix<complex> An3r(ub[].n,ub[].n), An2i(ub[].n,ub[].n);
         if (j == nh) {
           sym = (1+nh)*(sym0) + (sym1);
-          ik.im = (1+nh)*(sym0) + (sym1);
+          ik.im = sym;
           iomega = 1i*(1+nh)*(omega) + (shift);
           An2r = vJ(XMh, XMh, tgv = -2);
           sym = -(1+nh)*(sym0) + (sym1);
-          ik.im = -(1+nh)*(sym0) + (sym1);
+          ik.im = sym;
           iomega = -1i*(1+nh)*(omega) + (shift);
           An3i = vJ(XMh, XMh, tgv = -2);
         }
@@ -329,46 +321,34 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
             An2i += Cmat;
           }
         }
-        Mat<complex> A2r(J), A3r(J), A2i(J), A3i(J);
-        ChangeOperator(A2r, An2r);
-        JHBtemp(1+2*nh, 1+2*j) = A2r;
-        ChangeOperator(A3r, An3r);
-        JHBtemp(1+2*nh, 2+2*j) = A3r;
-        ChangeOperator(A2i, An2i);
-        JHBtemp(2+2*nh, 1+2*j) = A2i;
-        ChangeOperator(A3i, An3i);
-        JHBtemp(2+2*nh, 2+2*j) = A3i;
+        constructor(JHBtemp(1+2*nh, 1+2*j), J, An2r);
+        constructor(JHBtemp(1+2*nh, 2+2*j), J, An3r);
+        constructor(JHBtemp(2+2*nh, 1+2*j), J, An2i);
+        constructor(JHBtemp(2+2*nh, 2+2*j), J, An3i);
       }
     }
-    Mat<complex> temp, convert(JHBtemp);
-    MatConvert(convert, temp);
-    ChangeOperator(JHB, temp);
-    } // EOM
+    Mat<complex> convert(JHBtemp);
+    MatConvert(convert, JHB);
+} // EOM
 
 macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
     sym = (sym1);
     ik.im = (sym1);
     Mat<complex>[int, int] MHBtemp(1+2*Nh, 1+2*Nh);
     matrix<complex> An3i, An2r = vM(XMh, XMh, tgv = -20);
-    Mat<complex> A0(J);
-    ChangeOperator(A0, An2r);
-    MHBtemp(0, 0) = A0;
+    constructor(MHBtemp(0, 0), J, An2r);
     for (int nh = 0; nh < Nh; nh++) {
       sym = (1+nh)*(sym0) + (sym1);
-      ik.im = (1+nh)*(sym0) + (sym1);
+      ik.im = sym;
       An2r = vM(XMh, XMh, tgv = -20);
       sym = -(1+nh)*(sym0) + (sym1);
-      ik.im = -(1+nh)*(sym0) + (sym1);
+      ik.im = sym;
       An3i = vM(XMh, XMh, tgv = -20);
-      Mat<complex> A1(J), A2(J);
-      ChangeOperator(A1, An2r);
-      ChangeOperator(A2, An3i);
-      MHBtemp(1+2*nh, 1+2*nh) = A1;
-      MHBtemp(2+2*nh, 2+2*nh) = A2;
+      constructor(MHBtemp(1+2*nh, 1+2*nh), J, An2r);
+      constructor(MHBtemp(2+2*nh, 2+2*nh), J, An3i);
     }
-    Mat<complex> temp, convert(MHBtemp);
-    MatConvert(convert, temp);
-    ChangeOperator(MHB, temp);
+    Mat<complex> convert(MHBtemp);
+    MatConvert(convert, MHB);
 } // EOM
 /*
 macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
@@ -385,9 +365,7 @@ macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
       Cmat = vddM(XMh, XMh, tgv = -20);
       An2r += Cmat;
     }
-    Mat<complex> A0(J);
-    ChangeOperator(A0, An2r);
-    MHBtemp(0, 0) = A0;
+    constructor(MHBtemp(0, 0), J, An2r);
     for (int j = 0; j < Nh; j++){
       um[] = uh(:, j);
       ik.im = (1+j)*(sym0);
@@ -431,11 +409,8 @@ macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
           An2r += Cmat;
         }
       }
-      Mat<complex> A1r(J), A1i(J);
-      ChangeOperator(A1r, An2r);
-      MHBtemp(0, 1+2*j) = A1r;
-      ChangeOperator(A1i, An3i);
-      MHBtemp(0, 2+2*j) = A1i;
+      constructor(MHBtemp(0, 1+2*j), J, An2r);
+      constructor(MHBtemp(0, 2+2*j), J, An3i);
     }
     for (int nh = 0; nh < Nh; nh++){
       sym = (1+nh)*(sym0) + (sym1);
@@ -468,19 +443,16 @@ macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
           An3i += Cmat;
         }
       }
-      Mat<complex> A1r(J), A1i(J);
-      ChangeOperator(A1r, An2r);
-      MHBtemp(1+2*nh, 0) = A1r;
-      ChangeOperator(A1i, An3i);
-      MHBtemp(2+2*nh, 0) = A1i;
+      constructor(MHBtemp(1+2*nh, 0), J, An2r);
+      constructor(MHBtemp(2+2*nh, 0), J, An3i);
       for (int j = 0; j < Nh; j++) {
         matrix<complex> An3r(ub[].n,ub[].n), An2i(ub[].n,ub[].n);
         if (j == nh) {
           sym = (1+nh)*(sym0) + (sym1);
-          ik.im = (1+nh)*(sym0) + (sym1);
+          ik.im = sym;
           An2r = vM(XMh, XMh, tgv = -20);
           sym = -(1+nh)*(sym0) + (sym1);
-          ik.im = -(1+nh)*(sym0) + (sym1);
+          ik.im = sym;
           An3i = vM(XMh, XMh, tgv = -20);
         }
         else if (j < nh) {
@@ -517,7 +489,7 @@ macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
           um[] = conj(um[]);
           ik.im *= -1.0;
           ik2.im = (1+j)*(sym0) + (sym1);
-          An3i = vdM(XMh, XMh, tgv = -20);
+          An2i = vdM(XMh, XMh, tgv = -20);
         }
         for (int k = 0; k < Nh; k++) {
           if (k != nh-j-1 && k < Nh+nh-j) {
@@ -595,20 +567,14 @@ macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
             An2i += Cmat;
           }
         }
-        Mat<complex> A2r(J), A3r(J), A2i(J), A3i(J);
-        ChangeOperator(A2r, An2r);
-        MHBtemp(1+2*nh, 1+2*j) = A2r;
-        ChangeOperator(A3r, An3r);
-        MHBtemp(1+2*nh, 2+2*j) = A3r;
-        ChangeOperator(A2i, An2i);
-        MHBtemp(2+2*nh, 1+2*j) = A2i;
-        ChangeOperator(A3i, An3i);
-        MHBtemp(2+2*nh, 2+2*j) = A3i;
+        constructor(MHBtemp(1+2*nh, 1+2*j), J, An2r);
+        constructor(MHBtemp(1+2*nh, 2+2*j), J, An3r);
+        constructor(MHBtemp(2+2*nh, 1+2*j), J, An2i);
+        constructor(MHBtemp(2+2*nh, 2+2*j), J, An3i);
       }
     }
-    Mat<complex> temp, convert(MHBtemp);
-    MatConvert(convert, temp);
-    ChangeOperator(MHB, temp);
+    Mat<complex> convert(MHBtemp);
+    MatConvert(convert, MHB);
 } // EOM
 */
 // Load mesh, make FE basis
@@ -650,7 +616,7 @@ complex shift = shifts;
 sepcharind = max(targetf.rfind("+"), targetf.rfind("-"));
 complex shiftf = atof(targetf(0:sepcharind)) + 1i*atof(targetf(sepcharind:targetf.length-2));
 
-Mat<complex> JHB((1+2*Nh)*J.n, (1+2*Nh)*J.n), MHB((1+2*Nh)*J.n, (1+2*Nh)*J.n);
+Mat<complex> JHB, MHB;
 JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, 0);
 JHB *= -1.0;
 MassHBcplx(MHB, J, ub, uh, sym0, sym1);
