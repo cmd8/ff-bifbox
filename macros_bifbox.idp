@@ -270,7 +270,7 @@ macro domegaResidualHB(MqHB, J, ub, uh, sym0) {
         }
       }
     }
-    Rc *= 1i;
+    Rc *= 1i*(1+nh);
     ChangeNumbering([J, J], [Rc.re, Rc.im], Rtemp);
     MqHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = Rtemp;
   }
