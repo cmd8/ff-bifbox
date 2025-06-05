@@ -44,8 +44,7 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
     sym = (sym1);
     ik.im = (sym1);
     iomega = (shift);
-    matrix<complex> An1r = vJ(XMh, XMh, tgv = -2);
-    matrix<complex> Cmat(ub[].n), An1i(ub[].n);
+    matrix<complex> Cmat, An3i, An2r = vJ(XMh, XMh, tgv = -2);
     Mat<complex> row1(J), A1(J), A2(J), temp;
     ik3.im = (sym1);
     iomega3 = (shift);
@@ -57,22 +56,22 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
       iomega = 1i*(1+j)*(omega);
       iomega2 = -iomega;
       Cmat = vT(XMh, XMh, tgv = -20);
-      An1r += Cmat;
+      An2r += Cmat;
     }
-    ChangeOperator(row1, An1r);
+    ChangeOperator(row1, An2r);
     for (int j = 0; j < Nh; j++){
       um[] = uh(:, j);
       ik.im = (1+j)*(sym0);
       ik2.im = -(1+j)*(sym0) + (sym1);
       iomega = 1i*(1+j)*(omega);
       iomega2 = -iomega + (shift);
-      An1i = vH(XMh, XMh, tgv = -20);
+      An3i = vH(XMh, XMh, tgv = -20);
       um[] = conj(um[]);
       ik.im *= -1.0;
       ik2.im = (1+j)*(sym0) + (sym1);
       iomega *= -1.0;
       iomega2 = -iomega + (shift);
-      An1r = vH(XMh, XMh, tgv = -20);
+      An2r = vH(XMh, XMh, tgv = -20);
       for (int k = 0; k < Nh; k++){
         if (k < Nh-j-1) {
           um[] = uh(:, 1+j+k);
@@ -84,7 +83,7 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
           iomega2 = -1i*(1+k)*(omega);
           iomega3 = -1i*(1+j)*(omega) + (shift);
           Cmat = vT(XMh, XMh, tgv = -20);
-          An1i += Cmat;
+          An3i += Cmat;
           um[] = conj(um[]);
           um2[] = conj(um2[]);
           ik.im *= -1.0;
@@ -94,7 +93,7 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
           iomega2 *= -1.0;
           iomega3 = 1i*(1+j)*(omega) + (shift);
           Cmat = vT(XMh, XMh, tgv = -20);
-          An1r += Cmat;
+          An2r += Cmat;
         }
         if (k < j) {
           um[] = 0.5*uh(:, j-k-1);
@@ -106,7 +105,7 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
           iomega2 = 1i*(1+k)*(omega);
           iomega3 = -1i*(1+j)*(omega) + (shift);
           Cmat = vT(XMh, XMh, tgv = -20);
-          An1i += Cmat;
+          An3i += Cmat;
           um[] = conj(um[]);
           um2[] = conj(um2[]);
           ik.im *= -1.0;
@@ -116,11 +115,11 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
           iomega2 *= -1.0;
           iomega3 = 1i*(1+j)*(omega) + (shift);
           Cmat = vT(XMh, XMh, tgv = -20);
-          An1r += Cmat;
+          An2r += Cmat;
         }
       }
-      ChangeOperator(A1, An1r);
-      ChangeOperator(A2, An1i);
+      ChangeOperator(A1, An2r);
+      ChangeOperator(A2, An3i);
       temp = [[row1, A1, A2]];
       MatConvert(temp, row1);
     }
@@ -131,12 +130,12 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
       ik2.im = (sym1);
       iomega = 1i*(1+nh)*(omega);
       iomega2 = (shift);
-      An1r = vH(XMh, XMh, tgv = -20);
+      An2r = vH(XMh, XMh, tgv = -20);
       sym = -(1+nh)*(sym0) + (sym1);
       um[] = conj(um[]);
       ik.im *= -1.0;
       iomega *= -1.0;
-      An1i = vH(XMh, XMh, tgv = -20);
+      An3i = vH(XMh, XMh, tgv = -20);
       ik3.im = (sym1);
       iomega3 = (shift);
       for (int j = 0; j < Nh; j++) {
@@ -150,7 +149,7 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
           iomega = 1i*(1+j)*(omega);
           iomega2 = 1i*(nh-j)*(omega);
           Cmat = vT(XMh, XMh, tgv = -20);
-          An1r += Cmat;
+          An2r += Cmat;
           sym = -(1+nh)*(sym0) + (sym1);
           um[] = conj(um[]);
           um2[] = conj(um2[]);
@@ -159,14 +158,14 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
           iomega *= -1.0;
           iomega2 *= -1.0;
           Cmat = vT(XMh, XMh, tgv = -20);
-          An1i += Cmat;
+          An3i += Cmat;
         }
       }
       Mat<complex> row2(J), row3(J);
-      ChangeOperator(row2, An1r);
-      ChangeOperator(row3, An1i);
+      ChangeOperator(row2, An2r);
+      ChangeOperator(row3, An3i);
       for (int j = 0; j < Nh; j++) {
-        matrix<complex> An2r(ub[].n,ub[].n), An3r(ub[].n,ub[].n), An2i(ub[].n,ub[].n), An3i(ub[].n,ub[].n);
+        matrix<complex> An3r(ub[].n,ub[].n), An2i(ub[].n,ub[].n);
         if (j == nh) {
           sym = (1+nh)*(sym0) + (sym1);
           ik.im = (1+nh)*(sym0) + (sym1);
@@ -216,16 +215,14 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
           ik2.im = -(1+j)*(sym0) + (sym1);
           iomega = 1i*(2+nh+j)*(omega);
           iomega2 = -1i*(1+j)*(omega) + (shift);
-          Cmat = vH(XMh, XMh, tgv = -20);
-          An3r += Cmat;
+          An3r = vH(XMh, XMh, tgv = -20);
           sym = -(1+nh)*(sym0) + (sym1);
           um[] = conj(um[]);
           ik.im *= -1.0;
           ik2.im = (1+j)*(sym0) + (sym1);
           iomega *= -1.0;
           iomega2 = 1i*(1+j)*(omega) + (shift);
-          Cmat = vH(XMh, XMh, tgv = -20);
-          An2i += Cmat;
+          An2i = vH(XMh, XMh, tgv = -20);
         }
         for (int k = 0; k < Nh; k++) {
           if (k != nh-j-1 && k < Nh+nh-j) {
@@ -345,31 +342,30 @@ macro JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, shift) {
 macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
     sym = (sym1);
     ik.im = (sym1);
-    matrix<complex> An1r = vM(XMh, XMh, tgv = -20);
-    Mat<complex> row1(J);
-    ChangeOperator(row1, An1r);
+    matrix<complex> An3i, An2r = vM(XMh, XMh, tgv = -20);
+    Mat<complex> block1(J);
+    ChangeOperator(block1, An2r);
     for (int nh = 0; nh < Nh; nh++) {
-      Mat<complex> row2(J), row3(J);
-      matrix<complex> An2r(ub[].n,ub[].n), An3i(ub[].n,ub[].n);
       sym = (1+nh)*(sym0) + (sym1);
       ik.im = (1+nh)*(sym0) + (sym1);
       An2r = vM(XMh, XMh, tgv = -20);
       sym = -(1+nh)*(sym0) + (sym1);
       ik.im = -(1+nh)*(sym0) + (sym1);
       An3i = vM(XMh, XMh, tgv = -20);
-      ChangeOperator(row2, An2r);
-      ChangeOperator(row3, An3i);
-      Mat<complex> temp = [[row1, 0, 0], [0, row2, 0], [0, 0, row3]];
-      MatConvert(temp, row1);
+      Mat<complex> block2(J), block3(J);
+      ChangeOperator(block2, An2r);
+      ChangeOperator(block3, An3i);
+      Mat<complex> temp = [[block1, 0, 0], [0, block2, 0], [0, 0, block3]];
+      MatConvert(temp, block1);
     }
-    MHB = row1;
+    MHB = block1;
 } // EOM
 /*
 macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
     sym = (sym1);
     ik.im = (sym1);
-    matrix<complex> An1r = vM(XMh, XMh, tgv = -20);
-    matrix<complex> Cmat(ub[].n), An1i(ub[].n);
+    matrix<complex> An2r = vM(XMh, XMh, tgv = -20);
+    matrix<complex> Cmat(ub[].n), An3i(ub[].n);
     Mat<complex> row1(J), A1(J), A2(J), temp;
     ik3.im = (sym1);
     for (int j = 0; j < Nh; j++){
@@ -378,18 +374,18 @@ macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
       ik.im = (1+j)*(sym0);
       ik2 = conj(ik);
       Cmat = vddM(XMh, XMh, tgv = -20);
-      An1r += Cmat;
+      An2r += Cmat;
     }
-    ChangeOperator(row1, An1r);
+    ChangeOperator(row1, An2r);
     for (int j = 0; j < Nh; j++){
       um[] = uh(:, j);
       ik.im = (1+j)*(sym0);
       ik2.im = -(1+j)*(sym0) + (sym1);
-      An1i = vdM(XMh, XMh, tgv = -20);
+      An3i = vdM(XMh, XMh, tgv = -20);
       um[] = conj(um[]);
       ik.im *= -1.0;
       ik2.im = (1+j)*(sym0) + (sym1);
-      An1r = vdM(XMh, XMh, tgv = -20);
+      An2r = vdM(XMh, XMh, tgv = -20);
       for (int k = 0; k < Nh; k++){
         if (k < Nh-j-1) {
           um[] = uh(:, 1+j+k);
@@ -398,14 +394,14 @@ macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
           ik2.im = -(1+k)*(sym0);
           ik3.im = -(1+j)*(sym0) + (sym1);
           Cmat = vddM(XMh, XMh, tgv = -20);
-          An1i += Cmat;
+          An3i += Cmat;
           um[] = conj(um[]);
           um2[] = conj(um2[]);
           ik.im *= -1.0;
           ik2.im *= -1.0;
           ik3.im = (1+j)*(sym0) + (sym1);
           Cmat = vddM(XMh, XMh, tgv = -20);
-          An1r += Cmat;
+          An2r += Cmat;
         }
         if (k < j) {
           um[] = 0.5*uh(:, j-k-1);
@@ -414,18 +410,18 @@ macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
           ik2.im = (1+k)*(sym0);
           ik3.im = -(1+j)*(sym0) + (sym1);
           Cmat = vddM(XMh, XMh, tgv = -20);
-          An1i += Cmat;
+          An3i += Cmat;
           um[] = conj(um[]);
           um2[] = conj(um2[]);
           ik.im *= -1.0;
           ik2.im *= -1.0;
           ik3.im = (1+j)*(sym0) + (sym1);
           Cmat = vddM(XMh, XMh, tgv = -20);
-          An1r += Cmat;
+          An2r += Cmat;
         }
       }
-      ChangeOperator(A1, An1r);
-      ChangeOperator(A2, An1i);
+      ChangeOperator(A1, An2r);
+      ChangeOperator(A2, An3i);
       temp = [[row1, A1, A2]];
       MatConvert(temp, row1);
     }
@@ -434,12 +430,12 @@ macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
       um[] = uh(:, nh);
       ik.im = (1+nh)*(sym0);
       ik2.im = (sym1);
-      An1r = vdM(XMh, XMh, tgv = -20);
+      An2r = vdM(XMh, XMh, tgv = -20);
       sym = -(1+nh)*(sym0) + (sym1);
       um[] = conj(um[]);
       ik.im *= -1.0;
       ik2.im = (sym1);
-      An1i = vdM(XMh, XMh, tgv = -20);
+      An3i = vdM(XMh, XMh, tgv = -20);
       ik3.im = (sym1);
       for (int j = 0; j < Nh; j++) {
         if (j != nh) {
@@ -450,19 +446,19 @@ macro MassHBcplx(MHB, J, ub, uh, sym0, sym1) {
           ik.im = (1+j)*(sym0);
           ik2.im = (nh-j)*(sym0);
           Cmat = vddM(XMh, XMh, tgv = -20);
-          An1r += Cmat;
+          An2r += Cmat;
           sym = -(1+nh)*(sym0) + (sym1);
           um[] = conj(um[]);
           um2[] = conj(um2[]);
           ik.im *= -1.0;
           ik2.im *= -1.0;
           Cmat = vddM(XMh, XMh, tgv = -20);
-          An1i += Cmat;
+          An3i += Cmat;
         }
       }
       Mat<complex> row2(J), row3(J);
-      ChangeOperator(row2, An1r);
-      ChangeOperator(row3, An1i);
+      ChangeOperator(row2, An2r);
+      ChangeOperator(row3, An3i);
       for (int j = 0; j < Nh; j++) {
         matrix<complex> An2r(ub[].n,ub[].n), An3r(ub[].n,ub[].n), An2i(ub[].n,ub[].n), An3i(ub[].n,ub[].n);
         if (j == nh) {
@@ -641,7 +637,7 @@ complex shift = shifts;
 sepcharind = max(targetf.rfind("+"), targetf.rfind("-"));
 complex shiftf = atof(targetf(0:sepcharind)) + 1i*atof(targetf(sepcharind:targetf.length-2));
 
-Mat<complex> JHB((1+2*Nh)*J.n, (1+2*Nh)*J.n), MHB((1+2*Nh)*J.n, (1+2*Nh)*J.n);
+Mat<complex> JHB, MHB;
 JacobianHBcplx(JHB, J, ub, uh, sym0, sym1, omega, 0);
 JHB *= -1.0;
 MassHBcplx(MHB, J, ub, uh, sym0, sym1);

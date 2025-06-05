@@ -475,6 +475,212 @@ macro JacobianHB(JHB, J, ub, uh, sym0, omega) {
     JHB = row1;
 } // EOM
 
+/*
+macro JacobianHB(JHB, J, ub, uh, sym0, omega) {
+    sym = 0;
+    ik = 0;
+    iomega = 0;
+    Mat[int, int] JHBtemp(1+2*Nh, 1+2*Nh);
+    matrix<complex> Cmat = vJ(XMh, XMh, tgv = -1);
+    matrix An2r = Cmat.re, An3r, An2i, An3i;
+    ik3 = 0;
+    iomega3 = 0;
+    for (int j = 0; j < Nh; j++){
+      um[] = uh(:, j);
+      um2[] = conj(um[]);
+      ik.im = (1+j)*(sym0);
+      ik2 = conj(ik);
+      iomega = 1i*(1+j)*(omega);
+      iomega2 = -iomega;
+      Cmat = vT(XMh, XMh, tgv = -10);
+      An2r += Cmat.re;
+    }
+    Mat A0(J);
+    ChangeOperator(A0, An2r);
+    JHBtemp(0, 0) = A0;
+    for (int j = 0; j < Nh; j++){
+      um[] = 2.0*uh(:, j);
+      ik.im = (1+j)*(sym0);
+      ik2.im = -(1+j)*(sym0);
+      iomega = 1i*(1+j)*(omega);
+      iomega2 = -iomega;
+      Cmat = vH(XMh, XMh, tgv = -10);
+      An2r = Cmat.re;
+      An2i = Cmat.im;
+      ik3.im = -(1+j)*(sym0);
+      iomega3 = -1i*(1+j)*(omega);
+      for (int k = 0; k < Nh; k++){
+        if (k < Nh-j-1) {
+          um[] = 2.0*uh(:, 1+j+k);
+          um2[] = conj(uh(:, k));
+          ik.im = (2+j+k)*(sym0);
+          ik2.im = -(1+k)*(sym0);
+          iomega = 1i*(2+j+k)*(omega);
+          iomega2 = -1i*(1+k)*(omega);
+          Cmat = vT(XMh, XMh, tgv = -10);
+          An2r += Cmat.re;
+          An2i += Cmat.im;
+        }
+        if (k < j) {
+          um[] = uh(:, j-k-1);
+          um2[] = uh(:, k);
+          ik.im = (j-k)*(sym0);
+          ik2.im = (1+k)*(sym0);
+          iomega = 1i*(j-k)*(omega);
+          iomega2 = 1i*(1+k)*(omega);
+          Cmat = vT(XMh, XMh, tgv = -10);
+          An2r += Cmat.re;
+          An2i += Cmat.im;
+        }
+      }
+      Mat A1r(J), A1i(J);
+      ChangeOperator(A1r, An2r);
+      JHBtemp(0, 1+2*j) = A1r;
+      ChangeOperator(A1i, An2i);
+      JHBtemp(0, 2+2*j) = A1i;
+    }
+    for (int nh = 0; nh < Nh; nh++){
+      sym = (1+nh)*(sym0);
+      um[] = uh(:, nh);
+      ik.im = (1+nh)*(sym0);
+      ik2 = 0;
+      iomega = 1i*(1+nh)*(omega);
+      iomega2 = 0;
+      Cmat = vH(XMh, XMh, tgv = -10);
+      An2r = Cmat.re;
+      An2i = Cmat.im;
+      ik3 = 0;
+      iomega3 = 0;
+      for (int j = 0; j < Nh; j++) {
+        if (j != nh) {
+          um[] = uh(:, j);
+          if (j < nh) um2[] = 0.5*uh(:, nh-j-1);
+          else um2[] = conj(uh(:, j-nh-1));
+          ik.im = (1+j)*(sym0);
+          ik2.im = (nh-j)*(sym0);
+          iomega = 1i*(1+j)*(omega);
+          iomega2 = 1i*(nh-j)*(omega);
+          Cmat = vT(XMh, XMh, tgv = -10);
+          An2r += Cmat.re;
+          An2i += Cmat.im;
+        }
+      }
+      Mat A1r(J), A1i(J);
+      ChangeOperator(A1r, An2r);
+      JHBtemp(1+2*nh, 0) = A1r;
+      ChangeOperator(A1i, An2i);
+      JHBtemp(2+2*nh, 0) = A1i;
+      for (int j = 0; j < Nh; j++) {
+        if (j == nh) {
+          iomega = 1i*(1+nh)*(omega);
+          ik.im = (1+nh)*(sym0);
+          Cmat = vJ(XMh, XMh, tgv = -1);
+        }
+        else {
+          if (j < nh) um[] = uh(:, nh-j-1);
+          else um[] = conj(uh(:, j-nh-1));
+          ik.im = (nh-j)*(sym0);
+          ik2.im = (1+j)*(sym0);
+          iomega = 1i*(nh-j)*(omega);
+          iomega2 = 1i*(1+j)*(omega);
+          Cmat = vH(XMh, XMh, tgv = -10);
+        }
+        An2r = Cmat.re;
+        An2i = Cmat.im;
+        An3r = -An2i;
+        An3i = Cmat.re;
+        if (j < Nh-nh-1) {
+          um[] = uh(:, 1+nh+j);
+          ik.im = (2+nh+j)*(sym0);
+          ik2.im = -(1+j)*(sym0);
+          iomega = 1i*(2+nh+j)*(omega);
+          iomega2 = -1i*(1+j)*(omega);
+          Cmat = vH(XMh, XMh, tgv = -10);
+          An2r += Cmat.re;
+          An2i += Cmat.im;
+          An3r += Cmat.im;
+          An3i -= Cmat.re;
+        }
+        for (int k = 0; k < Nh; k++) {
+          if (k != nh-j-1 && k < Nh+nh-j) {
+            if (k < nh-j-1) um[] = 0.5*uh(:, nh-j-k-2);
+            else um[] = conj(uh(:, j+k-nh));
+            um2[] = uh(:, k);
+            ik.im = (nh-j-k-1)*(sym0);
+            ik2.im = (1+k)*(sym0);
+            ik3.im = (1+j)*(sym0);
+            iomega = 1i*(nh-j-k-1)*(omega);
+            iomega2 = 1i*(1+k)*(omega);
+            iomega3 = 1i*(1+j)*(omega);
+            Cmat = vT(XMh, XMh, tgv = -10);
+            An2r += Cmat.re;
+            An2i += Cmat.im;
+            An3r -= Cmat.im;
+            An3i += Cmat.re;
+          }
+          if (k < 1+j+nh && k > j+nh-Nh) {
+            um[] = 0.5*uh(:, nh+j-k);
+            um2[] = uh(:, k);
+            ik.im = (1+nh+j-k)*(sym0);
+            ik2.im = (1+k)*(sym0);
+            ik3.im = -(1+j)*(sym0);
+            iomega = 1i*(1+nh+j-k)*(omega);
+            iomega2 = 1i*(1+k)*(omega);
+            iomega3 = -1i*(1+j)*(omega);
+            Cmat = vT(XMh, XMh, tgv = -10);
+            An2r += Cmat.re;
+            An2i += Cmat.im;
+            An3r += Cmat.im;
+            An3i -= Cmat.re;
+          }
+          if (k < j-nh-1) {
+            um[] = conj(uh(:, j-k-nh-2));
+            um[] *= 0.5;
+            um2[] = conj(uh(:, k));
+            ik.im = -(j-k-nh-1)*(sym0);
+            ik2.im = -(1+k)*(sym0);
+            ik3.im = (1+j)*(sym0);
+            iomega = -1i*(j-k-nh-1)*(omega);
+            iomega2 = -1i*(1+k)*(omega);
+            iomega3 = 1i*(1+j)*(omega);
+            Cmat = vT(XMh, XMh, tgv = -10);
+            An2r += Cmat.re;
+            An2i += Cmat.im;
+            An3r -= Cmat.im;
+            An3i += Cmat.re;
+          }
+          if (k < Nh-nh-j-2) {
+            um[] = uh(:, j+k+nh+2);
+            um2[] = conj(uh(:, k));
+            ik.im = (3+j+k+nh)*(sym0);
+            ik2.im = -(1+k)*(sym0);
+            ik3.im = -(1+j)*(sym0);
+            iomega = 1i*(3+j+k+nh)*(omega);
+            iomega2 = -1i*(1+k)*(omega);
+            iomega3 = -1i*(1+j)*(omega);
+            Cmat = vT(XMh, XMh, tgv = -10);
+            An2r += Cmat.re;
+            An2i += Cmat.im;
+            An3r += Cmat.im;
+            An3i -= Cmat.re;
+          }
+        }
+        Mat A2r(J), A3r(J), A2i(J), A3i(J);
+        ChangeOperator(A2r, An2r);
+        JHBtemp(1+2*nh, 1+2*j) = A2r;
+        ChangeOperator(A3r, An3r);
+        JHBtemp(1+2*nh, 2+2*j) = A3r;
+        ChangeOperator(A2i, An2i);
+        JHBtemp(2+2*nh, 1+2*j) = A2i;
+        ChangeOperator(A3i, An3i);
+        JHBtemp(2+2*nh, 2+2*j) = A3i;
+      }
+    }
+    Mat temp, convert(JHBtemp);
+    MatConvert(convert, temp);
+    JHB = temp;
+} // EOM
+*/
 // FUNCTIONS -------------------------------------------------------------------
 macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
   IFMACRO(getmonitors) 
