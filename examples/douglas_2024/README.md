@@ -124,10 +124,8 @@ ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi freeoutS1p2.base -fo
 ```
 ln -sf examples/douglas_2024/eqns_meliga_etal_2012.idp eqns.idp
 ln -sf examples/douglas_2024/settings_meliga_etal_2012.idp settings.idp
-ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi meligaS1.base -fo meligaS1m1 -sym -1 -eps_pos_gen_non_hermitian -eps_target 0.1+1.2i -eps_nev 1
-ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi meligaS1.base -fo meligaS1m1adj -sym -1 -eps_target 0.1-1.2i -eps_nev 1 -adj 1
-ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi meligaS1p3.base -fo meligaS1p3m2 -sym -2 -eps_pos_gen_non_hermitian -eps_target 0.1+2.5i -eps_nev 1
-ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi meligaS1p3.base -fo meligaS1p3m2adj -sym -2 -eps_target 0.1-2.5i -eps_nev 1 -adj 1
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi meligaS1.base -fo meligaS1m1 -sym -1 -eps_pos_gen_non_hermitian -eps_target 0.1+1.2i -eps_nev 1 -eps_two_sided 1
+ff-mpirun -np $nproc modecompute.edp -v 0 -dir $workdir -fi meligaS1p3.base -fo meligaS1p3m2 -sym -2 -eps_pos_gen_non_hermitian -eps_target 0.1+2.5i -eps_nev 1 -eps_two_sided 1
 ```
 
 2. Compute eigenmodes with convective BC on the truncated mesh.

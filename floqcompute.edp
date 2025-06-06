@@ -27,7 +27,7 @@ string meshin = getARGV("-mi", ""); // input meshfile with extension
 string filein = getARGV("-fi", ""); // input file with extension
 string fileout = getARGV("-fo", ""); // output file without extension
 string statout = getARGV("-so", "");
-bool adj = getARGV("-adj", 0);
+bool epstwosided = getARGV("-eps_two_sided", 0);
 string symstr = getARGV("-sym", "0");
 string epstarget = getARGV("-eps_target", "0+0i");
 int ntarget = getARGV("-ntarget", 1);
@@ -92,26 +92,23 @@ string HBKSPparams = KSPparams;
 if (blocks > 1) HBKSPparams = "-ksp_type gmres -ksp_norm_type unpreconditioned -ksp_pc_side right -pc_type fieldsplit -pc_fieldsplit_type symmetric_multiplicative -fieldsplit_pc_type lu -ksp_gmres_cgs_refinement_type refine_ifneeded";
 for (int n = 0; n < ntarget; ++n){
   if (ntarget > 1) shift = shifts + (shiftf - shifts)*real(n)/real(ntarget - 1);
-  int k;
-  if(adj) k = EPSSolve(JHB, MHB, larray = larr, array = arr, values = val, fields = fieldlabels, 
-                 sparams = "-st_type sinvert -options_left no -eps_monitor_conv -prefix_push st_ " + HBKSPparams + " -prefix_pop -eps_target " + string(shift));
-  else k = EPSSolve(JHB, MHB, array = arr, values = val, fields = fieldlabels, 
-                 sparams = "-st_type sinvert -options_left no -eps_monitor_conv -prefix_push st_ " + HBKSPparams + " -prefix_pop -eps_target " + string(shift));
+  int k = EPSSolve(JHB, MHB, larray = larr, array = arr, values = val, fields = fieldlabels, 
+                 sparams = "-st_type sinvert -options_left no -eps_monitor_conv -prefix_push st_ " + HBKSPparams + " -prefix_pop -eps_target " + string(shift) + " -eps_two_sided " + epstwosided);
   if (strictnev) {// activate to limit number of eigenpairs
     val.resize(min(k, epsnev));
     arr.resize((1+2*Nh)*J.n, min(k, epsnev));
-    if(adj) larr.resize((1+2*Nh)*J.n, min(k, epsnev));
+    if(epstwosided) larr.resize((1+2*Nh)*J.n, min(k, epsnev));
   }
   complex[int, int] vec((1+2*Nh)*um[].n, val.n), lvec((1+2*Nh)*um[].n, val.n); 
   for (int ii = 0; ii < val.n; ++ii)
     for (int jj = 0; jj < (1+2*Nh); ++jj) {
       ChangeNumbering(J, um[], arr(jj*J.n:(1+jj)*J.n-1, ii), inverse = true);
       vec(jj*um[].n:(1+jj)*um[].n-1, ii) = um[];
-      if (adj) {
+      if (epstwosided) {
         ChangeNumbering(J, um[], larr(jj*J.n:(1+jj)*J.n-1, ii), inverse = true);
         lvec(jj*um[].n:(1+jj)*um[].n-1, ii) = um[];
       }
     }
   savefloq(fileout + ((ntarget > 1) ? ("_" + n) : ""), statout, filein, meshin, vec, val, omega, Nh, sym0, sym1, (fileout != ""));
-  if(adj) savefloq(fileout + ((ntarget > 1) ? ("_" + n) : "") + "adj", "", filein, meshin, lvec, val, omega, Nh, sym0, sym1, (fileout != ""));
+  if(epstwosided) savefloq(fileout + ((ntarget > 1) ? ("_" + n) : "") + "adj", "", filein, meshin, lvec, val, omega, Nh, sym0, sym1, (fileout != ""));
 }
