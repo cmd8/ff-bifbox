@@ -147,7 +147,7 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       updatelambda(param, lambda);
       PetscScalar[int] RPETSc(qPETSc.n);
       ResidualHB(RHB, J, ub, uh, sym0, omega);
-      RPETSc = RHB;
+      RPETSc(0:JHB.n-1) = RHB;
       if(mpirank == 0){ 
         if(!zerofreq) RPETSc(RPETSc.n-2) = 0.0;
         RPETSc(RPETSc.n-1) = 0.0;
