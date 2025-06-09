@@ -44,6 +44,23 @@ func string parsefilename(string & filename, string & fileroot){
   return fileext;
 }
 
+// parse complex number from string
+func complex string2complex(string & s) {
+    int sep = -1;
+    for (int i = 1; i < s.length; ++i) {
+        if ((s(i:i) == "+" || s(i:i) == "-") && (s(i-1:i-1) != "e" && s(i-1:i-1) != "E")) {
+            sep = i;
+            break;
+        }
+    }
+    if (sep == -1) { // No separator found, treat as real only
+        return atof(s);
+    }
+    real re = atof(s(0:sep));
+    real im = atof(s(sep:s.length-1));
+    return re + 1i*im;
+}
+
 // Parse symmetry string
 func real[int] parsesymstr(string & symstr){
   int fidx = -1;
