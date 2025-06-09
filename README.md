@@ -89,6 +89,7 @@ See the [examples](https://github.com/cmd8/ff-bifbox/tree/main/examples) folder.
 - [x] Add time-domain linear simulation framework
 - [x] Add Floquet analysis for periodic orbits
 - [ ] Add fold/Neimark-Sacker bifurcation computation/continuation for periodic orbits
+- [ ] Add resolvent analysis for periodic orbits
 - [ ] Improve documentation and tutorials/examples
 - [ ] Release first stable version
 

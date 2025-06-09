@@ -27,7 +27,7 @@ string meshin = getARGV("-mi", ""); // input meshfile
 string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", "");
 string statout = getARGV("-so", "");
-bool adj = getARGV("-adj",0);
+bool epstwosided = getARGV("-eps_two_sided", 0);
 string symstr = getARGV("-sym", "0");
 string epstarget = getARGV("-eps_target", "0+0i");
 int ntarget = getARGV("-ntarget", 1);
@@ -94,7 +94,7 @@ else if(fileext == "porb") {
   ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);
 }
 complex[int] val(epsnev);
-XMh<complex>[int] defu(vec)(epsnev);
+XMh<complex>[int] defu(vec)(epsnev), defu(lvec)(epsnev);
 XMh<complex> defu(um);
 
 Mat<complex> J, Ja, Ma;
@@ -108,23 +108,19 @@ ik.im = sym;
 complex iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0; // Let PETSc/SLEPc do the shift
 include "eqns.idp"
 
-complex[int,int] veca(J.n, epsnev);
-if(mpirank==0) veca.resize(J.n+1, epsnev);
-int sepcharind = max(epstarget.rfind("+"), epstarget.rfind("-"));
-complex shifts = atof(epstarget(0:sepcharind)) + 1i*atof(epstarget(sepcharind:epstarget.length-2));
+complex[int,int] veca(J.n, epsnev), ;veca(J.n, epsnev);
+if(mpirank==0) {
+  veca.resize(J.n+1, epsnev);
+  lveca.resize(J.n+1, epsnev);
+}
+complex shifts = string2complex(epstarget);
 complex shift = shifts;
-sepcharind = max(targetf.rfind("+"), targetf.rfind("-"));
-complex shiftf = atof(targetf(0:sepcharind)) + 1i*atof(targetf(sepcharind:targetf.length-2));
-
+complex shiftf = string2complex(targetf);
 {
-  matrix<complex> tempMx = vJ(XMh, XMh, tgv = -2);
-  if (adj) tempMx = -tempMx';
-  else tempMx = -tempMx;
-  J = tempMx;
-  tempMx = vM(XMh, XMh, tgv = -20);
-  if (adj) tempMx = tempMx';
-  M = tempMx;
-  complex[int] vP, vaug = vJp(0, XMh, tgv = -10);
+  J = vJ(XMh, XMh, tgv = -2);
+  J *= -1.0;
+  M = vM(XMh, XMh, tgv = -20);
+  complex[int] vP, vaug = vJp(0, XMh, tgv = -20);
   ChangeNumbering(J, vaug, vP); // FreeFEM to PETSc
   tempMx = [[vP]]; // dense array to sparse matrix
   ChangeOperator(Jp, tempMx); // send to Mat
@@ -138,17 +134,23 @@ complex shiftf = atof(targetf(0:sepcharind)) + 1i*atof(targetf(sepcharind:target
 for (int n = 0; n < ntarget; ++n){
   if (ntarget > 1) shift = shifts + (shiftf - shifts)*real(n)/real(ntarget - 1);
   IFMACRO(Jprecon) Jprecon(-shift); ENDIFMACRO
-  int k = EPSSolve(Ja, Ma, array = veca, values = val, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO
+  int k = EPSSolve(Ja, Ma, larray = lveca, array = veca, values = val, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO
                  sparams = "-st_type sinvert -options_left no -eps_monitor_conv -prefix_push st_ " + KSPparams + " -prefix_pop -eps_target " + string(shift));
   if (strictnev) {// activate to limit number of eigenpairs
     val.resize(min(k, epsnev));
-    vec.resize(min(k, epsnev));
-    veca.resize(J.n, min(k, epsnev));
+    vec.resize(val.n);
+    veca.resize(J.n, val.n);
+    if(epstwosided) lveca.resize(J.n, val.n);
   }
   else {
     vec.resize(k);
     veca.resize(J.n, k);
+    lveca.resize(J.n, k);
   }
-  for (int ii = 0; ii < val.n; ++ii) ChangeNumbering(J, vec[ii][], veca(:,ii), inverse = true);
+  for (int ii = 0; ii < val.n; ++ii) {
+    ChangeNumbering(J, vec[ii][], veca(:,ii), inverse = true);
+    if (epstwosided) ChangeNumbering(J, lvec[ii][], lveca(:,ii), inverse = true);
+  }
   savemode(fileout + ((ntarget > 1) ? ("_" + n) : ""), statout, filein, meshin, vec, val, sym, (fileout != ""));
+  if(epstwosided) savemode(fileout + ((ntarget > 1) ? ("_" + n) : "") + "adj", "", filein, meshin, lvec, val, sym, (fileout != ""));
 }
