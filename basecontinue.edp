@@ -143,7 +143,7 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       updatelambda(param, lambda);
       Jl -= R;
       Jl /= eps;
-      if (it == 1 | refactor >= it) J = vJ(XMh, XMh, tgv = -1);
+      if (it <= refactor) J = vJ(XMh, XMh, tgv = -1);
       ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
       matrix<PetscScalar> tempPms = [[yqP]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat

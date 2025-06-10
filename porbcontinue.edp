@@ -177,7 +177,7 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       }
       matrix<PetscScalar> tempPms = [[JlHB]]; // dense array to sparse matrix
       ChangeOperator(JlPMa, tempPms, parent = JHBaa); // send to Mat
-      if (it == 1 | refactor >= it) JacobianHB(JHB, J, ub, uh, sym0, omega);
+      if (it <= refactor) JacobianHB(JHB, J, ub, uh, sym0, omega);
       if (zerofreq) JHBa = JHB;
       else {
         PetscScalar[int] MqHB(JHB.n);
