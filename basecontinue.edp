@@ -21,6 +21,7 @@ string meshin = getARGV("-mi", ""); // input meshfile with extension
 string meshout = getARGV("-mo", "");
 string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", filein);
+int contorder = getARGV("-contorder", 1);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
@@ -59,7 +60,7 @@ Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
-XMh defu(ub), defu(um), defu(yb), defu(um2), defu(um3);
+XMh defu(ub), defu(um), defu(um2), defu(um3);
 if(count == 0) {
   if(fileext == "base") {
     ub[] = loadbase(fileroot, meshin);
@@ -116,7 +117,7 @@ meshout = meshin; // if no adaptation
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Mat Ja = [[J, JlPM], [yqPM', -1.0]]; // make dummy Jacobian
 real[int] R(ub[].n), yqP(J.n), yqP0(J.n);
-int ret, it = 1;
+int ret, it = 0;
 real f, kappa, cosalpha, res, delta, maxdelta;
 // FUNCTIONS
   func PetscScalar[int] funcRa(PetscScalar[int]& qa) {
@@ -138,18 +139,21 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
-      updatelambda(param, lambda + eps);
-      PetscScalar[int] Jl = vR(0, XMh, tgv = -1);
       updatelambda(param, lambda);
-      Jl -= R;
-      Jl /= eps;
       if (it <= refactor) J = vJ(XMh, XMh, tgv = -1);
-      ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
-      matrix<PetscScalar> tempPms = [[yqP]]; // dense array to sparse matrix
-      ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      KSPSolve(J, yqP, yqP); // compute tangent vector in PETSc numbering
-      tempPms = [[yqP]]; // dense array to sparse matrix
-      ChangeOperator(yqPM, tempPms, parent = Ja); // send to Mat
+      if (contorder > 0){
+        updatelambda(param, lambda + eps);
+        real[int] Jl = vR(0, XMh, tgv = -1);
+        updatelambda(param, lambda);
+        Jl -= R;
+        Jl /= eps;
+        ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
+        matrix<PetscScalar> tempPms = [[yqP]]; // dense array to sparse matrix 
+        ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+        KSPSolve(J, yqP, yqP); // compute tangent vector in PETSc numbering
+        tempPms = [[yqP]]; // dense array to sparse matrix
+        ChangeOperator(yqPM, tempPms, parent = Ja); // send to Mat
+      }
       return 0;
   }
   
@@ -167,16 +171,54 @@ if(mpirank == 0) {
   qa0.resize(J.n+1);
   qa0(qa0.n-1) = lambda;
 }
-R = vR(0, XMh, tgv = -1);
-funcJa(qa0);
+if (contorder > 0) {
+  R = vR(0, XMh, tgv = -1);
+  funcJa(qa0);
+}
+else {
+  matrix<PetscScalar> tempPms = [[yqP]];
+  ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+  ChangeOperator(yqPM, tempPms, parent = Ja); // send to Mat
+}
 yqP0 = yqP;
 while (!stopflag){
-  real h, hl = (yqP0'*yqP0);
-  mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
-  h = h0/sqrt(h + 1.0);
   real[int] qa = qa0;
-  qa(0:J.n-1) -= (h*yqP0);
-  if (mpirank == 0) qa(qa.n-1) += h; // -= (-1.0*h)
+  if (contorder == 0 && mpirank == 0) qa(qa.n-1) += h0;
+  else if (contorder > 0) {
+    real h1, hl = (yqP0'*yqP0);
+    mpiAllReduce(hl, h1, mpiCommWorld, mpiSUM);
+    h1 = h0/sqrt(h1 + 1.0);
+    qa(0:J.n-1) -= h1*yqP0;
+    if (mpirank == 0) qa(qa.n-1) += h1;
+    if (contorder > 1) {
+      real[int,int] yqnP(J.n, contorder-1);
+      yqP = -h1*yqP0;
+      real h;
+      for (int i = 1; i < contorder; i++){
+        yqnP(:, i-1) = yqP;
+        real[int] NLq(ub[].n);
+        for (int j = 0; j < i; j++){
+          ChangeNumbering(J, um[], yqnP(:, j), inverse = true, exchange = true);
+          for (int k = 0; k < i-j; k++){
+            ChangeNumbering(J, um2[], yqnP(:, k), inverse = true, exchange = true);
+            ChangeNumbering(J, um3[], yqnP(:, i-j-k-1), inverse = true, exchange = true);
+            um3[] /= 3.0;
+            NLq += vT(0, XMh, tgv = -10);
+          }
+          ChangeNumbering(J, um2[], yqnP(:, i-j-1), inverse = true, exchange = true);
+          NLq += vH(0, XMh, tgv = -10);
+        }
+        NLq *= -0.5;
+        ChangeNumbering(J, NLq, yqP);
+        KSPSolve(J, yqP, yqP);
+        hl = (h1/h0)^2.0*(yqP'*yqP0);
+        mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
+        yqP -= h*yqP0;
+        qa(0:J.n-1) += yqP;
+        if (mpirank == 0) qa(qa.n-1) += h;
+      }
+    }
+  }
   // CORRECTOR LOOP
   adaptflag = false;
   SNESSolve(Ja, funcJa, funcRa, qa, convergence = funcConvergence, reason = ret,
@@ -186,7 +228,7 @@ while (!stopflag){
     if (maxcount > 0) stopflag = (count >= maxcount);
     else if ((lambda - paramtarget)*paramdiff <= 0) stopflag = true;
     h0 /= f;
-    if (cosalpha < 0) {
+    if (cosalpha < 0 && contorder > 0) {
       h0 *= -1.0;
       if(mpirank == 0) cout << "\tFold bifurcation detected. Orientation reversed." << endl;
       forcesave = true;
@@ -197,11 +239,11 @@ while (!stopflag){
       if(mpirank == 0) lambda = qa(qa.n-1);
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
-      ChangeNumbering(J, yb[], yqP, inverse = true);
+      ChangeNumbering(J, um[], yqP, inverse = true);
       XMhg defu(uG), defu(yG), defu(tempu);
       tempu[](restu) = ub[]; // populate local portion of global soln
       mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
-      tempu[](restu) = yb[]; // populate local portion of global tangent vector
+      tempu[](restu) = um[]; // populate local portion of global tangent vector
       mpiAllReduce(tempu[], yG[], mpiCommWorld, mpiSUM);
       if(mpirank == 0) {
         IFMACRO(dimension,2)
@@ -231,11 +273,13 @@ while (!stopflag){
       createMatu(Th, Adapt, Pk);
       J = Adapt;
       defu(ub) = initu(0.0);
-      defu(yb) = initu(0.0);
+      defu(um) = initu(0.0);
+      defu(um2) = initu(0.0);
+      defu(um3) = initu(0.0);
       restu.resize(ub[].n); // Change size of restriction operator
       restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
       ub[] = uG[](restu);
-      yb[] = yG[](restu);
+      um[] = yG[](restu);
       Mat Adapt1(J.n, mpirank == 0 ? 1 : 0), Adapt2(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
       JlPM = Adapt1;
       yqPM = Adapt2;
@@ -250,10 +294,15 @@ while (!stopflag){
       }
       R.resize(ub[].n);
       yqP.resize(J.n);
-      ChangeNumbering(J, yb[], yqP);
+      ChangeNumbering(J, um[], yqP);
       yqP0.resize(J.n);
       yqP0 = yqP;
       qa0.resize(qa.n);
+      if (contorder == 0) {
+        matrix<PetscScalar> tempPms = [[yqP]];
+        ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+        ChangeOperator(yqPM, tempPms, parent = Ja); // send to Mat
+      }
       adaptflag = true;
       SNESSolve(Ja, funcJa, funcRa, qa, convergence = funcConvergence, reason = ret,
                 sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_converged_reason -options_left no"); // solve nonlinear problem with SNES
@@ -270,8 +319,8 @@ while (!stopflag){
     savebase(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, ((count % savecount == 0) || forcesave || stopflag), true);
     if (stopflag) break;
     forcesave = false;
-    it = 1;
-    if (stricttangent) funcJa(qa);
+    it = 0;
+    if (stricttangent && contorder > 0) funcJa(qa);
     yqP0 = yqP;
     qa0 = qa;
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
