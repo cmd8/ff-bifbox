@@ -143,11 +143,11 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       if (it <= refactor) J = vJ(XMh, XMh, tgv = -1);
       if (contorder > 0){
         updatelambda(param, lambda + eps);
-        real[int] Jl = vR(0, XMh, tgv = -1);
+        um2[] = vR(0, XMh, tgv = -1);
         updatelambda(param, lambda);
-        Jl -= R;
-        Jl /= eps;
-        ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
+        um2[] -= R;
+        um2[] /= eps;
+        ChangeNumbering(J, um2[], yqP); // FreeFEM to PETSc
         matrix<PetscScalar> tempPms = [[yqP]]; // dense array to sparse matrix 
         ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
         KSPSolve(J, yqP, yqP); // compute tangent vector in PETSc numbering
@@ -185,33 +185,76 @@ while (!stopflag){
   real[int] qa = qa0;
   if (contorder == 0 && mpirank == 0) qa(qa.n-1) += h0;
   else if (contorder > 0) {
-    real h1, hl = (yqP0'*yqP0);
-    mpiAllReduce(hl, h1, mpiCommWorld, mpiSUM);
-    h1 = h0/sqrt(h1 + 1.0);
-    qa(0:J.n-1) -= h1*yqP0;
-    if (mpirank == 0) qa(qa.n-1) += h1;
+    real h, hl = (yqP0'*yqP0);
+    mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
+    h = h0/sqrt(h + 1.0);
+    qa(0:J.n-1) -= h*yqP0;
+    if (mpirank == 0) qa(qa.n-1) += h;
     if (contorder > 1) {
       real[int,int] yqnP(J.n, contorder-1);
-      yqP = -h1*yqP0;
-      real h;
-      for (int i = 1; i < contorder; i++){
-        yqnP(:, i-1) = yqP;
-        real[int] NLq(ub[].n);
-        for (int j = 0; j < i; j++){
+      yqP = -h*yqP0;
+      real[int] NLq(ub[].n), hn(contorder-1);
+      for (int i = 0; i < contorder-1; i++){
+        yqnP(:, i) = yqP;
+        hn(i) = h;
+        NLq = 0.0;
+        for (int j = 0; j < i+1; j++){
           ChangeNumbering(J, um[], yqnP(:, j), inverse = true, exchange = true);
+          ChangeNumbering(J, um2[], yqnP(:, i-j), inverse = true, exchange = true);
+          um3[] = vH(0, XMh, tgv = -10);
+          NLq += um3[];
+          updatelambda(param, lambda - sqrt(eps));
+          um2[] = vR(0, XMh, tgv = -1);
+          updatelambda(param, lambda + sqrt(eps));
+          um3[] = vR(0, XMh, tgv = -1);
+          um2[] += um3[];
+          um2[] -= 2.0*R;
+          NLq += (hn(j)*hn(i-j)/eps)*um2[];
+          updatelambda(param, lambda + eps);
+          um3[] = vJ(0, XMh, tgv = -10);
+          updatelambda(param, lambda);
+          um2[] = vJ(0, XMh, tgv = -10);
+          um3[] -= um2[];
+          NLq += (2.0*hn(i-j)/eps)*um3[];
           for (int k = 0; k < i-j; k++){
             ChangeNumbering(J, um2[], yqnP(:, k), inverse = true, exchange = true);
             ChangeNumbering(J, um3[], yqnP(:, i-j-k-1), inverse = true, exchange = true);
-            um3[] /= 3.0;
-            NLq += vT(0, XMh, tgv = -10);
+            um3[] = vT(0, XMh, tgv = -10);
+            NLq += um3[]/3.0;
+            updatelambda(param, lambda + eps);
+            um3[] = vH(0, XMh, tgv = -10);
+            updatelambda(param, lambda);
+            um2[] = vH(0, XMh, tgv = -10);
+            um3[] -= um2[];
+            NLq += (hn(i-j-k-1)/eps)*um3[];
+            updatelambda(param, lambda - sqrt(eps));
+            um2[] = vJ(0, XMh, tgv = -10);
+            updatelambda(param, lambda + sqrt(eps));
+            um3[] = vJ(0, XMh, tgv = -10);
+            um2[] += um3[];
+            updatelambda(param, lambda);
+            um3[] = vJ(0, XMh, tgv = -10);
+            um2[] -= 2.0*um3[];
+            NLq += (hn(k)*hn(i-j-k-1)/eps)*um2[];
+            updatelambda(param, lambda + 2.0*cbrt(eps));
+            um2[] = vR(0, XMh, tgv = -1);
+            updatelambda(param, lambda + cbrt(eps));
+            um3[] = vR(0, XMh, tgv = -1);
+            um2[] -= 2.0*um3[];
+            updatelambda(param, lambda - cbrt(eps));
+            um3[] = vR(0, XMh, tgv = -1);
+            um2[] += 2.0*um3[];
+            updatelambda(param, lambda - 2.0*cbrt(eps));
+            um3[] = vR(0, XMh, tgv = -1);
+            um2[] -= um3[];
+            NLq += (hn(j)*hn(k)*hn(i-j-k-1)/(6.0*eps))*um2[];
+            updatelambda(param, lambda);
           }
-          ChangeNumbering(J, um2[], yqnP(:, i-j-1), inverse = true, exchange = true);
-          NLq += vH(0, XMh, tgv = -10);
         }
         NLq *= -0.5;
         ChangeNumbering(J, NLq, yqP);
         KSPSolve(J, yqP, yqP);
-        hl = (h1/h0)^2.0*(yqP'*yqP0);
+        hl = (hn(0)/h0)^2.0*(yqP'*yqP0);
         mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
         yqP -= h*yqP0;
         qa(0:J.n-1) += yqP;
@@ -321,6 +364,7 @@ while (!stopflag){
     forcesave = false;
     it = 0;
     if (stricttangent && contorder > 0) funcJa(qa);
+    else ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
     yqP0 = yqP;
     qa0 = qa;
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO

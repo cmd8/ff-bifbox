@@ -170,7 +170,7 @@ real[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 real iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), gqPM(J.n, mpirank == 0 ? 1 : 0), glPM(mpirank == 0 ? 1 : 0, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
-Mat H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
+Mat Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
@@ -202,22 +202,21 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
       updatelambda(param, lambda + eps);
-      real[int] Jl = vR(0, XMh, tgv = -1);
-      real[int] tempP(J.n), Hl = vJ(0, XMh, tgv = -10);
-      updatelambda(param, lambda);
-      Jl -= R;
-      Jl /= eps;
-      R = vJ(0, XMh, tgv = -10);
-      Hl -= R;
-      Hl /= eps;
-      ChangeNumbering(J, Jl, tempP); // FreeFEM to PETSc
-      matrix tempPms = [[tempP]]; // dense array to sparse matrix
+      um2[] = vR(0, XMh, tgv = -1);
+      um2[] -= R;
+      um2[] /= eps;
+      ChangeNumbering(J, um2[], qm); // FreeFEM to PETSc
+      matrix tempPms = [[qm]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      H = vH(XMh, XMh, tgv = 0);
-      MatMultTranspose(H, qma, tempP);
-      tempPms = [[tempP]]; // dense array to sparse matrix
+      um3[] = vJ(0, XMh, tgv = -10);
+      updatelambda(param, lambda);
+      um2[] = J*um[];
+      um3[] -= um2[];
+      J = vH(XMh, XMh, tgv = 0);
+      MatMultTranspose(J, qma, qm);
+      tempPms = [[qm]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-      tempPms = [[J(uma[], Hl)]]; // dense array to sparse matrix
+      tempPms = [[J(uma[], um3[])/eps]]; // dense array to sparse matrix
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       J = vJ(XMh, XMh, tgv = -1);
       return 0;
@@ -246,18 +245,18 @@ if (fileext != "fold" && fileext != "foho"){
   um[] = J^-1*Jl;
   uma[] = J'^-1*Jl;
 }
-real[int] Mq = vM(0, XMh, tgv = -10);
+um2[] = vM(0, XMh, tgv = 0);
 ChangeNumbering(J, um[], qm);
 ChangeNumbering(J, um[], qm, inverse = true);
-real Mnorm = sqrt(J(um[], Mq));
-Mq /= Mnorm;
-ChangeNumbering(J, Mq, qP);
+real Mnorm = sqrt(J(um[], um2[]));
+um2[] /= Mnorm;
+ChangeNumbering(J, um2[], qP);
 ChangeNumbering(J, uma[], qma);
 ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-Mq = vM(0, XMh, tgv = -10);
+um2[] = vM(0, XMh, tgv = 0);
 ChangeNumbering(J, um[], qm, inverse = true);
-Mq *= (Mnorm/J(um[], Mq)); // so that <uma[],M*um[]> = 1
-ChangeNumbering(J, Mq, pP);
+um2[] *= (Mnorm/J(um[], um2[])); // so that <uma[],M*um[]> = 1
+ChangeNumbering(J, um2[], pP);
 // solve nonlinear problem with SNES
 int ret;
 SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
@@ -268,12 +267,12 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   broadcast(processor(0), lambda);
   updatelambda(param, lambda);
   ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-  real[int] Mq = vM(0, XMh, tgv = -10);
+  um2[] = vM(0, XMh, tgv = 0);
   ChangeNumbering(J, um[], qm, inverse = true);
   ChangeNumbering(J, uma[], qma, inverse = true);
-  real Mnorm = sqrt(J(um[], Mq));
+  Mnorm = sqrt(J(um[], um2[]));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
-  uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
+  uma[] *= (Mnorm/J(uma[], um2[])); // so that <uma[],M*um[]> = 1
   ChangeNumbering(J, um[], qm);
   ChangeNumbering(J, uma[], qma);
   if (normalform){

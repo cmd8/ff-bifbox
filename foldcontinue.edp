@@ -143,37 +143,35 @@ real f, kappa, cosalpha, res, delta, maxdelta, alpha0, beta0;
       ChangeNumbering(J, uma[], qma, inverse = true);
       updatelambda(param, lambda1 + eps);
       updatelambda(param2, lambda2);
-      PetscScalar[int] Jl = vR(0, XMh, tgv = -1);
-      PetscScalar[int] Hl = vJ(0, XMh, tgv = -10);
-      updatelambda(param, lambda1);
-      Jl -= R;
-      Jl /= eps;
-      PetscScalar[int] temp(J.n), a0 = vJ(0, XMh, tgv = -10);
-      Hl -= a0;
-      Hl /= eps;
-      ChangeNumbering(J, Jl, temp); // FreeFEM to PETSc
-      matrix<PetscScalar> tempPms = [[temp]]; // dense array to sparse matrix
+      um2[] = vR(0, XMh, tgv = -1);
+      um2[] -= R;
+      um2[] /= eps;
+      ChangeNumbering(J, um2[], qm); // FreeFEM to PETSc
+      matrix<PetscScalar> tempPms = [[qm]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      tempPms = [[J(uma[], Hl)]];
+      um2[] = vJ(0, XMh, tgv = -10);
+      updatelambda(param, lambda1);
+      um3[] = vJ(0, XMh, tgv = -10);
+      um2[] -= um3[];
+      tempPms = [[J(uma[], um2[])/eps]];
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       J = vH(XMh, XMh, tgv = 0);
-      MatMultTranspose(J, qma, temp);
-      tempPms = [[temp]];
+      MatMultTranspose(J, qma, qm);
+      tempPms = [[qm]];
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       J = vJ(XMh, XMh, tgv = -1);
       if (contorder > 0) {
         updatelambda(param2, lambda2 + eps2);
-        Jl = vR(0, XMh, tgv = -1);
-        Hl = vJ(0, XMh, tgv = -10);
+        um2[] = vR(0, XMh, tgv = -1);
+        um2[] -= R;
+        um2[] /= eps2;
+        ChangeNumbering(J, um2[], qm); // FreeFEM to PETSc
+        yqP(0:J.n-1) = qm;
+        um2[] = vJ(0, XMh, tgv = -10);
         updatelambda(param2, lambda2);
-        Jl -= R;
-        Jl /= eps2;
-        Hl -= a0;
-        Hl /= eps2;
-        ChangeNumbering(J, Jl, temp); // FreeFEM to PETSc
-        yqP(0:J.n-1) = temp;
-        PetscScalar gl2 = J(uma[], Hl);
-        if (mpirank == 0) yqP(yqP.n-1) = gl2;
+        um2[] -= um3[];
+        PetscScalar gl = J(uma[], um2[])/eps2;
+        if (mpirank == 0) yqP(yqP.n-1) = gl;
         tempPms = [[yqP]]; // dense array to sparse matrix
         ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
         KSPSolve(Ja, yqP, yqP);
@@ -204,19 +202,21 @@ if(mpirank == 0) {
   qa0(qa0.n-2) = lambda1;
   qa0(qa0.n-1) = lambda2;
 }
-R = vR(0, XMh, tgv = -1);
-if (contorder > 0) funcJa(qa0);
+ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+um2[] = vM(0, XMh, tgv = 0);
+ChangeNumbering(J, um2[], qP);
+ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
+um2[] = vM(0, XMh, tgv = 0);
+ChangeNumbering(J, um2[], pP);
+if (contorder > 0) {
+  R = vR(0, XMh, tgv = -1);
+  funcJa(qa0);
+}
 else {
   matrix<PetscScalar> tempPms = [[yqP]];
   ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
   ChangeOperator(yqPMa, tempPms, parent = Jaa); // send to Mat
 }
-ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-R = vM(0, XMh, tgv = 0);
-ChangeNumbering(J, R, qP);
-ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-R = vM(0, XMh, tgv = 0);
-ChangeNumbering(J, R, pP);
 yqP0 = yqP;
 alpha0 = alpha[paramnames[0]];
 beta0 = beta;
@@ -224,11 +224,11 @@ while (!stopflag){
   real[int] qa = qa0;
   if (contorder == 0 && mpirank == 0) qa(qa.n-1) += h0;
   else if (contorder > 0) {
-    real h1, hl = (yqP0'*yqP0);
-    mpiAllReduce(hl, h1, mpiCommWorld, mpiSUM);
-    h1 = h0/sqrt(h1 + 1.0);
-    qa(0:Ja.n-1) -= (h1*yqP0);
-    if (mpirank == 0) qa(qa.n-1) += h1;
+    real h, hl = (yqP0'*yqP0);
+    mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
+    h = h0/sqrt(h + 1.0);
+    qa(0:Ja.n-1) -= (h*yqP0);
+    if (mpirank == 0) qa(qa.n-1) += h;
   }
   // CORRECTOR LOOP
   adaptflag = false;
@@ -346,12 +346,12 @@ while (!stopflag){
       qP.resize(J.n);
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-      real[int] Mq = vM(0, XMh, tgv = 0);
-      ChangeNumbering(J, Mq, qP);
+      um3[] = vM(0, XMh, tgv = 0);
+      ChangeNumbering(J, um3[], qP);
       pP.resize(J.n);
       ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-      Mq = vM(0, XMh, tgv = 0);
-      ChangeNumbering(J, Mq, pP);
+      um3[] = vM(0, XMh, tgv = 0);
+      ChangeNumbering(J, um3[], pP);
       R.resize(ub[].n);
       yqP.resize(J.n);
       ChangeNumbering(J, um2[], yqP);
@@ -386,12 +386,12 @@ while (!stopflag){
     updatelambda(param, lambda1);
     updatelambda(param2, lambda2);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-    real[int] Mq = vM(0, XMh, tgv = 0);
+    um2[] = vM(0, XMh, tgv = 0);
     ChangeNumbering(J, um[], qm, inverse = true);
     ChangeNumbering(J, uma[], qma, inverse = true);
-    real Mnorm = sqrt(J(um[], Mq));
+    real Mnorm = sqrt(J(um[], um2[]));
     um[] /= Mnorm; // so that <um[],M*um[]> = 1
-    uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
+    uma[] *= (Mnorm/J(um2[], uma[])); // so that <uma[],M*um[]> = 1
     ChangeNumbering(J, um[], qm);
     ChangeNumbering(J, uma[], qma);
     if(normalform){
@@ -431,15 +431,15 @@ while (!stopflag){
     savefold(fileout + "_" + count + (forcesave ? "specialpt" : ""), fileout, meshout, alpha, beta, ((count % savecount == 0) || forcesave || stopflag), true);
     if (stopflag) break;
     forcesave = false;
-    it = 0;
-    if (stricttangent && contorder > 0) funcJa(qa);
     ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-    Mq = vM(0, XMh, tgv = 00);
-    ChangeNumbering(J, Mq, qP);
+    um2[] = vM(0, XMh, tgv = 00);
+    ChangeNumbering(J, um2[], qP);
     ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-    Mq = vM(0, XMh, tgv = 0);
-    ChangeNumbering(J, Mq, pP);
+    um2[] = vM(0, XMh, tgv = 0);
+    ChangeNumbering(J, um2[], pP);
+    it = 0;
+    if (stricttangent && contorder > 0) funcJa(qa);
     yqP0 = yqP;
     qa0 = qa;
     alpha0 = alpha[paramnames[0]];

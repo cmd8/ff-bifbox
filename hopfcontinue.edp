@@ -169,60 +169,58 @@ complex alpha0, beta0;
       updatelambda(param, lambda1 + eps);
       updatelambda(param2, lambda2);
       sym = 0;
-      PetscScalar[int] Jl = vR(0, XMh, tgv = -1);
+      um2[] = vR(0, XMh, tgv = -1);
+      um2[] -= R;
+      um2[] /= eps;
+      ChangeNumbering(J, um2[], qm); // FreeFEM to PETSc
+      matrix<PetscScalar> tempPms;
+      if(zerofreq) tempPms = [[qm]];
+      else tempPms = [[qm, 0]]; // dense array to sparse matrix
+      ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       sym = sym1;
       ik.im = sym1;
       iomega = 1i*omega;
-      PetscScalar[int] Hl = vJ(0, XMh, tgv = -10);
+      um2[] = vJ(0, XMh, tgv = -10);
       updatelambda(param, lambda1);
-      Jl -= R;
-      Jl /= eps;
-      PetscScalar[int] temp1(J.n), temp2(J.n), bm = vJ(0, XMh, tgv = -10);
-      Hl -= bm;
-      Hl /= eps;
-      ChangeNumbering(J, Jl, temp1); // FreeFEM to PETSc
-      temp1.im = 0.0;
-      matrix<PetscScalar> tempPms;
-      if(zerofreq) tempPms = [[temp1]];
-      else tempPms = [[temp1, 0]]; // dense array to sparse matrix
-      ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      PetscScalar gl1 = J(uma[], Hl);
-      if(zerofreq) tempPms = [[real(gl1)]];
+      um3[] = vJ(0, XMh, tgv = -10);
+      um2[] -= um3[];
+      PetscScalar gl = J(uma[], um2[])/eps;
+      if(zerofreq) tempPms = [[real(gl)]];
       else {
-        Jl = vM(0, XMh, tgv = -10);
-        PetscScalar gw = J(uma[], Jl);
-        tempPms = [[real(gl1), -imag(gw)], [imag(gl1), real(gw)]];
+        um2[] = vM(0, XMh, tgv = -10);
+        PetscScalar gw = J(uma[], um2[]);
+        tempPms = [[real(gl), -imag(gw)], [imag(gl), real(gw)]];
       }
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
+      sym = 0;
       J = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
-      MatMultHermitianTranspose(J, qma, temp1); // gqr,i
-      if(!zerofreq) temp2.re = -temp1.im;
-      temp1.im = 0.0;
-      if(zerofreq) tempPms = [[temp1]];
-      else tempPms = [[temp1, temp2]]; // dense array to sparse matrix
+      MatMultHermitianTranspose(J, qma, qm); // gqr,i
+      if(!zerofreq) qma.re = -qm.im;
+      qm.im = 0.0;
+      qma.im = 0.0;
+      if(zerofreq) tempPms = [[qm]];
+      else tempPms = [[qm, qma]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       ik = 0.0;
       iomega = 0.0;
-      sym = 0;
       J = vJ(XMh, XMh, tgv = -1);
       if (contorder > 0) {
         updatelambda(param2, lambda2 + eps2);
-        Jl = vR(0, XMh, tgv = -1);
+        um2[] = vR(0, XMh, tgv = -1);
+        um2[] -= R;
+        um2[] /= eps2;
+        ChangeNumbering(J, um2[], qm); // FreeFEM to PETSc
+        yqP(0:J.n-1) = qm;
         sym = sym1;
         ik.im = sym1;
         iomega = 1i*omega;
-        Hl = vJ(0, XMh, tgv = -10);
+        um2[] = vJ(0, XMh, tgv = -10);
         updatelambda(param2, lambda2);
-        Jl -= R;
-        Jl /= eps2;
-        Hl -= bm;
-        Hl /= eps2;
-        ChangeNumbering(J, Jl, temp1); // FreeFEM to PETSc
-        yqP(0:J.n-1) = temp1;
-        PetscScalar gl2 = J(uma[], Hl);
+        um2[] -= um3[];
+        gl = J(uma[], um2[])/eps2;
         if(mpirank == 0) {
-          yqP(yqP.n-(2-zerofreq)) = real(gl2);
-          if(!zerofreq) yqP(yqP.n-1) = imag(gl2);
+          yqP(yqP.n-(2-zerofreq)) = real(gl);
+          if(!zerofreq) yqP(yqP.n-1) = imag(gl);
         }
         tempPms = [[yqP]]; // dense array to sparse matrix
         ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
@@ -255,20 +253,24 @@ if(mpirank == 0) {
   if(!zerofreq) qa0(qa0.n-2) = omega;
   qa0(qa0.n-1) = lambda2;
 }
-sym = 0;
-R = vR(0, XMh, tgv = -1);
-if (contorder > 0) funcJa(qa0);
+sym = sym1;
+ik.im = sym1;
+iomega = 1i*omega;
+ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
+um2[] = vM(0, XMh, tgv = 0);
+ChangeNumbering(J, um2[], qP);
+ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
+um2[] = vM(0, XMh, tgv = 0);
+ChangeNumbering(J, um2[], pP);
+if (contorder > 0) {
+  R = vR(0, XMh, tgv = -1);
+  funcJa(qa0);
+}
 else {
   matrix<PetscScalar> tempPms = [[yqP]];
   ChangeOperator(JlPMa, tempPms, parent = Jaa); // send to Mat
   ChangeOperator(yqPMa, tempPms, parent = Jaa); // send to Mat
 }
-ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-R = vM(0, XMh, tgv = 0);
-ChangeNumbering(J, R, qP);
-ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-R = vM(0, XMh, tgv = 0);
-ChangeNumbering(J, R, pP);
 yqP0 = yqP;
 omega0 = omega;
 alpha0 = alpha[paramnames[0]];
@@ -277,11 +279,11 @@ while (!stopflag){
   complex[int] qa = qa0;
   if (contorder == 0 && mpirank == 0) qa(qa.n-1) += h0;
   else if (contorder > 0) {
-    real h1, hl = real(yqP0'*yqP0);
-    mpiAllReduce(hl, h1, mpiCommWorld, mpiSUM);
-    h1 = h0/sqrt(h1 + 1.0);
-    qa(0:Ja.n-1) -= (h1*yqP0);
-    if (mpirank == 0) qa(qa.n-1) += h1;
+    real h, hl = real(yqP0'*yqP0);
+    mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
+    h = h0/sqrt(h + 1.0);
+    qa(0:Ja.n-1) -= (h*yqP0);
+    if (mpirank == 0) qa(qa.n-1) += h;
   }
   // CORRECTOR LOOP
   adaptflag = false;
@@ -292,7 +294,7 @@ while (!stopflag){
     if (maxcount > 0) stopflag = (count >= maxcount);
     else if ((lambda1 - paramtarget)*paramdiff1 <= 0 || (lambda2 - param2target)*paramdiff2 <= 0) stopflag = true;
     h0 /= f;
-    if (cosalpha < 0 && contorder) {
+    if (cosalpha < 0 && contorder > 0) {
       h0 *= -1.0;
       if(mpirank == 0) cout << "\tOrientation reversed." << endl;
       forcesave = true;
@@ -413,12 +415,12 @@ while (!stopflag){
       qP.resize(J.n);
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-      complex[int] Mq = vM(0, XMh, tgv = 0);
-      ChangeNumbering(J, Mq, qP);
+      um3[] = vM(0, XMh, tgv = 0);
+      ChangeNumbering(J, um3[], qP);
       pP.resize(J.n);
       ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-      Mq = vM(0, XMh, tgv = 0);
-      ChangeNumbering(J, Mq, pP);
+      um3[] = vM(0, XMh, tgv = 0);
+      ChangeNumbering(J, um3[], pP);
       R.resize(ub[].n);
       yqP.resize(J.n);
       ChangeNumbering(J, um2[], yqP);
@@ -456,12 +458,12 @@ while (!stopflag){
     updatelambda(param, lambda1);
     updatelambda(param2, lambda2);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-    complex[int] Mq = vM(0, XMh, tgv = 0);
+    um2[] = vM(0, XMh, tgv = 0);
     ChangeNumbering(J, um[], qm, inverse = true);
     ChangeNumbering(J, uma[], qma, inverse = true);
-    real Mnorm = sqrt(real(J(um[], Mq)));
+    real Mnorm = sqrt(real(J(um[], um2[])));
     um[] /= Mnorm; // so that <um[],M*um[]> = 1
-    uma[] *= (Mnorm/J(Mq, uma[])); // so that <uma[],M*um[]> = 1
+    uma[] *= (Mnorm/J(um2[], uma[])); // so that <uma[],M*um[]> = 1
     ChangeNumbering(J, um[], qm);
     ChangeNumbering(J, uma[], qma);
     if (normalform){
@@ -610,15 +612,18 @@ while (!stopflag){
     savehopf(fileout + "_" + count + (forcesave ? "specialpt" : ""), fileout, meshout, sym1, omega, alpha, beta, ((count % savecount == 0) || forcesave || stopflag), true);
     if (stopflag) break;
     forcesave = false;
-    it = 0;
-    if (stricttangent && contorder) funcJa(qa);
     ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-    Mq = vM(0, XMh, tgv = 0);
-    ChangeNumbering(J, Mq, qP);
+    sym = sym1;
+    ik.im = sym1;
+    iomega = 1i*omega;
+    um2[] = vM(0, XMh, tgv = 0);
+    ChangeNumbering(J, um2[], qP);
     ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-    Mq = vM(0, XMh, tgv = 0);
-    ChangeNumbering(J, Mq, pP);
+    um2[] = vM(0, XMh, tgv = 0);
+    ChangeNumbering(J, um2[], pP);
+    it = 0;
+    if (stricttangent && contorder > 0) funcJa(qa);
     yqP0 = yqP;
     qa0 = qa;
     omega0 = omega;

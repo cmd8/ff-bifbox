@@ -450,6 +450,11 @@ while (!stopflag){
     forcesave = false;
     it = 0;
     if (stricttangent) funcJa(qa);
+    else {
+      ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
+      for (int nh = 0; nh < Nh; nh++)
+        ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qa((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true, exchange = true);
+    }
     yqP0 = yqP;
     qa0 = qa;
   }

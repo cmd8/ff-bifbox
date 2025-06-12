@@ -313,10 +313,10 @@ complex[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 complex iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 Mat<complex> JlPM(J.n, mpirank == 0 ? (2-zerofreq) : 0), gqPM(J.n, mpirank == 0 ? (2-zerofreq) : 0), glPM(mpirank == 0 ? (2-zerofreq) : 0, mpirank == 0 ? (2-zerofreq) : 0); // Initialize Mat objects for bordered matrix
-Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
+Mat<complex> Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
 // FUNCTIONS
-  func complex[int] funcRa(complex[int]& qa) {
+  func PetscScalar[int] funcRa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
         lambda = real(qa(qa.n-(2-zerofreq))); // Extract parameter value from state vector on proc 0
@@ -327,7 +327,7 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       updatelambda(param, lambda);
       sym = 0;
       R = vR(0, XMh, tgv = -1);
-      complex[int] Ra;
+      PetscScalar[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       sym = sym1;
       iomega = 1i*omega;
@@ -335,7 +335,7 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       J = vJ(XMh, XMh, tgv = -2);
       KSPSolve(J, pP, qm);
       KSPSolveHermitianTranspose(J, qP, qma);
-      complex ginv, ginvl = (qP'*qm);
+      PetscScalar ginv, ginvl = (qP'*qm);
       mpiAllReduce(ginvl, ginv, mpiCommWorld, mpiSUM);
       qm /= ginv; // rescale direct mode
       qma /= conj(ginv); // rescale adjoint mode
@@ -347,7 +347,7 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       return Ra;
   }
 
-  func int funcJa(complex[int]& qa) {
+  func int funcJa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
         lambda = real(qa(qa.n-(2-zerofreq))); // Extract parameter value from state vector on proc 0
@@ -357,45 +357,42 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       broadcast(processor(0), omega);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      ik.im = sym1;
-      iomega = 1i*omega;
       updatelambda(param, lambda + eps);
       sym = 0;
-      complex[int] Jl = vR(0, XMh, tgv = -1);
-      sym = sym1;
-      complex[int] temp1(J.n), temp2(J.n), Hl = vJ(0, XMh, tgv = -10);
-      updatelambda(param, lambda);
-      Jl -= R;
-      Jl /= eps;
-      R = vJ(0, XMh, tgv = -10);
-      Hl -= R;
-      Hl /= eps;
-      ChangeNumbering(J, Jl, temp1);
-      temp1.im = 0.0;
-      matrix<complex> tempPms;
-      if(zerofreq) tempPms = [[temp1]];
-      else tempPms = [[temp1, 0]]; // dense array to sparse matrix
+      um2[] = vR(0, XMh, tgv = -1);
+      um2[] -= R;
+      um2[] /= eps;
+      ChangeNumbering(J, um2[], qm);
+      matrix<PetscScalar> tempPms;
+      if(zerofreq) tempPms = [[qm]];
+      else tempPms = [[qm, 0]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      sym = 0;
-      H = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
       sym = sym1;
-      MatMultHermitianTranspose(H, qma, temp1); // compute (dL/dq*w)'*v
-      if(!zerofreq) temp2.re = -temp1.im;
-      temp1.im = 0.0;
-      if(zerofreq) tempPms = [[temp1]];
-      else tempPms = [[temp1, temp2]]; // dense array to sparse matrix
-      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-      complex gl = J(uma[], Hl);
+      ik.im = sym1;
+      iomega = 1i*omega;
+      um2[] = vJ(0, XMh, tgv = -10);
+      updatelambda(param, lambda);
+      um3[] = J*um[];
+      um2[] -= um3[];
+      PetscScalar gl = J(uma[], um2[])/eps;
       if(zerofreq) tempPms = [[real(gl)]];
       else {
-        R = vM(0, XMh, tgv = -10);
-        complex gw = J(uma[], R);
+        um2[] = vM(0, XMh, tgv = -10);
+        PetscScalar gw = J(uma[], um2[]);
         tempPms = [[real(gl), -imag(gw)], [imag(gl), real(gw)]];
       }
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
+      sym = 0;
+      J = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
+      MatMultHermitianTranspose(J, qma, qm); // compute (dL/dq*w)'*v
+      if(!zerofreq) qma.re = -qm.im;
+      qm.im = 0.0;
+      qma.im = 0.0;
+      if(zerofreq) tempPms = [[qm]];
+      else tempPms = [[qm, qma]]; // dense array to sparse matrix
+      ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       ik = 0.0;
       iomega = 0.0;
-      sym = 0;
       J = vJ(XMh, XMh, tgv = -1);
       return 0;
   }
@@ -413,27 +410,25 @@ if(mpirank == 0) {
   qa(qa.n-(2-zerofreq)) = lambda;
   if(!zerofreq) qa(qa.n-1) = omega;
 }
-{
-  sym = sym1;
-  ik.im = sym1;
-  iomega = 1i*omega;
-  complex[int] Mq = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, um[], qm);
-  ChangeNumbering(J, um[], qm, inverse = true);
-  real Mnorm = sqrt(real(J(um[], Mq)));
-  Mq /= Mnorm;
-  ChangeNumbering(J, Mq, qP);
-  if (fileext == "hopf" || fileext == "hoho" || fileext == "foho") um[] = uma[];
-  else {
-    J = vJ(XMh, XMh, tgv = -3);
-    KSPSolveHermitianTranspose(J, qP, qma);
-    ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-  }
-  Mq = vM(0, XMh, tgv = -10);
-  ChangeNumbering(J, um[], qm, inverse = true);
-  Mq *= (Mnorm/J(um[], Mq)); // so that <uma[],M*um[]> = 1
-  ChangeNumbering(J, Mq, pP);
+sym = sym1;
+ik.im = sym1;
+iomega = 1i*omega;
+um2[] = vM(0, XMh, tgv = 0);
+ChangeNumbering(J, um[], qm);
+ChangeNumbering(J, um[], qm, inverse = true);
+real Mnorm = sqrt(real(J(um[], um2[])));
+um2[] /= Mnorm;
+ChangeNumbering(J, um2[], qP);
+if (fileext == "hopf" || fileext == "hoho" || fileext == "foho") um[] = uma[];
+else {
+  J = vJ(XMh, XMh, tgv = -3);
+  KSPSolveHermitianTranspose(J, qP, qma);
+  ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
 }
+um2[] = vM(0, XMh, tgv = 0);
+ChangeNumbering(J, um[], qm, inverse = true);
+um2[] *= (Mnorm/J(um[], um2[])); // so that <uma[],M*um[]> = 1
+ChangeNumbering(J, um2[], pP);
 // solve nonlinear problem with SNES
 int ret;
 SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
@@ -449,12 +444,12 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   updatelambda(param, lambda);
   ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
   sym = sym1;
-  complex[int] Mq = vM(0, XMh, tgv = -10);
+  um2[] = vM(0, XMh, tgv = 0);
   ChangeNumbering(J, um[], qm, inverse = true);
   ChangeNumbering(J, uma[], qma, inverse = true);
-  real Mnorm = sqrt(real(J(um[], Mq)));
+  Mnorm = sqrt(real(J(um[], um2[])));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
-  uma[] *= (Mnorm/J(Mq, uma[])); // so that <uma[],M*um[]> = 1
+  uma[] *= (Mnorm/J(um2[], uma[])); // so that <uma[],M*um[]> = 1
   ChangeNumbering(J, um[], qm);
   ChangeNumbering(J, uma[], qma);
   if (normalform){
