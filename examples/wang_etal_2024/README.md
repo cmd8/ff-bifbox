@@ -55,8 +55,8 @@ ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi nonreacting_1.base -
 2. Turn on chemistry and ignite the $U_0=2.2$ m/s flow at an elevated centrebody temperature and lower combustion enthalpy. Then perform continuation back to reference parameters. Coarse meshes are used for computational efficiency and stabilizing artificial dissipation. 
 ```
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi nonreacting.base -fo ignite_0 -Tr 1000 -Ar 1.1e7 -Dh0f -100 -mo ignite_0 -snes_rtol 0 -err 0.05
-ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi ignite_0.base -fo ignite -param Dh0f -h0 -200 -mo ignite -dmax 100 -err 0.1 -scount 5 -paramtarget -804.084 -maxcount -1
-ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_960.base -fo ignited -Tr 700 -Dh0f -804.084 -mo ignited -snes_rtol 0 -err 0.05 -snes_linesearch_type l2
+ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi ignite_0.base -fo ignite -param Dh0f -h0 -200 -mo ignite -dmax 100 -err 0.1 -scount 5 -paramtarget -804.084 -maxcount -1 -contorder 2
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_335.base -fo ignited -Tr 700 -Dh0f -804.084 -mo ignited -snes_rtol 0 -err 0.05 -snes_linesearch_type l2
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignited.base -fo U02p2 -pv 1 -snes_rtol 0 -snes_linesearch_type l2 -mo U02p2
 ```
 

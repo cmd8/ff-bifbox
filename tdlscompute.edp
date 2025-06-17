@@ -185,11 +185,7 @@ complex[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 real iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp" // load equations
 // initialize
-complex[int] q(ub[].n), qc(J.n);
-q.re = ub[];
-ChangeNumbering(J, q, qc);
-ChangeNumbering(J, q, qc, inverse = true, exchange = true);
-ub[] = q.re;
+complex[int] qc(J.n), FPETSc(J.n);
 ChangeNumbering(J, um[], qc);
 if (count == 0){
   ChangeNumbering(J, um[], qc, inverse = true);
@@ -200,10 +196,9 @@ Js = vJ(XMh, XMh, tgv = -10);
 M = vM(XMh, XMh, tgv = -10);
 // Function to build residual "F(t,u,\dot{u})" operator in PETSc numbering
 func PetscScalar[int] funcF(real t, PetscScalar[int]& qPETSc, PetscScalar[int]& qdotPETSc) {
-    PetscScalar[int] temp(qPETSc.n), FPETSc(qPETSc.n);
     MatMult(Js, qPETSc, FPETSc);
-    MatMult(M, qdotPETSc, temp);
-    FPETSc += temp;
+    MatMult(M, qdotPETSc, qc);
+    FPETSc += qc;
     return FPETSc;
 }
 // Function to build Jacobian operator in PETSc numbering

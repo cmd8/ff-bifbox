@@ -305,7 +305,7 @@ complex iomega, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 // Build bordered block matrix from only Mat components
 Mat<complex> JlPM(J.n, mpirank == 0 ? (4-zerofreq-zerofreq2) : 0), gqPM(J.n, mpirank == 0 ? (4-zerofreq-zerofreq2) : 0), glPM(mpirank == 0 ? (4-zerofreq-zerofreq2) : 0, mpirank == 0 ? (4-zerofreq-zerofreq2) : 0); // Initialize Mat objects for bordered matrix
-Mat<complex> H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
+Mat<complex> Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(J.n), p2P(J.n), q2P(J.n);
 // FUNCTIONS
   func complex[int] funcRa(complex[int]& qa) {
@@ -332,8 +332,8 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       J = vJ(XMh, XMh, tgv = -2);
       KSPSolve(J, p1P, q1m);
       KSPSolveHermitianTranspose(J, q1P, q1ma);
-      complex ginv, ginvl = (q1P'*q1m);
-      mpiAllReduce(ginvl, ginv, mpiCommWorld, mpiSUM);
+      complex ginv, hinv, invl = (q1P'*q1m);
+      mpiAllReduce(invl, ginv, mpiCommWorld, mpiSUM);
       q1m /= ginv; // rescale direct mode
       q1ma /= conj(ginv); // rescale adjoint mode
       iomega = 1i*omega2;
@@ -342,8 +342,8 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       J = vJ(XMh, XMh, tgv = -2);
       KSPSolve(J, p2P, q2m);
       KSPSolveHermitianTranspose(J, q2P, q2ma);
-      complex hinv, hinvl = (q2P'*q2m);
-      mpiAllReduce(hinvl, hinv, mpiCommWorld, mpiSUM);
+      invl = (q2P'*q2m);
+      mpiAllReduce(invl, hinv, mpiCommWorld, mpiSUM);
       q2m /= hinv; // rescale direct mode
       q2ma /= conj(hinv); // rescale adjoint mode
       if(mpirank == 0) {
@@ -479,13 +479,13 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       ik.im = sym1;
       iomega = 1i*omega1;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-      H = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
-      MatMultHermitianTranspose(H, q1ma, temp1); // gqr,i
+      J = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
+      MatMultHermitianTranspose(J, q1ma, temp1); // gqr,i
       ik.im = sym2;
       iomega = 1i*omega2;
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-      H = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
-      MatMultHermitianTranspose(H, q2ma, temp3); // gqr,i
+      J = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
+      MatMultHermitianTranspose(J, q2ma, temp3); // gqr,i
       if(!zerofreq) temp2.re = -temp1.im;
       temp1.im = 0.0;
       if(!zerofreq2) temp4.re = -temp3.im;
@@ -499,6 +499,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       iomega = 0.0;
       sym = 0;
       J = vJ(XMh, XMh, tgv = -1);
+      ObjectView(glPM);
       return 0;
   }
 // set up Mat parameters

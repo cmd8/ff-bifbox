@@ -92,27 +92,29 @@ createMatu(Th, J, Pk);
 sym = parsesymstr(symstr);
 complex[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 ik.im = sym;
-complex iomega, iomega2 = 0.0, iomega3 = 0.0; // Let PETSc/SLEPc do the shift
+complex iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0; // Let PETSc/SLEPc do the shift
 include "eqns.idp"
 
+complex[int] RHS(J.n), qm(J.n);
+um[] = vMq(0, XMh, tgv = -1);
+ChangeNumbering(J, um[], RHS);
+matrix<complex> M = vM(XMh, XMh, tgv = -10);
+matrix<complex> Jx, Js = vJ(XMh, XMh, tgv = -1);
+um[].re = ub[];
+ChangeNumbering(J, um[], qm);
+ChangeNumbering(J, um[], qm, inverse = true);
+ub[] = um[].re;
 real omegas = omega;
 for (int n = 0; n < nomega; ++n){
   if (nomega > 1) omega = omegas + (omegaf - omegas)*real(n)/real(nomega - 1);
   iomega = 1i*omega;
-  complex[int] RHS = vMq(0, XMh, tgv = -1);
-  J = vJ(XMh, XMh, tgv = -1);
+  Jx = iomega*M;
+  Jx += Js;
+  ChangeOperator(J, Jx);
   // set up Mat parameters
   IFMACRO(Jprecon) Jprecon(iomega); ENDIFMACRO
   set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams + " -options_left no");
-  um[] = J^-1*RHS;
-  real[int] ubsave = ub[];
-  complex[int] ubcplx(ub[].n), temp;
-  ubcplx.re = ub[];
-  ChangeNumbering(J, ubcplx, temp);
-  ChangeNumbering(J, ubcplx, temp, inverse = true);
-  ub[] = ubcplx.re;
-  ChangeNumbering(J, um[], temp);
-  ChangeNumbering(J, um[], temp, inverse = true);
+  KSPSolve(J, RHS, qm);
+  ChangeNumbering(J, um[], qm, inverse = true);
   saveresp(fileout + ((nomega > 1) ? ("_" + n) : ""), statout, filein, meshin, sym, omega, (fileout != ""), true);
-  ub[] = ubsave;
 }

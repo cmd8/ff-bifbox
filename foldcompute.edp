@@ -236,14 +236,14 @@ if(mpirank == 0) {
 }
 if (fileext != "fold" && fileext != "foho"){
   updatelambda(param, lambda + eps);
-  real[int] Jl = vR(0, XMh);
+  um2[] = vR(0, XMh);
   updatelambda(param, lambda);
   R = vR(0, XMh);
-  Jl -= R;
-  Jl /= eps;
+  um2[] -= R;
+  um2[] /= eps;
   J = vJ(XMh, XMh);
-  um[] = J^-1*Jl;
-  uma[] = J'^-1*Jl;
+  um[] = J^-1*um2[];
+  uma[] = J'^-1*um2[];
 }
 um2[] = vM(0, XMh, tgv = 0);
 ChangeNumbering(J, um[], qm);
@@ -276,26 +276,23 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, um[], qm);
   ChangeNumbering(J, uma[], qma);
   if (normalform){
-    real[int] temp(um[].n), temp1(um[].n);
     // 2nd-order
     //  A: base modification due to parameter changes
     if(paramnames[0] != ""){
-      temp1 = vR(0, XMh, tgv = -1);
       for (int k = 0; k < paramnames.n; ++k){
         lambda = getlambda(paramnames[k]);
         updatelambda(paramnames[k], lambda + eps);
-        temp = vR(0, XMh, tgv = -1);
+        um2[] = vR(0, XMh, tgv = -1);
         updatelambda(paramnames[k], lambda);
-        temp -= temp1;
-        temp /= eps;
-        alpha[paramnames[k]] = -J(uma[], temp);
+        um2[] -= R;
+        alpha[paramnames[k]] = -J(uma[], um2[])/eps;
       }
     }
     //  B: base modification due to quadratic nonlinear interaction
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     um2[] = um[];
-    temp = vH(0, XMh, tgv = -10);
-    beta = -0.5*J(uma[], temp);
+    um3[] = vH(0, XMh, tgv = -10);
+    beta = -0.5*J(uma[], um3[]);
   }
   else {
     for (int k = 0; k < paramnames.n; ++k){

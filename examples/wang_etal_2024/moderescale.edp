@@ -34,8 +34,8 @@ um[] = loadmode(fileroot, meshin, sym, eigenvalue);
 val(0) = eigenvalue;
 
 fespace Xh2(Th, P2);
-Xh2 basemag = sqrt(ub^2 + uby^2);
-Xh2 modemag = sqrt(abs(um)^2 + abs(umy)^2);
+Xh2 basemag = hypot(ub, uby);
+Xh2 modemag = hypot(abs(um), abs(umy));
 
 real maxbase = basemag[].max;
 real maxmode = 2.0*modemag[].max; // factor of 2 because the mode is initialized as um + conj(um)

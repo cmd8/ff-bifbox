@@ -122,7 +122,7 @@ ff-mpirun -np $nproc hohocompute.edp -v 0 -dir $workdir -fi swirljetm2m1.hoho -f
 14. Compute the fold-Hopf point where the $|m|=1$ curve intersects the fold curve
 ```
 cd $workdir && declare -a fohoguesslist=(*specialpt.hopf) && cd -
-ff-mpirun -np $nproc fohocompute.edp -v 0 -dir $workdir -fi ${fohoguesslist[0]} -fo swirljetm1 -param S -param2 1/Re -snes_divergence_tolerance 1e10
+ff-mpirun -np $nproc fohocompute.edp -v 0 -dir $workdir -fi ${fohoguesslist[1]} -fo swirljetm1 -param S -param2 1/Re -snes_divergence_tolerance 1e10
 ```
 
 ### Periodic 3D dynamics

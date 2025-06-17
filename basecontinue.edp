@@ -165,7 +165,7 @@ set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type sch
                 + " -prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", setup = 1);
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent = Ja);
 // PREDICTOR
-real[int] qa0;
+real[int] qa(Ja.n), qa0;
 ChangeNumbering(J, ub[], qa0);
 if(mpirank == 0) {
   qa0.resize(J.n+1);
@@ -182,7 +182,7 @@ else {
 }
 yqP0 = yqP;
 while (!stopflag){
-  real[int] qa = qa0;
+  qa = qa0;
   if (contorder == 0 && mpirank == 0) qa(qa.n-1) += h0;
   else if (contorder > 0) {
     real h, hl = (yqP0'*yqP0);
