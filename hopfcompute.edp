@@ -413,7 +413,7 @@ if(mpirank == 0) {
 sym = sym1;
 ik.im = sym1;
 iomega = 1i*omega;
-um2[] = vM(0, XMh, tgv = 0);
+um2[] = vM(0, XMh, tgv = -10);
 ChangeNumbering(J, um[], qm);
 ChangeNumbering(J, um[], qm, inverse = true);
 real Mnorm = sqrt(real(J(um[], um2[])));

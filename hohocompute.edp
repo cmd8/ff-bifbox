@@ -499,7 +499,6 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       iomega = 0.0;
       sym = 0;
       J = vJ(XMh, XMh, tgv = -1);
-      ObjectView(glPM);
       return 0;
   }
 // set up Mat parameters
