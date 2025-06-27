@@ -322,43 +322,46 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
         omega = zerofreq ? 0.0 : real(qa(qa.n-2)); // Extract frequency value from state vector on proc 0
         lambda2 = real(qa(qa.n-1)); // Extract parameter value from state vector on proc 0
       }
+      complex[int] temp1(J.n), temp3(J.n);
       broadcast(processor(0), lambda1);
       broadcast(processor(0), omega);
       broadcast(processor(0), lambda2);
-      ChangeNumbering(J, uma[], q1ma, inverse = true);
-      ChangeNumbering(J, um3[], q2ma, inverse = true);
       updatelambda(param, lambda1 + eps);
       updatelambda(param2, lambda2);
-      sym = 0;
-      complex[int] Jl1 = vR(0, XMh, tgv = -1);
+      um2[] = vR(0, XMh, tgv = -1);
+      um2[] -= R;
+      um2[] /= eps;
+      ChangeNumbering(J, um2[], temp1); // FreeFEM to PETSc
+      ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
+      um3[] = vJ(0, XMh, tgv = -10);
       sym = sym1;
       ik.im = sym1;
       iomega = 1i*omega;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
       complex[int] Hl1 = vJ(0, XMh, tgv = -10);
-      sym = 0;
-      ik = 0.0;
-      iomega = 0.0;
-      ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-      complex[int] Kl1 = vJ(0, XMh, tgv = -10);
       updatelambda(param, lambda1);
       updatelambda(param2, lambda2 + eps2);
-      complex[int] Jl2 = vR(0, XMh, tgv = -1);
-      sym = sym1;
-      ik.im = sym1;
-      iomega = 1i*omega;
-      ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
       complex[int] Hl2 = vJ(0, XMh, tgv = -10);
       sym = 0;
+      um2[] = vR(0, XMh, tgv = -1);
+      um2[] -= R;
+      um2[] /= eps2;
+      ChangeNumbering(J, um2[], temp3); // FreeFEM to PETSc
+      matrix<complex> tempPms;
+      if (zerofreq) tempPms = [[temp1, temp3]]; // dense array to sparse matrix
+      else tempPms = [[temp1, 0, temp3]]; // dense array to sparse matrix
+      ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       ik = 0.0;
       iomega = 0.0;
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-      complex[int] temp1(J.n), temp2(J.n), temp3(J.n), Kl2 = vJ(0, XMh, tgv = -10);
+      um2[] = vJ(0, XMh, tgv = -10);
+      R = J*um[];
+      um3[] -= R;
+      um2[] -= R;
+      ChangeNumbering(J, uma[], q2ma, inverse = true);
+      real hl1 = real(J(uma[], um3[]))/eps;
+      real hl2 = real(J(uma[], um2[]))/eps2;
       updatelambda(param2, lambda2);
-      Jl1 -= R;
-      Jl2 -= R;
-      Jl1 /= eps;
-      Jl2 /= eps2;
       sym = sym1;
       ik.im = sym1;
       iomega = 1i*omega;
@@ -366,33 +369,12 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       R = vJ(0, XMh, tgv = -10);
       Hl1 -= R;
       Hl2 -= R;
-      Hl1 /= eps;
-      Hl2 /= eps2;
-      sym = 0;
-      ik = 0.0;
-      iomega = 0.0;
-      ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-      R = vJ(0, XMh, tgv = -10);
-      Kl1 -= R;
-      Kl2 -= R;
-      Kl1 /= eps;
-      Kl2 /= eps2;
-      ChangeNumbering(J, Jl1, temp1); // FreeFEM to PETSc
-      ChangeNumbering(J, Jl2, temp3); // FreeFEM to PETSc
-      matrix<complex> tempPms;
-      if (zerofreq) tempPms = [[temp1, temp3]]; // dense array to sparse matrix
-      else tempPms = [[temp1, 0, temp3]]; // dense array to sparse matrix
-      ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      complex gl1 = J(uma[], Hl1);
-      complex gl2 = J(uma[], Hl2);
-      real hl1 = real(J(um3[], Kl1));
-      real hl2 = real(J(um3[], Kl2));
-      if (zerofreq) tempPms = [[ real(gl1), real(gl2) ], [ hl1, hl2 ]];
+      ChangeNumbering(J, uma[], q1ma, inverse = true);
+      complex gl1 = J(uma[], Hl1)/eps;
+      complex gl2 = J(uma[], Hl2)/eps2;
+      if (zerofreq) tempPms = [[ real(gl1), real(gl2) ], 
+                               [ hl1      , hl2       ]];
       else {
-        sym = sym1;
-        ik.im = sym1;
-        iomega = 1i*omega;
-        ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
         R = vM(0, XMh, tgv = -10);
         complex gw = J(uma[], R);
         tempPms = [[ real(gl1), -imag(gw), real(gl2) ],
@@ -401,8 +383,6 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       }
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       sym = 0;
-      ik.im = sym1;
-      iomega = 1i*omega;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
       J = vH(XMh, XMh, tgv = 0); // form the matrix (dL/dq*w)
       MatMultHermitianTranspose(J, q1ma, temp1); // gqr,i
@@ -411,11 +391,11 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
       J = vH(XMh, XMh, tgv = 0); // form the matrix (dJ/dq*w)
       MatMultTranspose(J, q2ma, temp3); // gqr,i
-      if(!zerofreq) temp2.re = -temp1.im;
+      if(!zerofreq) q2m.re = -temp1.im;
       temp1.im = 0.0;
       temp3.im = 0.0;
       if (zerofreq) tempPms = [[temp1, temp3]];
-      else tempPms = [[temp1, temp2, temp3]]; // dense array to sparse matrix
+      else tempPms = [[temp1, q2m, temp3]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       J = vJ(XMh, XMh, tgv = -1);
       return 0;
@@ -534,16 +514,16 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega2 = 0.0;
     sym = 0;
     ChangeNumbering(J, um[], q2ma, inverse = true, exchange = true);
-    um2[] = vM(0, XMh, tgv = -10);
+    um2[] = vM(0, XMh, tgv = 0);
     ChangeNumbering(J, um2[], p2P);
     matrix<complex> tempPms = [[p2P]]; // dense array to sparse matrix
     ChangeOperator(pPM, tempPms, parent = Ja); // send to Mat
     ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-    um2[] = vM(0, XMh, tgv = -10);
+    um2[] = vM(0, XMh, tgv = 0);
     ChangeNumbering(J, um2[], p2P);
     tempPms = [[p2P]]; // dense array to sparse matrix
     ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = -2);
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
         lambda1 = getlambda(paramnames[k]);
@@ -620,16 +600,16 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega2 = 0.0;
     sym = sym1;
     ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);
-    um2[] = vM(0, XMh, tgv = -10);
+    um2[] = vM(0, XMh, tgv = 0);
     ChangeNumbering(J, um2[], q2P);
     tempPms = [[q2P]]; // dense array to sparse matrix
     ChangeOperator(pPM, tempPms, parent = Ja); // send to Mat
     ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-    um2[] = vM(0, XMh, tgv = -10);
+    um2[] = vM(0, XMh, tgv = 0);
     ChangeNumbering(J, um2[], q2P);
     tempPms = [[q2P]]; // dense array to sparse matrix
     ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = -2);
     ChangeNumbering(J, um2[], q2m, inverse = true, exchange = true);
     um3[] = vH(0, XMh, tgv = -10);
     um3[] *= -1.0;
