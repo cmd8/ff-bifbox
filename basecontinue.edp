@@ -122,22 +122,20 @@ real f, kappa, cosalpha, res, delta, maxdelta;
 // FUNCTIONS
   func PetscScalar[int] funcRa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
+      if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
       R = vR(0, XMh, tgv = -1);
       PetscScalar[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
-      if(mpirank == 0) {
-        Ra.resize(J.n+1); // Append 0 to residual vector on proc 0
-        Ra(Ra.n-1) = 0.0;
-      }
+      Ra.resize(Ja.n); // Append 0 to residual vector on proc 0
+      if(mpirank == 0) Ra(Ja.n-1) = 0.0;
       return Ra;
   }
 
   func int funcJa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
+      if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
       if (it <= refactor) J = vJ(XMh, XMh, tgv = -1);
@@ -167,10 +165,8 @@ set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent =
 // PREDICTOR
 real[int] qa(Ja.n), qa0;
 ChangeNumbering(J, ub[], qa0);
-if(mpirank == 0) {
-  qa0.resize(J.n+1);
-  qa0(qa0.n-1) = lambda;
-}
+qa0.resize(Ja.n);
+if(mpirank == 0) qa0(Ja.n-1) = lambda;
 if (contorder > 0) {
   R = vR(0, XMh, tgv = -1);
   funcJa(qa0);
@@ -183,13 +179,13 @@ else {
 yqP0 = yqP;
 while (!stopflag){
   qa = qa0;
-  if (contorder == 0 && mpirank == 0) qa(qa.n-1) += h0;
+  if (contorder == 0 && mpirank == 0) qa(Ja.n-1) += h0;
   else if (contorder > 0) {
     real h, hl = (yqP0'*yqP0);
     mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
     h = h0/sqrt(h + 1.0);
     qa(0:J.n-1) -= h*yqP0;
-    if (mpirank == 0) qa(qa.n-1) += h;
+    if (mpirank == 0) qa(Ja.n-1) += h;
     if (contorder > 1) {
       real[int,int] yqnP(J.n, contorder-1);
       yqP = -h*yqP0;
@@ -258,7 +254,7 @@ while (!stopflag){
         mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
         yqP -= h*yqP0;
         qa(0:J.n-1) += yqP;
-        if (mpirank == 0) qa(qa.n-1) += h;
+        if (mpirank == 0) qa(Ja.n-1) += h;
       }
     }
   }
@@ -279,7 +275,7 @@ while (!stopflag){
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
-      if(mpirank == 0) lambda = qa(qa.n-1);
+      if(mpirank == 0) lambda = qa(Ja.n-1);
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
       ChangeNumbering(J, um[], yqP, inverse = true);
@@ -329,18 +325,14 @@ while (!stopflag){
       Ja = [[J, JlPM], [yqPM', -1.0]]; // make dummy Jacobian
       IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
       set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent = Ja);
-      qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
-      if(mpirank == 0) {
-        qa.resize(J.n+1);
-        qa(qa.n-1) = lambda;
-      }
+      qa.resize(Ja.n);
+      if(mpirank == 0) qa(Ja.n-1) = lambda;
       R.resize(ub[].n);
-      yqP.resize(J.n);
       ChangeNumbering(J, um[], yqP);
       yqP0.resize(J.n);
       yqP0 = yqP;
-      qa0.resize(qa.n);
+      qa0.resize(Ja.n);
       if (contorder == 0) {
         matrix<PetscScalar> tempPms = [[yqP]];
         ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
@@ -356,7 +348,7 @@ while (!stopflag){
       }
     }
     ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
-    if(mpirank == 0) lambda = qa(qa.n-1);
+    if(mpirank == 0) lambda = qa(Ja.n-1);
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
     savebase(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, ((count % savecount == 0) || forcesave || stopflag), true);

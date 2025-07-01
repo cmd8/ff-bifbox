@@ -258,7 +258,7 @@ else JHBa = [[JHB, dwHB],[dwHB',0]];
       PetscScalar[int] RPETSc(JHBa.n);
       ResidualHB(RHB, J, ub, uh, sym0, omega);
       RPETSc(0:JHB.n-1) = RHB;
-      if(mpirank == 0 && !zerofreq) RPETSc(RPETSc.n-1) = 0.0;
+      if(mpirank == 0 && !zerofreq) RPETSc(JHBa.n-1) = 0.0;
       return RPETSc;
   }
 
@@ -267,7 +267,7 @@ func int funcJHB(PetscScalar[int]& qPETSc) {
     ChangeNumbering(J, ub[], qPETSc(0:J.n-1), inverse = true, exchange = true);
     for (int nh = 0; nh < Nh; nh++)
       ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qPETSc((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true, exchange = true);
-    if(mpirank == 0 && !zerofreq) omega = qPETSc(qPETSc.n-1); 
+    if(mpirank == 0 && !zerofreq) omega = qPETSc(JHBa.n-1); 
     broadcast(processor(0), omega);
     JacobianHB(JHB, J, ub, uh, sym0, omega);
     if (zerofreq) JHBa = JHB;
@@ -301,7 +301,7 @@ for (int nh = 0; nh < Nh; nh++){
   qHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = RHB;
 }
 RHB.resize(JHB.n);
-if(mpirank == 0 && !zerofreq) qHB(qHB.n-1) = omega;
+if(mpirank == 0 && !zerofreq) qHB(JHBa.n-1) = omega;
 int ret;
 // solve nonlinear problem with SNES
 SNESSolve(JHBa, funcJHB, funcRHB, qHB, reason = ret,
@@ -314,7 +314,7 @@ if(ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qHB(0:J.n-1), inverse = true);
   for (int nh = 0; nh < Nh; nh++)
     ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qHB((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true);
-  if(mpirank == 0 && !zerofreq) omega = qHB(qHB.n-1); 
+  if(mpirank == 0 && !zerofreq) omega = qHB(JHBa.n-1); 
   broadcast(processor(0), omega);
   saveporb(fileout, "", meshout, sym0, omega, Nh, true, true);
 }
