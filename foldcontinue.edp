@@ -79,9 +79,9 @@ if (count == 0){
 else {
   ub[] = loadfold(fileroot + "_" + count, meshin, um[], uma[], alpha, beta);
 }
-real lambda1 = getlambda(param);
+real lambda = getlambda(param);
 real lambda2 = getlambda(param2);
-real paramdiff1 = lambda1 - paramtarget;
+real paramdiff1 = lambda - paramtarget;
 real paramdiff2 = lambda2 - param2target;
 // Create distributed Mat
 Mat J;
@@ -105,10 +105,10 @@ real f, kappa, cosalpha, res, delta, maxdelta, alpha0, beta0;
 // FUNCTIONS
   func PetscScalar[int] funcRa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) [lambda1, lambda2] = qa(J.n:Jaa.n-1);
-      broadcast(processor(0), lambda1);
+      if(mpirank == 0) [lambda, lambda2] = qa(J.n:Jaa.n-1);
+      broadcast(processor(0), lambda);
       broadcast(processor(0), lambda2);
-      updatelambda(param, lambda1);
+      updatelambda(param, lambda);
       updatelambda(param2, lambda2);
       R = vR(0, XMh, tgv = -1);
       PetscScalar[int] Ra;
@@ -127,12 +127,12 @@ real f, kappa, cosalpha, res, delta, maxdelta, alpha0, beta0;
 
   func int funcJa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) [lambda1, lambda2] = qa(J.n:Jaa.n-1);
-      broadcast(processor(0), lambda1);
+      if(mpirank == 0) [lambda, lambda2] = qa(J.n:Jaa.n-1);
+      broadcast(processor(0), lambda);
       broadcast(processor(0), lambda2);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      updatelambda(param, lambda1 + eps);
+      updatelambda(param, lambda + eps);
       updatelambda(param2, lambda2);
       um2[] = vR(0, XMh, tgv = -1);
       um2[] -= R;
@@ -141,7 +141,7 @@ real f, kappa, cosalpha, res, delta, maxdelta, alpha0, beta0;
       matrix<PetscScalar> tempPms = [[qm]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       um2[] = vJ(0, XMh, tgv = -10);
-      updatelambda(param, lambda1);
+      updatelambda(param, lambda);
       um3[] = vJ(0, XMh, tgv = -10);
       um2[] -= um3[];
       tempPms = [[J(uma[], um2[])/eps]];
@@ -172,7 +172,7 @@ real f, kappa, cosalpha, res, delta, maxdelta, alpha0, beta0;
       return 0;
   }
   
-  ConvergenceCheck(param + " = " + lambda1 + ",\t" + param2 + " = " + lambda2);
+  ConvergenceCheck(param + " = " + lambda + ",\t" + param2 + " = " + lambda2);
 // set up Mat parameters
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
 set(Jaa, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full"
@@ -187,9 +187,8 @@ real[int] qa(Jaa.n), qa0;
 ChangeNumbering(J, ub[], qa0);
 ChangeNumbering(J, um[], qm);
 ChangeNumbering(J, uma[], qma);
-ChangeNumbering(J, uma[], qma, inverse = true);
 qa0.resize(Jaa.n);
-if(mpirank == 0) qa0(J.n:Jaa.n-1) = [lambda1, lambda2];
+if(mpirank == 0) qa0(J.n:Jaa.n-1) = [lambda, lambda2];
 ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
 um2[] = vM(0, XMh, tgv = 0);
 ChangeNumbering(J, um2[], qP);
@@ -225,7 +224,7 @@ while (!stopflag){
   if (ret > 0) {
     ++count;
     if (maxcount > 0) stopflag = (count >= maxcount);
-    else if ((lambda1 - paramtarget)*paramdiff1 <= 0 || (lambda2 - param2target)*paramdiff2 <= 0) stopflag = true;
+    else if ((lambda - paramtarget)*paramdiff1 <= 0 || (lambda2 - param2target)*paramdiff2 <= 0) stopflag = true;
     h0 /= f;
     if (cosalpha < 0 && contorder > 0) {
       h0 *= -1.0;
@@ -235,10 +234,10 @@ while (!stopflag){
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
-      if(mpirank == 0) [lambda1, lambda2] = qa(J.n:Jaa.n-1);
-      broadcast(processor(0), lambda1);
+      if(mpirank == 0) [lambda, lambda2] = qa(J.n:Jaa.n-1);
+      broadcast(processor(0), lambda);
       broadcast(processor(0), lambda2);
-      updatelambda(param, lambda1);
+      updatelambda(param, lambda);
       updatelambda(param2, lambda2);
       ChangeNumbering(J, um[], qm, inverse = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
@@ -319,7 +318,7 @@ while (!stopflag){
       set(Ja, prefix = "fieldsplit_0_", parent = Jaa);
       ChangeNumbering(J, ub[], qa);
       qa.resize(Jaa.n);
-      if(mpirank == 0) qa(J.n:Jaa.n-1) = [lambda1, lambda2];
+      if(mpirank == 0) qa(J.n:Jaa.n-1) = [lambda, lambda2];
       ChangeNumbering(J, um[], qm);
       ChangeNumbering(J, uma[], qma);
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
@@ -351,10 +350,10 @@ while (!stopflag){
       }
     }
     ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
-    if(mpirank == 0) [lambda1, lambda2] = qa(J.n:Jaa.n-1);
-    broadcast(processor(0), lambda1);
+    if(mpirank == 0) [lambda, lambda2] = qa(J.n:Jaa.n-1);
+    broadcast(processor(0), lambda);
     broadcast(processor(0), lambda2);
-    updatelambda(param, lambda1);
+    updatelambda(param, lambda);
     updatelambda(param2, lambda2);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     um2[] = vM(0, XMh, tgv = 0);
@@ -370,10 +369,10 @@ while (!stopflag){
       //  A: base modification due to parameter changes
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
-          lambda1 = getlambda(paramnames[k]);
-          updatelambda(paramnames[k], lambda1 + eps);
+          lambda = getlambda(paramnames[k]);
+          updatelambda(paramnames[k], lambda + eps);
           um2[] = vR(0, XMh, tgv = -1);
-          updatelambda(paramnames[k], lambda1);
+          updatelambda(paramnames[k], lambda);
           um2[] -= R;
           alpha[paramnames[k]] = -J(uma[], um2[])/eps;
         }

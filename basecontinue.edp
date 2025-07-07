@@ -223,14 +223,13 @@ while (!stopflag){
             temp = vH(0, XMh, tgv = -10);
             um3[] -= temp;
             NLq += (hn(i-j-k-1)/eps)*um3[];
+            um3[] = vJ(0, XMh, tgv = -10);
             updatelambda(param, lambda + 2.0*sqrteps);
             um2[] = vJ(0, XMh, tgv = -10);
+            um2[] += um3[];
             updatelambda(param, lambda + sqrteps);
             um3[] = vJ(0, XMh, tgv = -10);
             um2[] -= 2.0*um3[];
-            updatelambda(param, lambda);
-            um3[] = vJ(0, XMh, tgv = -10);
-            um2[] += um3[];
             NLq += (hn(k)*hn(i-j-k-1)/eps)*um2[];
             updatelambda(param, lambda + 3.0*cbrteps);
             um2[] = vR(0, XMh, tgv = -1);

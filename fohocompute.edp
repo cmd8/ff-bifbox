@@ -172,7 +172,7 @@ else if(basefileext == "porb") {
   complex[int,int] qh(um[].n, Nh);
   ub[].re = loadporb(basefileroot, meshin, qh, sym, omega, Nh);
 }
-real lambda1 = getlambda(param);
+real lambda = getlambda(param);
 real lambda2 = getlambda(param2);
 // Create distributed Mat
 Mat<complex> J;
@@ -271,14 +271,14 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
   func complex[int] funcRa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
-        lambda1 = real(qa(J.n)); // Extract parameter value from state vector on proc 0
+        lambda = real(qa(J.n)); // Extract parameter value from state vector on proc 0
         omega = zerofreq ? 0.0 : real(qa(Ja.n-2)); // Extract frequency value from state vector on proc 0
         lambda2 = real(qa(Ja.n-1)); // Extract parameter value from state vector on proc 0
       }
-      broadcast(processor(0), lambda1);
+      broadcast(processor(0), lambda);
       broadcast(processor(0), omega);
       broadcast(processor(0), lambda2);
-      updatelambda(param, lambda1);
+      updatelambda(param, lambda);
       updatelambda(param2, lambda2);
       sym = 0;
       R = vR(0, XMh, tgv = -1);
@@ -318,15 +318,15 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
   func int funcJa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
       if(mpirank == 0) {
-        lambda1 = real(qa(J.n)); // Extract parameter value from state vector on proc 0
+        lambda = real(qa(J.n)); // Extract parameter value from state vector on proc 0
         omega = zerofreq ? 0.0 : real(qa(Ja.n-2)); // Extract frequency value from state vector on proc 0
         lambda2 = real(qa(Ja.n-1)); // Extract parameter value from state vector on proc 0
       }
       complex[int] temp1(J.n), temp3(J.n);
-      broadcast(processor(0), lambda1);
+      broadcast(processor(0), lambda);
       broadcast(processor(0), omega);
       broadcast(processor(0), lambda2);
-      updatelambda(param, lambda1 + eps);
+      updatelambda(param, lambda + eps);
       updatelambda(param2, lambda2);
       um2[] = vR(0, XMh, tgv = -1);
       um2[] -= R;
@@ -339,7 +339,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       iomega = 1i*omega;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
       complex[int] Hl1 = vJ(0, XMh, tgv = -10);
-      updatelambda(param, lambda1);
+      updatelambda(param, lambda);
       updatelambda(param2, lambda2 + eps2);
       complex[int] Hl2 = vJ(0, XMh, tgv = -10);
       sym = 0;
@@ -411,7 +411,7 @@ complex[int] qa;
 ChangeNumbering(J, ub[], qa);
 if(mpirank == 0) {
   qa.resize(Ja.n);
-  qa(J.n) = lambda1;
+  qa(J.n) = lambda;
   if(!zerofreq) qa(Ja.n-2) = omega;
   qa(Ja.n-1) = lambda2;
 }
@@ -438,9 +438,9 @@ sym = 0;
 ik = 0.0;
 iomega = 0.0;
 if (fileext2 != "fold" && fileext2 != "foho"){
-  updatelambda(param, lambda1 + eps);
+  updatelambda(param, lambda + eps);
   uma[] = vR(0, XMh);
-  updatelambda(param, lambda1);
+  updatelambda(param, lambda);
   R = vR(0, XMh);
   uma[] -= R;
   uma[] /= eps;
@@ -468,14 +468,14 @@ SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
 if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
   if(mpirank == 0) {
-    lambda1 = real(qa(J.n)); // Extract parameter value from state vector on proc 0
+    lambda = real(qa(J.n)); // Extract parameter value from state vector on proc 0
     omega = zerofreq ? 0.0 : real(qa(Ja.n-2)); // Extract frequency value from state vector on proc 0
     lambda2 = real(qa(Ja.n-1)); // Extract parameter value from state vector on proc 0
   }
-  broadcast(processor(0), lambda1);
+  broadcast(processor(0), lambda);
   broadcast(processor(0), omega);
   broadcast(processor(0), lambda2);
-  updatelambda(param, lambda1);
+  updatelambda(param, lambda);
   updatelambda(param2, lambda2);
   ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
   sym = sym1;
@@ -526,10 +526,10 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     J = vJ(XMh, XMh, tgv = -2);
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
-        lambda1 = getlambda(paramnames[k]);
-        updatelambda(paramnames[k], lambda1 + eps);
+        lambda = getlambda(paramnames[k]);
+        updatelambda(paramnames[k], lambda + eps);
         um[] = vR(0, XMh, tgv = -1);
-        updatelambda(paramnames[k], lambda1);
+        updatelambda(paramnames[k], lambda);
         um[] -= R;
         um[] /= -eps;
         ChangeNumbering(J, um[], q1P); // FreeFEM to PETSc
@@ -631,10 +631,10 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       for (int k = 0; k < paramnames.n; ++k){
         ChangeNumbering(J, um2[], qDa(k, :), inverse = true, exchange = true); // FreeFEM to PETSc
         um3[] = vH(0, XMh, tgv = -10); // 2.0/2.0
-        lambda1 = getlambda(paramnames[k]);
-        updatelambda(paramnames[k], lambda1 + eps);
+        lambda = getlambda(paramnames[k]);
+        updatelambda(paramnames[k], lambda + eps);
         um2[] = vJ(0, XMh, tgv = -10);
-        updatelambda(paramnames[k], lambda1);
+        updatelambda(paramnames[k], lambda);
         um2[] -= R;
         um3[] += um2[]/eps;
         alpha1[paramnames[k]] = -J(uma[], um3[]);
