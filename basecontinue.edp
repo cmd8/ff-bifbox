@@ -189,7 +189,8 @@ while (!stopflag){
     if (contorder > 1) {
       real[int,int] yqnP(J.n, contorder-1);
       yqP = -h*yqP0;
-      real[int] NLq(ub[].n), hn(contorder-1);
+      real[int] NLq(ub[].n), temp(ub[].n), hn(contorder-1);
+      real cbrteps = cbrt(eps), sqrteps = sign(eps)*sqrt(abs(eps));
       for (int i = 0; i < contorder-1; i++){
         yqnP(:, i) = yqP;
         hn(i) = h;
@@ -199,12 +200,11 @@ while (!stopflag){
           ChangeNumbering(J, um2[], yqnP(:, i-j), inverse = true, exchange = true);
           um3[] = vH(0, XMh, tgv = -10);
           NLq += um3[];
-          updatelambda(param, lambda - sqrt(eps));
+          updatelambda(param, lambda + 2.0*sqrteps);
           um2[] = vR(0, XMh, tgv = -1);
-          updatelambda(param, lambda + sqrt(eps));
+          updatelambda(param, lambda + sqrteps);
           um3[] = vR(0, XMh, tgv = -1);
-          um2[] += um3[];
-          um2[] -= 2.0*R;
+          um2[] += (R - 2.0*um3[]);
           NLq += (hn(j)*hn(i-j)/eps)*um2[];
           updatelambda(param, lambda + eps);
           um3[] = vJ(0, XMh, tgv = -10);
@@ -215,34 +215,31 @@ while (!stopflag){
           for (int k = 0; k < i-j; k++){
             ChangeNumbering(J, um2[], yqnP(:, k), inverse = true, exchange = true);
             ChangeNumbering(J, um3[], yqnP(:, i-j-k-1), inverse = true, exchange = true);
-            um3[] = vT(0, XMh, tgv = -10);
-            NLq += um3[]/3.0;
+            temp = vT(0, XMh, tgv = -10);
+            NLq += temp/3.0;
             updatelambda(param, lambda + eps);
             um3[] = vH(0, XMh, tgv = -10);
             updatelambda(param, lambda);
-            um2[] = vH(0, XMh, tgv = -10);
-            um3[] -= um2[];
+            temp = vH(0, XMh, tgv = -10);
+            um3[] -= temp;
             NLq += (hn(i-j-k-1)/eps)*um3[];
-            updatelambda(param, lambda - sqrt(eps));
+            updatelambda(param, lambda + 2.0*sqrteps);
             um2[] = vJ(0, XMh, tgv = -10);
-            updatelambda(param, lambda + sqrt(eps));
+            updatelambda(param, lambda + sqrteps);
             um3[] = vJ(0, XMh, tgv = -10);
-            um2[] += um3[];
+            um2[] -= 2.0*um3[];
             updatelambda(param, lambda);
             um3[] = vJ(0, XMh, tgv = -10);
-            um2[] -= 2.0*um3[];
+            um2[] += um3[];
             NLq += (hn(k)*hn(i-j-k-1)/eps)*um2[];
-            updatelambda(param, lambda + 2.0*cbrt(eps));
+            updatelambda(param, lambda + 3.0*cbrteps);
             um2[] = vR(0, XMh, tgv = -1);
-            updatelambda(param, lambda + cbrt(eps));
+            updatelambda(param, lambda + 2.0*cbrteps);
             um3[] = vR(0, XMh, tgv = -1);
-            um2[] -= 2.0*um3[];
-            updatelambda(param, lambda - cbrt(eps));
+            um2[] -= 3.0*um3[];
+            updatelambda(param, lambda + cbrteps);
             um3[] = vR(0, XMh, tgv = -1);
-            um2[] += 2.0*um3[];
-            updatelambda(param, lambda - 2.0*cbrt(eps));
-            um3[] = vR(0, XMh, tgv = -1);
-            um2[] -= um3[];
+            um2[] += (3.0*um3[] - R);
             NLq += (hn(j)*hn(k)*hn(i-j-k-1)/(6.0*eps))*um2[];
             updatelambda(param, lambda);
           }
