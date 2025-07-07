@@ -660,10 +660,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     J = vJ(XMh, XMh, tgv = -1);
     if (res1x != 2) KSPSolve(J, q2P, q2P);
     else {
-      if(mpirank == 0) {
-        q2P.resize(J.n+1);
-        q2P(J.n) = 0.0;
-      }
+      q2P.resize(Ja.n);
+      if(mpirank == 0) q2P(Ja.n-1) = 0.0;
       ChangeNumbering(J, um[], q2ma, inverse = true, exchange = true);
       um3[] = vM(0, XMh, tgv = -10);
       ChangeNumbering(J, um3[], p1P);
@@ -701,7 +699,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     um3[] = vH(0, XMh, tgv = -10);
     um3[] *= -1.0; // -2.0/2.0
     ChangeNumbering(J, um3[], qAB); // FreeFEM to PETSc
-    ik.im = (sym1 + sym2);
+    ik.im = sym;
     iomega = 1i*(omega1 + omega2);
     J = vJ(XMh, XMh, tgv = -1);
     KSPSolve(J, qAB, qAB);
@@ -717,10 +715,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     J = vJ(XMh, XMh, tgv = -1);
     if (res1x != 2) KSPSolve(J, qBB, qBB);
     else {
-      if(mpirank == 0) {
-        qBB.resize(J.n+1);
-        qBB(J.n) = 0.0;
-      }
+      qBB.resize(Ja.n);
+      if(mpirank == 0) qBB(Ja.n-1) = 0.0;
       ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);
       um2[] = vM(0, XMh, tgv = 0);
       complex[int] tempP(J.n);
@@ -824,7 +820,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ik3.im = -sym2;
     iomega = 1i*omega2;
     iomega2 = 1i*omega2;
-    iomega3 = -1i*omega2;
+    iomega3 = -iomega2;
     R = vT(0, XMh, tgv = -10);
     //  C: fundamental modification due to quadratic interaction of fundamental with 2nd order modification B
     ik2 = 0.0;
@@ -855,7 +851,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ik3.im = -sym2;
     iomega = 1i*omega1;
     iomega2 = 1i*omega2;
-    iomega3 = -1i*omega2;
+    iomega3 = -iomega2;
     R = vT(0, XMh, tgv = -10);
     //  C: fundamental modification due to quadratic interaction of fundamental with 2nd order modification B
     ik2 = 0.0;
@@ -896,7 +892,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ik3.im = -sym1;
     iomega = 1i*omega2;
     iomega2 = 1i*omega1;
-    iomega3 = -1i*omega1;
+    iomega3 = -iomega2;
     R = vT(0, XMh, tgv = -10);
     //  C: fundamental modification due to quadratic interaction of fundamental with 2nd order modification B
     ik2 = 0.0;
