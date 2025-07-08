@@ -687,13 +687,15 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     sym = 2.0*sym1;
     um3[] = vH(0, XMh, tgv = -10);
     ChangeNumbering(J, um3[], p1P); // FreeFEM to PETSc
-    ik.im = 2.0*sym1;
+    ik.im = sym;
     iomega = 2i*omega1;
     J = vJ(XMh, XMh, tgv = -1);
     KSPSolve(J, p1P, p1P);
 
     ChangeNumbering(J, um2[], q2m, inverse = true, exchange = true);
+    ik.im = sym1;
     ik2.im = sym2;
+    iomega = 1i*omega1;
     iomega2 = 1i*omega2;
     sym = sym1 + sym2;
     um3[] = vH(0, XMh, tgv = -10);
@@ -710,7 +712,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     sym = 2.0*sym2;
     um3[] = vH(0, XMh, tgv = -10);
     ChangeNumbering(J, um3[], qBB); // FreeFEM to PETSc
-    ik.im = 2*sym2;
+    ik.im = sym;
     iomega = 2i*omega2;
     J = vJ(XMh, XMh, tgv = -1);
     if (res1x != 2) KSPSolve(J, qBB, qBB);
@@ -718,13 +720,13 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       qBB.resize(Ja.n);
       if(mpirank == 0) qBB(Ja.n-1) = 0.0;
       ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);
-      um2[] = vM(0, XMh, tgv = 0);
+      um2[] = vM(0, XMh, tgv = -10);
       complex[int] tempP(J.n);
       ChangeNumbering(J, um2[], tempP);
       matrix<complex> tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(pPM, tempPms, parent = Ja); // send to Mat
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-      um2[] = vM(0, XMh, tgv = 0);
+      um2[] = vM(0, XMh, tgv = -10);
       ChangeNumbering(J, um2[], tempP);
       tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
