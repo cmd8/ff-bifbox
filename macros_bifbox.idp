@@ -1842,7 +1842,7 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
           }
         }
         file << "beta\t" << beta1 << "\t" << beta2 << endl;
-        file << "gamma\t" << gamma1 << "\t" << gamma2 << "\t" << gamma12 << "\t" << gamma13 << "\t" << gamma22 << "\t" << gamma23 << endl;
+        file << "gamma\t" << gamma1 << "\t" << gamma12 << "\t" << gamma13 << "\t" << gamma2 << "\t" << gamma22 << "\t" << gamma23 << endl;
         if(paramnames[0] != ""){
           for (int k = 0; k < paramnames.n; ++k){
             file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
@@ -2691,7 +2691,7 @@ func real[int] loadhoho(string inputfilename, string meshfilename, complex[int] 
         }
       }
       file >> dummy >> beta1 >> beta2;
-      file >> dummy >> gamma1 >> gamma2 >> gamma12 >> gamma13 >> gamma22 >> gamma23;
+      file >> dummy >> gamma1 >> gamma12 >> gamma13 >> gamma2 >> gamma22 >> gamma23;
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
           file >> paramnames[k] >> params[paramnames[k]];

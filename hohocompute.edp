@@ -584,19 +584,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full"
                     + " -prefix_push fieldsplit_1_ -ksp_type preonly -pc_type redundant -redundant_pc_type lu -prefix_pop"
                     + " -prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", setup = 1);
-    IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
-    set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent = Ja);
-    if (res1x == 1){
-      omega2 = (omega2 + omega1)/2.0;
-      omega1 = omega2;
-    }
-    else if (res1x == 2){
-      omega2 = (2.0*omega2 + omega1)/4.0;
-      omega1 = 2.0*omega2;
-    }
-    else if (res1x == 3){
-      omega2 = (3.0*omega2 + omega1)/6.0;
-      omega1 = 3.0*omega2;
+    if (res1x > 0){
+      omega2 = (omega2 + omega1/real(res1x))/2.0;
+      omega1 = real(res1x)*omega2;
     }
     // 2nd-order
     //  A: base modifications due to parameter changes

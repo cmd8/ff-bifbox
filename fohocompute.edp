@@ -514,16 +514,16 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega2 = 0.0;
     sym = 0;
     ChangeNumbering(J, um[], q2ma, inverse = true, exchange = true);
-    um2[] = vM(0, XMh, tgv = 0);
+    um2[] = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, um2[], p2P);
     matrix<complex> tempPms = [[p2P]]; // dense array to sparse matrix
     ChangeOperator(pPM, tempPms, parent = Ja); // send to Mat
     ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-    um2[] = vM(0, XMh, tgv = 0);
+    um2[] = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, um2[], p2P);
     tempPms = [[p2P]]; // dense array to sparse matrix
     ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
-    J = vJ(XMh, XMh, tgv = -2);
+    J = vJ(XMh, XMh, tgv = -1);
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
         lambda = getlambda(paramnames[k]);
@@ -542,12 +542,23 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       }
     }
     //  B: base modifications due to quadratic nonlinear interactions
+    ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
+    um2[] = -0.5*um[];
+    um3[] = vH(0, XMh, tgv = -10);
+    ChangeNumbering(J, um3[], p2P); // FreeFEM to PETSc
+    p2P.resize(Ja.n);
+    if(mpirank == 0) p2P(Ja.n-1) = 0.0;
+    KSPSolve(Ja, p2P, p2P);
+    if(mpirank == 0) beta22 = real(p2P(Ja.n-1));
+    broadcast(processor(0), beta22);
+    p2P.resize(J.n);
+
+    ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
+    um2[] = conj(um[]);
     ik.im = sym1;
     ik2.im = -sym1;
     iomega = 1i*omega;
     iomega2 = -iomega;
-    ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-    um2[] = conj(um[]);
     um3[] = vH(0, XMh, tgv = -10);
     um3[].re *= -1.0; // -2.0/2.0
     um3[].im = 0.0;
@@ -558,26 +569,10 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     if(mpirank == 0) gamma22 = real(q1P(Ja.n-1));
     broadcast(processor(0), gamma22);
     q1P.resize(J.n);
-    ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-    um2[] = -0.5*um[];
-    ik = 0.0;
-    ik2 = 0.0;
-    iomega = 0.0;
-    iomega2 = 0.0;
-    um3[] = vH(0, XMh, tgv = -10);
-    ChangeNumbering(J, um3[], p2P); // FreeFEM to PETSc
-    p2P.resize(Ja.n);
-    if(mpirank == 0) p2P(Ja.n-1) = 0.0;
-    KSPSolve(Ja, p2P, p2P);
-    if(mpirank == 0) beta22 = real(p2P(Ja.n-1));
-    broadcast(processor(0), beta22);
-    p2P.resize(J.n);
     //  C: harmonics generation due to quadratic nonlinear interactions
     ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
     um2[] = -0.5*um[];
-    ik.im = sym1;
     ik2.im = sym1;
-    iomega = 1i*omega;
     iomega2 = iomega;
     sym = 2*sym1;
     um3[] = vH(0, XMh, tgv = -10);
@@ -593,16 +588,16 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega2 = 0.0;
     sym = sym1;
     ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);
-    um2[] = vM(0, XMh, tgv = 0);
+    um2[] = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, um2[], q2P);
     tempPms = [[q2P]]; // dense array to sparse matrix
     ChangeOperator(pPM, tempPms, parent = Ja); // send to Mat
     ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-    um2[] = vM(0, XMh, tgv = 0);
+    um2[] = vM(0, XMh, tgv = -10);
     ChangeNumbering(J, um2[], q2P);
     tempPms = [[q2P]]; // dense array to sparse matrix
     ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
-    J = vJ(XMh, XMh, tgv = -2);
+    J = vJ(XMh, XMh, tgv = -1);
     ChangeNumbering(J, um2[], q2m, inverse = true, exchange = true);
     um3[] = vH(0, XMh, tgv = -10);
     um3[] *= -1.0;
@@ -613,7 +608,6 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     if(mpirank == 0) gamma12 = q2P(Ja.n-1);
     broadcast(processor(0), gamma12);
     q2P.resize(J.n);
-
     // 3rd-order
     // fundamental modifications due to parameter changes and quadratic interaction of fundamental with 2nd order base modification.
     // A
@@ -649,7 +643,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     R += um3[];
     //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
     ik.im = -sym1;
-    ik2.im = 2*sym1;
+    ik2.im = 2.0*sym1;
     iomega = -iomega;
     iomega2 = 2i*omega;
     um[] = conj(um[]);
@@ -699,7 +693,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 0.0;
     iomega2 = 1i*omega;
     ChangeNumbering(J, um2[], q2P, inverse = true, exchange = true); // FreeFEM to PETSc
-    um3[] += vH(0, XMh, tgv = -10);
+    um3[] = vH(0, XMh, tgv = -10);
     R += um3[];
     gamma13 = -J(uma[], R);
 
@@ -721,7 +715,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     R += um3[];
     //  D: fundamental modification due to quadratic interaction of fundamental with 2nd order modification C
     ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
-    um[].im *= -1.0;
+    um[] = conj(um[]);
     ik.im = -sym1;
     ik2.im = sym1;
     iomega = -1i*omega;
