@@ -663,13 +663,13 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       q2P.resize(Ja.n);
       if(mpirank == 0) q2P(Ja.n-1) = 0.0;
       ChangeNumbering(J, um[], q2ma, inverse = true, exchange = true);
-      um3[] = vM(0, XMh, tgv = -10);
-      ChangeNumbering(J, um3[], p1P);
+      um2[] = vM(0, XMh, tgv = -10);
+      ChangeNumbering(J, um2[], p1P);
       matrix<complex> tempPms = [[p1P]]; // dense array to sparse matrix
       ChangeOperator(pPM, tempPms, parent = Ja); // send to Mat
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
-      um3[] = vM(0, XMh, tgv = -10);
-      ChangeNumbering(J, um3[], p1P);
+      um2[] = vM(0, XMh, tgv = -10);
+      ChangeNumbering(J, um2[], p1P);
       tempPms = [[p1P]]; // dense array to sparse matrix
       ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
       KSPSolve(Ja, q2P, q2P);
