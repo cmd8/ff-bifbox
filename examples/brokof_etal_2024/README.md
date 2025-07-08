@@ -60,12 +60,12 @@ ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_6.base -fo ig
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_7.base -fo ignite_8 -Ze 7 -Da 70 -mo ignite_8
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_8.base -fo ignite_9 -Ze 8 -Da 80 -mo ignite_9
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_9.base -fo ignite_10 -Ze 10 -Da 100 -mo ignite_10
-ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi ignite_10.base -fo ignite -param Da -count 10 -h0 10 -maxcount -1 -scount 5 -mo ignite -paramtarget 1700 -dmax 10
+ff-mpirun -np $nproc basecontinue.edp -v 0 -dir $workdir -fi ignite_10.base -fo ignite -param Da -count 10 -h0 10 -maxcount -1 -scount 5 -mo ignite -paramtarget 1700 -contorder 2
 ```
 
-3. Compute $Re=200$, $500$, $800$ base flow fields at $L=0.5$, $1$, $5.0$. (Change `ignite_190.base` to `ignite_xxx.base` where `xxx` is the highest count value from the continuation.)
+3. Compute $Re=200$, $500$, $800$ base flow fields at $L=0.5$, $1$, $5.0$. (Change `ignite_140.base` to `ignite_xxx.base` where `xxx` is the highest count value from the continuation.)
 ```
-ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_190.base -fo Re200L1 -Da 1700 -mo Re200L1 -hmax 0.1
+ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi ignite_140.base -fo Re200L1 -Da 1700 -mo Re200L1 -hmax 0.1
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re200L1.base -fo Re500L1 -Re 500 -mo Re500L1 -hmax 0.1
 ff-mpirun -np $nproc basecompute.edp -v 0 -dir $workdir -fi Re500L1.base -fo Re800L1 -Re 800 -mo Re800L1 -hmax 0.1
 

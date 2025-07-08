@@ -109,14 +109,15 @@ Mf = vMf(Xh, Xh, tgv = 0); // Forcing Norm
 matrix<complex> LocPQ = vP(Xh, XMh, tgv = 0); // Forcing/Response Correspondence
 Mat<complex> PQ(M, Mf, LocPQ, clean = true);
 
+complex[int] gm(Mf.n), qm(J.n), temp(J.n);
+
 func complex[int] LHSop(complex[int]& inPETSc) {
-  complex[int] temp(J.n), outPETSc(inPETSc.n);
-  MatMult(PQ, inPETSc, outPETSc);
-  KSPSolve(J, outPETSc, temp);
-  MatMult(M, temp, outPETSc);
-  KSPSolveHermitianTranspose(J, outPETSc, temp);
-  MatMultHermitianTranspose(PQ, temp, outPETSc);
-  return outPETSc;
+  MatMult(PQ, inPETSc, qm);
+  KSPSolve(J, qm, temp);
+  MatMult(M, temp, qm);
+  KSPSolveHermitianTranspose(J, qm, temp);
+  MatMultHermitianTranspose(PQ, temp, gm);
+  return gm;
 }
 
 Mat<complex> LHS(Mf, LHSop);
@@ -137,11 +138,10 @@ for (int n = 0; n < nomega; ++n){
   XMh<complex>[int] defu(uvec)(val.n);
   real[int] gains = sqrt(val.re);
   if(fileout != ""){ //If saving modes, compute response modes
-    complex[int] gm, qm, temp;
     for (int ii = 0; ii < val.n; ++ii){
       ChangeNumbering(Mf, fvec[ii][], gm);
-      MatMult(PQ, gm, temp);
-      KSPSolve(J, temp, qm);
+      MatMult(PQ, gm, qm);
+      KSPSolve(J, qm, qm);
       ChangeNumbering(Mf, fvec[ii][], gm, inverse = true);
       ChangeNumbering(J, uvec[ii][], qm, inverse = true);
     }

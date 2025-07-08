@@ -115,6 +115,7 @@ J = vJ(XMh, XMh, tgv = -2);
 J *= -1.0;
 M = vM(XMh, XMh, tgv = -20);
 
+complex[int] temp(J.n);
 for (int n = 0; n < ntarget; ++n){
   if (ntarget > 1) shift = shifts + (shiftf - shifts)*real(n)/real(ntarget - 1);
   IFMACRO(Jprecon) Jprecon(-shift); ENDIFMACRO
@@ -125,7 +126,6 @@ for (int n = 0; n < ntarget; ++n){
     vec.resize(val.n);
     if(epstwosided) lvec.resize(val.n);
   }
-  complex[int] temp;
   for (int ii = 0; ii < val.n; ++ii){
     ChangeNumbering(J, vec[ii][], temp);
     ChangeNumbering(J, vec[ii][], temp, inverse = true);

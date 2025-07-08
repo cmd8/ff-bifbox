@@ -170,12 +170,12 @@ real[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 real iomega = 0.0, iomega2 = 0.0, iomega3 = 0.0;
 include "eqns.idp"
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), gqPM(J.n, mpirank == 0 ? 1 : 0), glPM(mpirank == 0 ? 1 : 0, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
-Mat H(J), Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
+Mat Ja = [[J, JlPM], [gqPM', glPM]]; // make dummy Jacobian
 real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
+      if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
       R = vR(0, XMh, tgv = -1);
@@ -188,36 +188,33 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       mpiAllReduce(ginvl, ginv, mpiCommWorld, mpiSUM);
       qm /= ginv;
       qma /= ginv;
-      if(mpirank == 0) {
-          Ra.resize(Ra.n + 1); // Append 0 to residual vector on proc 0
-          Ra(Ra.n-1) = 1.0/ginv;
-      }
+      Ra.resize(Ja.n); // Append 0 to residual vector on proc 0
+      if(mpirank == 0) Ra(Ja.n-1) = 1.0/ginv;
       return Ra;
   }
 
   func int funcJa(real[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
+      if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
       updatelambda(param, lambda + eps);
-      real[int] Jl = vR(0, XMh, tgv = -1);
-      real[int] tempP(J.n), Hl = vJ(0, XMh, tgv = -10);
-      updatelambda(param, lambda);
-      Jl -= R;
-      Jl /= eps;
-      R = vJ(0, XMh, tgv = -10);
-      Hl -= R;
-      Hl /= eps;
-      ChangeNumbering(J, Jl, tempP); // FreeFEM to PETSc
-      matrix tempPms = [[tempP]]; // dense array to sparse matrix
+      um2[] = vR(0, XMh, tgv = -1);
+      um2[] -= R;
+      um2[] /= eps;
+      ChangeNumbering(J, um2[], qm); // FreeFEM to PETSc
+      matrix tempPms = [[qm]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      H = vH(XMh, XMh, tgv = 0);
-      MatMultTranspose(H, qma, tempP);
-      tempPms = [[tempP]]; // dense array to sparse matrix
+      um3[] = vJ(0, XMh, tgv = -10);
+      updatelambda(param, lambda);
+      um2[] = J*um[];
+      um3[] -= um2[];
+      J = vH(XMh, XMh, tgv = 0);
+      MatMultTranspose(J, qma, qm);
+      tempPms = [[qm]]; // dense array to sparse matrix
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-      tempPms = [[J(uma[], Hl)]]; // dense array to sparse matrix
+      tempPms = [[J(uma[], um3[])/eps]]; // dense array to sparse matrix
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
       J = vJ(XMh, XMh, tgv = -1);
       return 0;
@@ -231,72 +228,67 @@ set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent =
 // Initialize
 real[int] qa;
 ChangeNumbering(J, ub[], qa);
-if(mpirank == 0) {
-  qa.resize(qa.n + 1);
-  qa(qa.n - 1) = lambda;
-}
+qa.resize(Ja.n);
+if(mpirank == 0) qa(Ja.n - 1) = lambda;
 if (fileext != "fold" && fileext != "foho"){
   updatelambda(param, lambda + eps);
-  real[int] Jl = vR(0, XMh);
+  um2[] = vR(0, XMh);
   updatelambda(param, lambda);
   R = vR(0, XMh);
-  Jl -= R;
-  Jl /= eps;
+  um2[] -= R;
+  um2[] /= eps;
   J = vJ(XMh, XMh);
-  um[] = J^-1*Jl;
-  uma[] = J'^-1*Jl;
+  um[] = J^-1*um2[];
+  uma[] = J'^-1*um2[];
 }
-real[int] Mq = vM(0, XMh, tgv = -10);
+um2[] = vM(0, XMh, tgv = 0);
 ChangeNumbering(J, um[], qm);
 ChangeNumbering(J, um[], qm, inverse = true);
-real Mnorm = sqrt(J(um[], Mq));
-Mq /= Mnorm;
-ChangeNumbering(J, Mq, qP);
+real Mnorm = sqrt(J(um[], um2[]));
+um2[] /= Mnorm;
+ChangeNumbering(J, um2[], qP);
 ChangeNumbering(J, uma[], qma);
 ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
-Mq = vM(0, XMh, tgv = -10);
+um2[] = vM(0, XMh, tgv = 0);
 ChangeNumbering(J, um[], qm, inverse = true);
-Mq *= (Mnorm/J(um[], Mq)); // so that <uma[],M*um[]> = 1
-ChangeNumbering(J, Mq, pP);
+um2[] *= (Mnorm/J(um[], um2[])); // so that <uma[],M*um[]> = 1
+ChangeNumbering(J, um2[], pP);
 // solve nonlinear problem with SNES
 int ret;
 SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
           sparams = "-snes_linesearch_type " + sneslinesearchtype + " -options_left no -snes_monitor -snes_converged_reason");
 if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
-  if(mpirank == 0) lambda = qa(qa.n - 1);
+  if(mpirank == 0) lambda = qa(Ja.n-1);
   broadcast(processor(0), lambda);
   updatelambda(param, lambda);
   ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-  real[int] Mq = vM(0, XMh, tgv = -10);
+  um2[] = vM(0, XMh, tgv = 0);
   ChangeNumbering(J, um[], qm, inverse = true);
   ChangeNumbering(J, uma[], qma, inverse = true);
-  real Mnorm = sqrt(J(um[], Mq));
+  Mnorm = sqrt(J(um[], um2[]));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
-  uma[] *= (Mnorm/J(uma[], Mq)); // so that <uma[],M*um[]> = 1
+  uma[] *= (Mnorm/J(uma[], um2[])); // so that <uma[],M*um[]> = 1
   ChangeNumbering(J, um[], qm);
   ChangeNumbering(J, uma[], qma);
   if (normalform){
-    real[int] temp(um[].n), temp1(um[].n);
     // 2nd-order
     //  A: base modification due to parameter changes
     if(paramnames[0] != ""){
-      temp1 = vR(0, XMh, tgv = -1);
       for (int k = 0; k < paramnames.n; ++k){
         lambda = getlambda(paramnames[k]);
         updatelambda(paramnames[k], lambda + eps);
-        temp = vR(0, XMh, tgv = -1);
+        um2[] = vR(0, XMh, tgv = -1);
         updatelambda(paramnames[k], lambda);
-        temp -= temp1;
-        temp /= eps;
-        alpha[paramnames[k]] = -J(uma[], temp);
+        um2[] -= R;
+        alpha[paramnames[k]] = -J(uma[], um2[])/eps;
       }
     }
     //  B: base modification due to quadratic nonlinear interaction
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
     um2[] = um[];
-    temp = vH(0, XMh, tgv = -10);
-    beta = -0.5*J(uma[], temp);
+    um3[] = vH(0, XMh, tgv = -10);
+    beta = -0.5*J(uma[], um3[]);
   }
   else {
     for (int k = 0; k < paramnames.n; ++k){

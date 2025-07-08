@@ -153,7 +153,7 @@ macro ConvergenceCheck(printtxt)
       kappa = 0.0;
       maxdelta = 0.0;
       cosalpha = 0.0;
-      delta = abs(h0);
+      delta = contorder ? abs(h0) : deltamax;
     }
     else {
       resp = res;
@@ -187,6 +187,7 @@ macro ConvergenceCheck(printtxt)
 macro ResidualHB(RHB, J, ub, uh, sym0, omega) {
   sym = 0;
   real[int] Rtemp, R = vR(0, XMh, tgv = -1);
+  complex[int] Rctemp(ub[].n), Rc(ub[].n);
   for (int j = 0; j < Nh; j++){
     um[] = uh(:, j);
     um2[] = conj(um[]);
@@ -194,7 +195,7 @@ macro ResidualHB(RHB, J, ub, uh, sym0, omega) {
     ik2 = conj(ik);
     iomega = 1i*(1+j)*(omega);
     iomega2 = -iomega;
-    complex[int] Rc = vH(0, XMh, tgv = -10);
+    Rc = vH(0, XMh, tgv = -10);
     R += Rc.re;
     for (int k = 0; k < Nh-j-1; k++){
       um2[] = uh(:, k);
@@ -210,20 +211,21 @@ macro ResidualHB(RHB, J, ub, uh, sym0, omega) {
   ChangeNumbering(J, R, Rtemp);
   RHB(0:J.n-1) = Rtemp;
   for (int nh = 0; nh < Nh; ++nh) {
-    complex[int] Rc(ub[].n);
+    Rc = 0.0;
     sym = (1+nh)*(sym0);
     for (int j = 0; j < Nh; j++){
       um[] = uh(:, j);
       ik.im = (1+j)*(sym0);
       iomega = 1i*(1+j)*(omega);
-      if (j == nh) Rc += vJ(0, XMh, tgv = -1);
+      if (j == nh) Rctemp = vJ(0, XMh, tgv = -1);
       else {
         if (j < nh) um2[] = 0.5*uh(:, nh-j-1);
         else um2[] = conj(uh(:, j-nh-1));
         ik2.im = (nh-j)*(sym0);
         iomega2 = 1i*(nh-j)*(omega);
-        Rc += vH(0, XMh, tgv = -10);
+        Rctemp = vH(0, XMh, tgv = -10);
       }
+      Rc += Rctemp;
       for (int k = 0; k < Nh; k++) {
         if (k != nh-j-1 && k < Nh+nh-j) {
           um2[] = 0.5*uh(:, k);
@@ -233,7 +235,8 @@ macro ResidualHB(RHB, J, ub, uh, sym0, omega) {
           ik3.im = (nh-j-k-1)*(sym0);
           iomega2 = 1i*(1+k)*(omega);
           iomega3 = 1i*(nh-j-k-1)*(omega);
-          Rc += vT(0, XMh, tgv = -10);
+          Rctemp = vT(0, XMh, tgv = -10);
+          Rc += Rctemp;
         }
         if (k < j-nh-1) {
           um2[] = conj(uh(:, k));
@@ -243,7 +246,8 @@ macro ResidualHB(RHB, J, ub, uh, sym0, omega) {
           ik3.im = -(j-k-nh-1)*(sym0);
           iomega2 = -1i*(1+k)*(omega);
           iomega3 = -1i*(j-k-nh-1)*(omega);
-          Rc += vT(0, XMh, tgv = -10);
+          Rctemp = vT(0, XMh, tgv = -10);
+          Rc += Rctemp;
         }
       }
     }
@@ -256,18 +260,19 @@ macro domegaResidualHB(MqHB, J, ub, uh, sym0) {
   MqHB(0:J.n-1) = 0;
   for (int nh = 0; nh < Nh; ++nh) {
     real[int] Rtemp;
-    complex[int] Rc(ub[].n);
+    complex[int] Rctemp(ub[].n), Rc(ub[].n);
     sym = (1+nh)*(sym0);
     for (int j = 0; j < Nh; j++){
       um[] = uh(:, j);
       ik.im = (1+j)*(sym0);
-      if (j == nh) Rc += vM(0, XMh, tgv = -10);
+      if (j == nh) Rctemp = vM(0, XMh, tgv = -10);
       else {
         if (j < nh) um2[] = 0.5*uh(:, nh-j-1);
         else um2[] = conj(uh(:, j-nh-1));
         ik2.im = (nh-j)*(sym0);
-        Rc += vdM(0, XMh, tgv = -10);
+        Rctemp = vdM(0, XMh, tgv = -10);
       }
+      Rc += Rctemp;
       for (int k = 0; k < Nh; k++) {
         if (k != nh-j-1 && k < Nh+nh-j) {
           um2[] = 0.5*uh(:, k);
@@ -275,7 +280,8 @@ macro domegaResidualHB(MqHB, J, ub, uh, sym0) {
           else um3[] = conj(uh(:, j+k-nh));
           ik2.im = (1+k)*(sym0);
           ik3.im = (nh-j-k-1)*(sym0);
-          Rc += vddM(0, XMh, tgv = -10);
+          Rctemp = vddM(0, XMh, tgv = -10);
+          Rc += Rctemp;
         }
         if (k < j-nh-1) {
           um2[] = conj(uh(:, k));
@@ -283,7 +289,8 @@ macro domegaResidualHB(MqHB, J, ub, uh, sym0) {
           um3[] *= 0.5;
           ik2.im = -(1+k)*(sym0);
           ik3.im = -(j-k-nh-1)*(sym0);
-          Rc += vddM(0, XMh, tgv = -10);
+          Rctemp = vddM(0, XMh, tgv = -10);
+          Rc += Rctemp;
         }
       }
     }
@@ -1835,7 +1842,7 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
           }
         }
         file << "beta\t" << beta1 << "\t" << beta2 << endl;
-        file << "gamma\t" << gamma1 << "\t" << gamma2 << "\t" << gamma12 << "\t" << gamma13 << "\t" << gamma22 << "\t" << gamma23 << endl;
+        file << "gamma\t" << gamma1 << "\t" << gamma12 << "\t" << gamma13 << "\t" << gamma2 << "\t" << gamma22 << "\t" << gamma23 << endl;
         if(paramnames[0] != ""){
           for (int k = 0; k < paramnames.n; ++k){
             file << paramnames[k] << "\t" << params[paramnames[k]] << endl;
@@ -2684,7 +2691,7 @@ func real[int] loadhoho(string inputfilename, string meshfilename, complex[int] 
         }
       }
       file >> dummy >> beta1 >> beta2;
-      file >> dummy >> gamma1 >> gamma2 >> gamma12 >> gamma13 >> gamma22 >> gamma23;
+      file >> dummy >> gamma1 >> gamma12 >> gamma13 >> gamma2 >> gamma22 >> gamma23;
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
           file >> paramnames[k] >> params[paramnames[k]];

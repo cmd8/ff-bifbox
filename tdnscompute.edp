@@ -230,15 +230,15 @@ real[int] q;
 ChangeNumbering(J, ub[], q);
 ChangeNumbering(J, ub[], q, inverse = true);
 if (count == 0) savetdns(fileout + "_0", (savecount > 0 ? fileout : ""), meshin, filein, time, true, true);
-real[int] qp = q;
+real[int] FPETSc(J.n), qp = q;
 // Function to build residual "F(t,u,\dot{u})" operator in PETSc numbering
 func real[int] funcF(real t, real[int]& qPETSc, real[int]& qdotPETSc) {
     ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
     ChangeNumbering(J, um[], qdotPETSc, inverse = true, exchange = true);
-    real[int] FPETSc, F = vR(0, XMh, tgv = -1);
-    real[int] M = vM(0, XMh, tgv = -10);
-    F += M;
-    ChangeNumbering(J, F, FPETSc);
+    um2[] = vR(0, XMh, tgv = -1);
+    um3[] = vM(0, XMh, tgv = -10);
+    um2[] += um3[];
+    ChangeNumbering(J, um2[], FPETSc);
     return FPETSc;
 }
 // Function to build Jacobian operator in PETSc numbering
@@ -316,6 +316,8 @@ while (count < maxcount){
     set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO sparams = KSPparams);
     defu(ub) = initu(0.0); // set local values to zero
     defu(um) = initu(0.0); // set local values to zero
+    defu(um2) = initu(0.0); // set local values to zero
+    defu(um3) = initu(0.0); // set local values to zero
     restu.resize(ub[].n); // Change size of restriction operator
     restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
     ub[] = uG[](restu); //restrict global solution to each local mesh
@@ -323,6 +325,7 @@ while (count < maxcount){
     Mat Adapt0(J);
     q.resize(J.n);  // Resize state vector
     qp.resize(J.n);  // Resize state vector
+    FPETSc.resize(J.n); 
     ChangeNumbering(J, um[], q);
     adaptflag = 1;
     count--;

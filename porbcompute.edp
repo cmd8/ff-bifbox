@@ -245,7 +245,7 @@ complex iomega, iomega2, iomega3;
 include "eqns.idp" // load equations
 // Build bordered block matrix from only Mat components
 Mat JHBa, JHB((1+2*Nh)*J.n, (1+2*Nh)*J.n), dwHB((1+2*Nh)*J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
-real[int] RHB(JHB.n);
+real[int] RHB;
 if(zerofreq) JHBa = JHB;
 else JHBa = [[JHB, dwHB],[dwHB',0]];
 // Function to build residual operator in PETSc numbering
@@ -258,7 +258,7 @@ else JHBa = [[JHB, dwHB],[dwHB',0]];
       PetscScalar[int] RPETSc(JHBa.n);
       ResidualHB(RHB, J, ub, uh, sym0, omega);
       RPETSc(0:JHB.n-1) = RHB;
-      if(mpirank == 0 && !zerofreq) RPETSc(RPETSc.n-1) = 0.0;
+      if(mpirank == 0 && !zerofreq) RPETSc(JHBa.n-1) = 0.0;
       return RPETSc;
   }
 
@@ -267,14 +267,13 @@ func int funcJHB(PetscScalar[int]& qPETSc) {
     ChangeNumbering(J, ub[], qPETSc(0:J.n-1), inverse = true, exchange = true);
     for (int nh = 0; nh < Nh; nh++)
       ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qPETSc((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true, exchange = true);
-    if(mpirank == 0 && !zerofreq) omega = qPETSc(qPETSc.n-1); 
+    if(mpirank == 0 && !zerofreq) omega = qPETSc(JHBa.n-1); 
     broadcast(processor(0), omega);
     JacobianHB(JHB, J, ub, uh, sym0, omega);
     if (zerofreq) JHBa = JHB;
     else {
-      PetscScalar[int] MqHB(JHB.n);
-      domegaResidualHB(MqHB, J, ub, uh, sym0);
-      matrix<PetscScalar> tempPms = [[MqHB]];
+      domegaResidualHB(RHB, J, ub, uh, sym0);
+      matrix<PetscScalar> tempPms = [[RHB]];
       ChangeOperator(dwHB, tempPms, parent = JHBa); // send to Mat
     }
     return 0;
@@ -295,16 +294,14 @@ else {
 }
 // initialize
 real[int] qHB(JHBa.n);
-{
-  real[int] q;
-  ChangeNumbering(J, ub[], q);
-  qHB(0:J.n-1) = q;
-  for (int nh = 0; nh < Nh; nh++){
-    ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], q);
-    qHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = q;
-  }
+ChangeNumbering(J, ub[], RHB);
+qHB(0:J.n-1) = RHB;
+for (int nh = 0; nh < Nh; nh++){
+  ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], RHB);
+  qHB((1+2*nh)*J.n:(3+2*nh)*J.n-1) = RHB;
 }
-if(mpirank == 0 && !zerofreq) qHB(qHB.n-1) = omega;
+RHB.resize(JHB.n);
+if(mpirank == 0 && !zerofreq) qHB(JHBa.n-1) = omega;
 int ret;
 // solve nonlinear problem with SNES
 SNESSolve(JHBa, funcJHB, funcRHB, qHB, reason = ret,
@@ -317,7 +314,7 @@ if(ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qHB(0:J.n-1), inverse = true);
   for (int nh = 0; nh < Nh; nh++)
     ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qHB((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true);
-  if(mpirank == 0 && !zerofreq) omega = qHB(qHB.n-1); 
+  if(mpirank == 0 && !zerofreq) omega = qHB(JHBa.n-1); 
   broadcast(processor(0), omega);
   saveporb(fileout, "", meshout, sym0, omega, Nh, true, true);
 }

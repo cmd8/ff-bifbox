@@ -21,6 +21,7 @@ string meshin = getARGV("-mi", ""); // input meshfile with extension
 string meshout = getARGV("-mo", "");
 string filein = getARGV("-fi", "");
 string fileout = getARGV("-fo", filein);
+int contorder = getARGV("-contorder", 1);
 int count = getARGV("-count", 0);
 int savecount = getARGV("-scount", 1);
 int maxcount = getARGV("-maxcount", 100);
@@ -59,7 +60,7 @@ Th = readmeshN(workdir + meshin);
 Thg = Th;
 buildDmesh(Th);
 restu = restrict(XMh, XMhg, n2o);
-XMh defu(ub), defu(um), defu(yb), defu(um2), defu(um3);
+XMh defu(ub), defu(um), defu(um2), defu(um3);
 if(count == 0) {
   if(fileext == "base") {
     ub[] = loadbase(fileroot, meshin);
@@ -116,40 +117,41 @@ meshout = meshin; // if no adaptation
 Mat JlPM(J.n, mpirank == 0 ? 1 : 0), yqPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
 Mat Ja = [[J, JlPM], [yqPM', -1.0]]; // make dummy Jacobian
 real[int] R(ub[].n), yqP(J.n), yqP0(J.n);
-int ret, it = 1;
+int ret, it = 0;
 real f, kappa, cosalpha, res, delta, maxdelta;
 // FUNCTIONS
   func PetscScalar[int] funcRa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
+      if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
       R = vR(0, XMh, tgv = -1);
       PetscScalar[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
-      if(mpirank == 0) {
-        Ra.resize(J.n+1); // Append 0 to residual vector on proc 0
-        Ra(Ra.n-1) = 0.0;
-      }
+      Ra.resize(Ja.n); // Append 0 to residual vector on proc 0
+      if(mpirank == 0) Ra(Ja.n-1) = 0.0;
       return Ra;
   }
 
   func int funcJa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) lambda = qa(qa.n-1); // Extract parameter value from state vector on proc 0
+      if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
-      updatelambda(param, lambda + eps);
-      PetscScalar[int] Jl = vR(0, XMh, tgv = -1);
       updatelambda(param, lambda);
-      Jl -= R;
-      Jl /= eps;
       if (it <= refactor) J = vJ(XMh, XMh, tgv = -1);
-      ChangeNumbering(J, Jl, yqP); // FreeFEM to PETSc
-      matrix<PetscScalar> tempPms = [[yqP]]; // dense array to sparse matrix
-      ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
-      KSPSolve(J, yqP, yqP); // compute tangent vector in PETSc numbering
-      tempPms = [[yqP]]; // dense array to sparse matrix
-      ChangeOperator(yqPM, tempPms, parent = Ja); // send to Mat
+      if (contorder > 0){
+        updatelambda(param, lambda + eps);
+        um2[] = vR(0, XMh, tgv = -1);
+        updatelambda(param, lambda);
+        um2[] -= R;
+        um2[] /= eps;
+        ChangeNumbering(J, um2[], yqP); // FreeFEM to PETSc
+        matrix<PetscScalar> tempPms = [[yqP]]; // dense array to sparse matrix 
+        ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+        KSPSolve(J, yqP, yqP); // compute tangent vector in PETSc numbering
+        tempPms = [[yqP]]; // dense array to sparse matrix
+        ChangeOperator(yqPM, tempPms, parent = Ja); // send to Mat
+      }
       return 0;
   }
   
@@ -161,22 +163,97 @@ set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type sch
                 + " -prefix_push fieldsplit_0_ " + KSPparams + " -prefix_pop", setup = 1);
 set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent = Ja);
 // PREDICTOR
-real[int] qa0;
+real[int] qa(Ja.n), qa0;
 ChangeNumbering(J, ub[], qa0);
-if(mpirank == 0) {
-  qa0.resize(J.n+1);
-  qa0(qa0.n-1) = lambda;
+qa0.resize(Ja.n);
+if(mpirank == 0) qa0(Ja.n-1) = lambda;
+if (contorder > 0) {
+  R = vR(0, XMh, tgv = -1);
+  funcJa(qa0);
 }
-R = vR(0, XMh, tgv = -1);
-funcJa(qa0);
+else {
+  matrix<PetscScalar> tempPms = [[yqP]];
+  ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+  ChangeOperator(yqPM, tempPms, parent = Ja); // send to Mat
+}
 yqP0 = yqP;
 while (!stopflag){
-  real h, hl = (yqP0'*yqP0);
-  mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
-  h = h0/sqrt(h + 1.0);
-  real[int] qa = qa0;
-  qa(0:J.n-1) -= (h*yqP0);
-  if (mpirank == 0) qa(qa.n-1) += h; // -= (-1.0*h)
+  qa = qa0;
+  if (contorder == 0 && mpirank == 0) qa(Ja.n-1) += h0;
+  else if (contorder > 0) {
+    real h, hl = (yqP0'*yqP0);
+    mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
+    h = h0/sqrt(h + 1.0);
+    qa(0:J.n-1) -= h*yqP0;
+    if (mpirank == 0) qa(Ja.n-1) += h;
+    if (contorder > 1) {
+      real[int,int] yqnP(J.n, contorder-1);
+      yqP = -h*yqP0;
+      real[int] NLq(ub[].n), temp(ub[].n), hn(contorder-1);
+      real cbrteps = cbrt(eps), sqrteps = sign(eps)*sqrt(abs(eps));
+      for (int i = 0; i < contorder-1; i++){
+        yqnP(:, i) = yqP;
+        hn(i) = h;
+        NLq = 0.0;
+        for (int j = 0; j < i+1; j++){
+          ChangeNumbering(J, um[], yqnP(:, j), inverse = true, exchange = true);
+          ChangeNumbering(J, um2[], yqnP(:, i-j), inverse = true, exchange = true);
+          um3[] = vH(0, XMh, tgv = -10);
+          NLq += um3[];
+          updatelambda(param, lambda + 2.0*sqrteps);
+          um2[] = vR(0, XMh, tgv = -1);
+          updatelambda(param, lambda + sqrteps);
+          um3[] = vR(0, XMh, tgv = -1);
+          um2[] += (R - 2.0*um3[]);
+          NLq += (hn(j)*hn(i-j)/eps)*um2[];
+          updatelambda(param, lambda + eps);
+          um3[] = vJ(0, XMh, tgv = -10);
+          updatelambda(param, lambda);
+          um2[] = vJ(0, XMh, tgv = -10);
+          um3[] -= um2[];
+          NLq += (2.0*hn(i-j)/eps)*um3[];
+          for (int k = 0; k < i-j; k++){
+            ChangeNumbering(J, um2[], yqnP(:, k), inverse = true, exchange = true);
+            ChangeNumbering(J, um3[], yqnP(:, i-j-k-1), inverse = true, exchange = true);
+            temp = vT(0, XMh, tgv = -10);
+            NLq += temp/3.0;
+            updatelambda(param, lambda + eps);
+            um3[] = vH(0, XMh, tgv = -10);
+            updatelambda(param, lambda);
+            temp = vH(0, XMh, tgv = -10);
+            um3[] -= temp;
+            NLq += (hn(i-j-k-1)/eps)*um3[];
+            um3[] = vJ(0, XMh, tgv = -10);
+            updatelambda(param, lambda + 2.0*sqrteps);
+            um2[] = vJ(0, XMh, tgv = -10);
+            um2[] += um3[];
+            updatelambda(param, lambda + sqrteps);
+            um3[] = vJ(0, XMh, tgv = -10);
+            um2[] -= 2.0*um3[];
+            NLq += (hn(k)*hn(i-j-k-1)/eps)*um2[];
+            updatelambda(param, lambda + 3.0*cbrteps);
+            um2[] = vR(0, XMh, tgv = -1);
+            updatelambda(param, lambda + 2.0*cbrteps);
+            um3[] = vR(0, XMh, tgv = -1);
+            um2[] -= 3.0*um3[];
+            updatelambda(param, lambda + cbrteps);
+            um3[] = vR(0, XMh, tgv = -1);
+            um2[] += (3.0*um3[] - R);
+            NLq += (hn(j)*hn(k)*hn(i-j-k-1)/(6.0*eps))*um2[];
+            updatelambda(param, lambda);
+          }
+        }
+        NLq *= -0.5;
+        ChangeNumbering(J, NLq, yqP);
+        KSPSolve(J, yqP, yqP);
+        hl = (hn(0)/h0)^2.0*(yqP'*yqP0);
+        mpiAllReduce(hl, h, mpiCommWorld, mpiSUM);
+        yqP -= h*yqP0;
+        qa(0:J.n-1) += yqP;
+        if (mpirank == 0) qa(Ja.n-1) += h;
+      }
+    }
+  }
   // CORRECTOR LOOP
   adaptflag = false;
   SNESSolve(Ja, funcJa, funcRa, qa, convergence = funcConvergence, reason = ret,
@@ -186,7 +263,7 @@ while (!stopflag){
     if (maxcount > 0) stopflag = (count >= maxcount);
     else if ((lambda - paramtarget)*paramdiff <= 0) stopflag = true;
     h0 /= f;
-    if (cosalpha < 0) {
+    if (cosalpha < 0 && contorder > 0) {
       h0 *= -1.0;
       if(mpirank == 0) cout << "\tFold bifurcation detected. Orientation reversed." << endl;
       forcesave = true;
@@ -194,14 +271,14 @@ while (!stopflag){
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
-      if(mpirank == 0) lambda = qa(qa.n-1);
+      if(mpirank == 0) lambda = qa(Ja.n-1);
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
-      ChangeNumbering(J, yb[], yqP, inverse = true);
+      ChangeNumbering(J, um[], yqP, inverse = true);
       XMhg defu(uG), defu(yG), defu(tempu);
       tempu[](restu) = ub[]; // populate local portion of global soln
       mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
-      tempu[](restu) = yb[]; // populate local portion of global tangent vector
+      tempu[](restu) = um[]; // populate local portion of global tangent vector
       mpiAllReduce(tempu[], yG[], mpiCommWorld, mpiSUM);
       if(mpirank == 0) {
         IFMACRO(dimension,2)
@@ -231,29 +308,32 @@ while (!stopflag){
       createMatu(Th, Adapt, Pk);
       J = Adapt;
       defu(ub) = initu(0.0);
-      defu(yb) = initu(0.0);
+      defu(um) = initu(0.0);
+      defu(um2) = initu(0.0);
+      defu(um3) = initu(0.0);
       restu.resize(ub[].n); // Change size of restriction operator
       restu = restrict(XMh, XMhg, n2o); // Compute new restriction from global mesh to local mesh
       ub[] = uG[](restu);
-      yb[] = yG[](restu);
+      um[] = yG[](restu);
       Mat Adapt1(J.n, mpirank == 0 ? 1 : 0), Adapt2(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
       JlPM = Adapt1;
       yqPM = Adapt2;
       Ja = [[J, JlPM], [yqPM', -1.0]]; // make dummy Jacobian
       IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
       set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent = Ja);
-      qa.resize(J.n);
       ChangeNumbering(J, ub[], qa);
-      if(mpirank == 0) {
-        qa.resize(J.n+1);
-        qa(qa.n-1) = lambda;
-      }
+      qa.resize(Ja.n);
+      if(mpirank == 0) qa(Ja.n-1) = lambda;
       R.resize(ub[].n);
-      yqP.resize(J.n);
-      ChangeNumbering(J, yb[], yqP);
+      ChangeNumbering(J, um[], yqP);
       yqP0.resize(J.n);
       yqP0 = yqP;
-      qa0.resize(qa.n);
+      qa0.resize(Ja.n);
+      if (contorder == 0) {
+        matrix<PetscScalar> tempPms = [[yqP]];
+        ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
+        ChangeOperator(yqPM, tempPms, parent = Ja); // send to Mat
+      }
       adaptflag = true;
       SNESSolve(Ja, funcJa, funcRa, qa, convergence = funcConvergence, reason = ret,
                 sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_converged_reason -options_left no"); // solve nonlinear problem with SNES
@@ -264,14 +344,15 @@ while (!stopflag){
       }
     }
     ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
-    if(mpirank == 0) lambda = qa(qa.n-1);
+    if(mpirank == 0) lambda = qa(Ja.n-1);
     broadcast(processor(0), lambda);
     updatelambda(param, lambda);
     savebase(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, ((count % savecount == 0) || forcesave || stopflag), true);
     if (stopflag) break;
     forcesave = false;
-    it = 1;
-    if (stricttangent) funcJa(qa);
+    it = 0;
+    if (stricttangent && contorder > 0) funcJa(qa);
+    else ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
     yqP0 = yqP;
     qa0 = qa;
     IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
