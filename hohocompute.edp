@@ -660,8 +660,6 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     J = vJ(XMh, XMh, tgv = -1);
     if (res1x != 2) KSPSolve(J, q2P, q2P);
     else {
-      q2P.resize(Ja.n);
-      if(mpirank == 0) q2P(Ja.n-1) = 0.0;
       ChangeNumbering(J, um[], q2ma, inverse = true, exchange = true);
       um2[] = vM(0, XMh, tgv = -10);
       ChangeNumbering(J, um2[], p1P);
@@ -672,6 +670,8 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       ChangeNumbering(J, um2[], p1P);
       tempPms = [[p1P]]; // dense array to sparse matrix
       ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
+      q2P.resize(Ja.n);
+      if(mpirank == 0) q2P(Ja.n-1) = 0.0;
       KSPSolve(Ja, q2P, q2P);
       if(mpirank == 0) gamma22 = q2P(Ja.n-1);
       broadcast(processor(0), gamma22);
@@ -717,8 +717,6 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     J = vJ(XMh, XMh, tgv = -1);
     if (res1x != 2) KSPSolve(J, qBB, qBB);
     else {
-      qBB.resize(Ja.n);
-      if(mpirank == 0) qBB(Ja.n-1) = 0.0;
       ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);
       um2[] = vM(0, XMh, tgv = -10);
       complex[int] tempP(J.n);
@@ -730,6 +728,9 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       ChangeNumbering(J, um2[], tempP);
       tempPms = [[tempP]]; // dense array to sparse matrix
       ChangeOperator(qPM, tempPms, parent = Ja); // send to Mat
+      Ja = [[J, qPM], [pPM', 0]]; // make dummy Jacobian
+      qBB.resize(Ja.n);
+      if(mpirank == 0) qBB(Ja.n-1) = 0.0;
       KSPSolve(Ja, qBB, qBB);
       if(mpirank == 0) gamma12 = qBB(Ja.n-1);
       broadcast(processor(0), gamma12);
