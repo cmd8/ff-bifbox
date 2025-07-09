@@ -91,8 +91,8 @@ else if(fileext == "porb") {
   ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);
 }
 else {
-  defu(ub) = InitialConditions;
   setparams(paramnames,params);
+  defu(ub) = InitialConditions;
 }
 // Create distributed Mat
 Mat J;
