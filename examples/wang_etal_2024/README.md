@@ -7,7 +7,7 @@ This file shows an example `ff-bifbox` workflow for reproducing the results in t
   journal={Journal of Fluid Mechanics},
   publisher={Cambridge University Press},
   volume={998},
-  pages={A23}
+  pages={A23},
   year={2024},
   DOI={10.1017/jfm.2024.869},
 }

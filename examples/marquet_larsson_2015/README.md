@@ -1,7 +1,7 @@
 # 3D Incompressible Wake Flow Example: Marquet and Larsson, (2015)
 This file shows an example `ff-bifbox` workflow for reproducing the results of the study:
 ```
-@article{Marquet_larsson_2015,
+@article{marquet_larsson_2015,
 title = {Global wake instabilities of low aspect-ratio flat-plates},
 journal = {European Journal of Mechanics - B/Fluids},
 volume = {49},
