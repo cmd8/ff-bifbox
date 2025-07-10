@@ -100,7 +100,19 @@ XMh<complex> defu(um);
 Mat<complex> J;
 createMatu(Th, J, Pk);
 Mat<complex> M(J);
-
+if (filein == "" && meshin != "") {
+  setparams(paramnames,params);
+  defu(ub) = InitialConditions;
+  complex[int] q;
+  um[].re = ub[];
+  ChangeNumbering(J, um[], q);
+  ChangeNumbering(J, um[], q, inverse = true);
+  ub[] = um[].re;
+  savebase(fileout, "", meshin, true, true);
+  ChangeNumbering(J, um[], q, inverse = true, exchange = true);
+  ub[] = um[].re;
+  filein = fileout + ".base";
+}
 sym = parsesymstr(symstr);
 complex[int] ik(sym.n), ik2(sym.n), ik3(sym.n);
 ik.im = sym;
