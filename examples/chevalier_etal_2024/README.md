@@ -8,7 +8,7 @@ This file shows an example `ff-bifbox` workflow for reproducing the results of t
   journal={Theoretical and Computational Fluid Dynamics},
   publisher={Springer},
   author={Chevalier, Quentin and Douglas, Christopher M. and Lesshafft, Lutz},
-  year={2024}
+  year={2024},
   pages={641-663}
 }
 ```
