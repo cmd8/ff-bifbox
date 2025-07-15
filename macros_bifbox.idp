@@ -148,38 +148,35 @@ macro ConvergenceCheck(printtxt)
   func int funcConvergence(int iter, real qnorm, real dqnorm, real fnorm, PetscScalar[int]& qa, PetscScalar[int]& dqa) {
     it = iter;
     ret = 0;
-    real resp = 0.0;
     if (it == 0){
+      cosalpha = 0.0;
       kappa = 0.0;
       maxdelta = 0.0;
-      cosalpha = 0.0;
       delta = contorder ? abs(h0) : deltamax;
     }
     else {
-      resp = res;
-      real deltap = delta;
-      delta = dqnorm;
       real ip1, ip1l = real(yqP0'*yqP), ip2, ip2l = real(yqP0'*yqP0), ip3, ip3l = real(yqP'*yqP);
       mpiAllReduce(ip1l, ip1, mpiCommWorld, mpiSUM);
       mpiAllReduce(ip2l, ip2, mpiCommWorld, mpiSUM);
       mpiAllReduce(ip3l, ip3, mpiCommWorld, mpiSUM);
       cosalpha = (ip1 + 1.0)/sqrt((ip2 + 1.0)*(ip3 + 1.0));
-      kappa = max(delta/deltap, kappa);
-      maxdelta = max(delta, maxdelta);
+      kappa = max(dqnorm/delta, kappa);
+      maxdelta = max(dqnorm, maxdelta);
+      delta = dqnorm;
     }
-    res = fnorm;
     f = max(acos(abs(cosalpha))/anglemax*fmax, sqrt(maxdelta/deltamax)*fmax, sqrt(kappa/kappamax)*fmax, 1./fmax);
-    if(mpirank == 0) cout << "  " + (adaptflag ? "A" + (count-1) : count) + "-" + it + ":\t||R|| = " + fnorm + (it == 0 ? (",\th0 = " + h0 ) : (",\t||dx|| = " + delta + ",\tangle = " + (sign(cosalpha)*acos(abs(cosalpha))*180./pi))) + ",\t" + printtxt << "." << endl;
-    if (it > 0 && !adaptflag && (f > fmax || it-1 >= snesmaxit || monotone > resp/res)){
+    if(mpirank == 0) cout << "  " + (adaptflag ? "A" + (count-1) : count) + "-" + it + ":\t||R|| = " + fnorm + (it == 0 ? (",\th0 = " + h0) : (",\t||dx|| = " + delta + ",\tangle = " + (sign(cosalpha)*acos(abs(cosalpha))*180./pi))) + ",\t" + printtxt << "." << endl;
+    if (it > 0 && !adaptflag && (f > fmax || it-1 >= snesmaxit || monotone > res/fnorm)){
       ret = -12;
       if(mpirank==0){
-        if(monotone > resp/res) cout << "\tResidual contraction factor exceeds " << monotone << "." << endl;
+        if(monotone > res/fnorm) cout << "\tResidual contraction factor exceeds " << monotone << "." << endl;
         if(kappa > kappamax) cout << "\tStep contraction factor exceeds " << kappamax << "." << endl;
         if(it > snesmaxit) cout << "\tFailed to converge within " + snesmaxit + " iterations." << endl;
         if(maxdelta > deltamax) cout << "\tStep norm exceeds " << deltamax << "." << endl;
         if(acos(abs(cosalpha)) > anglemax) cout << "\tTangent angle change exceeds " << (anglemax*180./pi) << " degrees." << endl;
       }
     }
+    res = fnorm;
     return ret;
   }
 // EOM
