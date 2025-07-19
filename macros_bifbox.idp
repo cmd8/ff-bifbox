@@ -68,7 +68,7 @@ func real[int] parsesymstr(string & symstr){
   real[int] symm(sym.n);
   for (int kk = 0; kk < sym.n; ++kk){
     if (sym.n > 0){
-      symmstr = symmstr(fidx+1:symmstr.length);
+      if (fidx+1 <= symmstr.length) symmstr = symmstr(fidx+1:symmstr.length);
       fidx = symmstr.find(",");
       if (fidx==-1) fidx = symmstr.length;
       symm(kk) = strtod(symmstr(0:fidx-1));
