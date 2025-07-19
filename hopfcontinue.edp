@@ -43,6 +43,7 @@ real eps2 = getARGV("-eps2", 1.0e-7);
 bool stricttangent = bool(getARGV("-stricttangent", 1));
 int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
+real TGV = getARGV("-tgv", -1);
 real[int] sym1(sym.n);
 real omega;
 complex[string] alpha;
@@ -132,7 +133,7 @@ complex alpha0, beta0;
       updatelambda(param, lambda);
       updatelambda(param2, lambda2);
       sym = 0;
-      R = vR(0, XMh, tgv = -1);
+      R = vR(0, XMh, tgv = TGV);
       PetscScalar[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       sym = sym1;
@@ -169,7 +170,7 @@ complex alpha0, beta0;
       updatelambda(param, lambda + eps);
       updatelambda(param2, lambda2);
       sym = 0;
-      um2[] = vR(0, XMh, tgv = -1);
+      um2[] = vR(0, XMh, tgv = TGV);
       um2[] -= R;
       um2[] /= eps;
       ChangeNumbering(J, um2[], qm); // FreeFEM to PETSc
@@ -203,10 +204,10 @@ complex alpha0, beta0;
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       ik = 0.0;
       iomega = 0.0;
-      J = vJ(XMh, XMh, tgv = -1);
+      J = vJ(XMh, XMh, tgv = TGV);
       if (contorder > 0) {
         updatelambda(param2, lambda2 + eps2);
-        um2[] = vR(0, XMh, tgv = -1);
+        um2[] = vR(0, XMh, tgv = TGV);
         um2[] -= R;
         ChangeNumbering(J, um2[], qm); // FreeFEM to PETSc
         yqP(0:J.n-1) = qm/eps2;
@@ -262,7 +263,7 @@ um2[] = vM(0, XMh, tgv = 0);
 ChangeNumbering(J, um2[], pP);
 if (contorder > 0) {
   sym = 0;
-  R = vR(0, XMh, tgv = -1);
+  R = vR(0, XMh, tgv = TGV);
   funcJa(qa0);
 }
 else {
@@ -469,12 +470,12 @@ while (!stopflag){
       iomega = 0.0;
       iomega2 = 0.0;
       sym = 0;
-      J = vJ(XMh, XMh, tgv = -1);
+      J = vJ(XMh, XMh, tgv = TGV);
       if(paramnames[0] != ""){
         for (int k = 0; k < paramnames.n; ++k){
           lambda = getlambda(paramnames[k]);
           updatelambda(paramnames[k], lambda + eps);
-          um[] = vR(0, XMh, tgv = -1);
+          um[] = vR(0, XMh, tgv = TGV);
           updatelambda(paramnames[k], lambda);
           um[] -= R;
           um[] /= -eps;
@@ -504,7 +505,7 @@ while (!stopflag){
       ChangeNumbering(J, um3[], pP); // FreeFEM to PETSc
       ik.im = 2*sym1;
       iomega = 2i*omega;
-      J = vJ(XMh, XMh, tgv = -1);
+      J = vJ(XMh, XMh, tgv = TGV);
       KSPSolve(J, pP, pP);
       // 3rd-order
       //  A: fundamental modification due to parameter change and quadratic interaction of fundamental with 2nd order modification A.

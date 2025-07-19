@@ -44,6 +44,7 @@ real[string] alpha;
 real beta;
 real paramtarget = getARGV("-paramtarget",1.0);
 real param2target = getARGV("-param2target",1.0);
+real TGV = getARGV("-tgv", -1);
 bool stopflag = false;
 bool forcesave = false;
 
@@ -110,7 +111,7 @@ real f, kappa, cosalpha, res, delta, maxdelta, alpha0, beta0;
       broadcast(processor(0), lambda2);
       updatelambda(param, lambda);
       updatelambda(param2, lambda2);
-      R = vR(0, XMh, tgv = -1);
+      R = vR(0, XMh, tgv = TGV);
       PetscScalar[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       J = vJ(XMh, XMh, tgv = -2);
@@ -134,7 +135,7 @@ real f, kappa, cosalpha, res, delta, maxdelta, alpha0, beta0;
       ChangeNumbering(J, uma[], qma, inverse = true);
       updatelambda(param, lambda + eps);
       updatelambda(param2, lambda2);
-      um2[] = vR(0, XMh, tgv = -1);
+      um2[] = vR(0, XMh, tgv = TGV);
       um2[] -= R;
       um2[] /= eps;
       ChangeNumbering(J, um2[], qm); // FreeFEM to PETSc
@@ -150,10 +151,10 @@ real f, kappa, cosalpha, res, delta, maxdelta, alpha0, beta0;
       MatMultTranspose(J, qma, qm);
       tempPms = [[qm]];
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
-      J = vJ(XMh, XMh, tgv = -1);
+      J = vJ(XMh, XMh, tgv = TGV);
       if (contorder > 0) {
         updatelambda(param2, lambda2 + eps2);
-        um2[] = vR(0, XMh, tgv = -1);
+        um2[] = vR(0, XMh, tgv = TGV);
         um2[] -= R;
         um2[] /= eps2;
         ChangeNumbering(J, um2[], qm); // FreeFEM to PETSc
@@ -196,7 +197,7 @@ ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
 um2[] = vM(0, XMh, tgv = 0);
 ChangeNumbering(J, um2[], pP);
 if (contorder > 0) {
-  R = vR(0, XMh, tgv = -1);
+  R = vR(0, XMh, tgv = TGV);
   funcJa(qa0);
 }
 else {
@@ -371,7 +372,7 @@ while (!stopflag){
         for (int k = 0; k < paramnames.n; ++k){
           lambda = getlambda(paramnames[k]);
           updatelambda(paramnames[k], lambda + eps);
-          um2[] = vR(0, XMh, tgv = -1);
+          um2[] = vR(0, XMh, tgv = TGV);
           updatelambda(paramnames[k], lambda);
           um2[] -= R;
           alpha[paramnames[k]] = -J(uma[], um2[])/eps;
@@ -400,7 +401,7 @@ while (!stopflag){
     forcesave = false;
     ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
     ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
-    um2[] = vM(0, XMh, tgv = 00);
+    um2[] = vM(0, XMh, tgv = 0);
     ChangeNumbering(J, um2[], qP);
     ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
     um2[] = vM(0, XMh, tgv = 0);

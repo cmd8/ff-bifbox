@@ -28,6 +28,7 @@ string meshout = getARGV("-mo", ""); // output mesh without extension
 string filein = getARGV("-fi", ""); // input file with extension
 string fileout = getARGV("-fo", ""); // output file without extension
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
+real TGV = getARGV("-tgv", -1.);
 
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
@@ -144,14 +145,14 @@ include "eqns.idp" // load equations
 // Function to build residual operator in PETSc numbering
 func real[int] funcR(real[int]& qPETSc) {
     ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
-    real[int] RPETSc, R = vR(0, XMh, tgv = -1);
+    real[int] RPETSc, R = vR(0, XMh, tgv = TGV);
     ChangeNumbering(J, R, RPETSc);
     return RPETSc;
 }
 // Function to build Jacobian operator in PETSc numbering
 func int funcJ(real[int]& qPETSc) {
     ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = TGV);
     return 0;
 }
 // set up Mat parameters

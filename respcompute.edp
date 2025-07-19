@@ -98,8 +98,8 @@ include "eqns.idp"
 complex[int] RHS(J.n), qm(J.n);
 um[] = vMq(0, XMh, tgv = -1);
 ChangeNumbering(J, um[], RHS);
-matrix<complex> M = vM(XMh, XMh, tgv = -10);
-matrix<complex> Jx, Js = vJ(XMh, XMh, tgv = -1);
+matrix<complex> M = vM(XMh, XMh, tgv = -20);
+matrix<complex> Jx, Js = vJ(XMh, XMh, tgv = -2);
 um[].re = ub[];
 ChangeNumbering(J, um[], qm);
 ChangeNumbering(J, um[], qm, inverse = true);

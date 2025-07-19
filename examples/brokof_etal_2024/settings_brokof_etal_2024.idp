@@ -60,7 +60,7 @@
 
   macro Jinv() (dXdx) //EOM
 
-  macro coordinatetransform() X, y // EOM
+  macro coordinatetransform(U) X, y // EOM
 // Define solution monitors to extract:
   macro getmonitors(){
       /* density macros */

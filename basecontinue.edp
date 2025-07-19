@@ -39,6 +39,7 @@ int snesmaxit = getARGV("-snes_max_it", 10);
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic");
 int refactor = getARGV("-refact", snesmaxit);
 real paramtarget = getARGV("-paramtarget", 1.0);
+real TGV = getARGV("-tgv", -1);
 bool stopflag = false;
 bool forcesave = false;
 
@@ -125,7 +126,7 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
-      R = vR(0, XMh, tgv = -1);
+      R = vR(0, XMh, tgv = TGV);
       PetscScalar[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       Ra.resize(Ja.n); // Append 0 to residual vector on proc 0
@@ -138,10 +139,10 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
-      if (it <= refactor) J = vJ(XMh, XMh, tgv = -1);
+      if (it <= refactor) J = vJ(XMh, XMh, tgv = TGV);
       if (contorder > 0){
         updatelambda(param, lambda + eps);
-        um2[] = vR(0, XMh, tgv = -1);
+        um2[] = vR(0, XMh, tgv = TGV);
         updatelambda(param, lambda);
         um2[] -= R;
         um2[] /= eps;
@@ -168,7 +169,7 @@ ChangeNumbering(J, ub[], qa0);
 qa0.resize(Ja.n);
 if(mpirank == 0) qa0(Ja.n-1) = lambda;
 if (contorder > 0) {
-  R = vR(0, XMh, tgv = -1);
+  R = vR(0, XMh, tgv = TGV);
   funcJa(qa0);
 }
 else {
@@ -201,9 +202,9 @@ while (!stopflag){
           um3[] = vH(0, XMh, tgv = -10);
           NLq += um3[];
           updatelambda(param, lambda + 2.0*sqrteps);
-          um2[] = vR(0, XMh, tgv = -1);
+          um2[] = vR(0, XMh, tgv = TGV);
           updatelambda(param, lambda + sqrteps);
-          um3[] = vR(0, XMh, tgv = -1);
+          um3[] = vR(0, XMh, tgv = TGV);
           um2[] += (R - 2.0*um3[]);
           NLq += (hn(j)*hn(i-j)/eps)*um2[];
           updatelambda(param, lambda + eps);
@@ -232,12 +233,12 @@ while (!stopflag){
             um2[] -= 2.0*um3[];
             NLq += (hn(k)*hn(i-j-k-1)/eps)*um2[];
             updatelambda(param, lambda + 3.0*cbrteps);
-            um2[] = vR(0, XMh, tgv = -1);
+            um2[] = vR(0, XMh, tgv = TGV);
             updatelambda(param, lambda + 2.0*cbrteps);
-            um3[] = vR(0, XMh, tgv = -1);
+            um3[] = vR(0, XMh, tgv = TGV);
             um2[] -= 3.0*um3[];
             updatelambda(param, lambda + cbrteps);
-            um3[] = vR(0, XMh, tgv = -1);
+            um3[] = vR(0, XMh, tgv = TGV);
             um2[] += (3.0*um3[] - R);
             NLq += (hn(j)*hn(k)*hn(i-j-k-1)/(6.0*eps))*um2[];
             updatelambda(param, lambda);

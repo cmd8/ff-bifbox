@@ -46,6 +46,7 @@ string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
 real eps2 = getARGV("-eps2", 1e-7);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
+real TGV = getARGV("-tgv", -1);
 real[int] sym1(sym.n), sym2(sym.n);
 real omega, omega1, omega2;
 complex[string] alpha1, alpha2;
@@ -323,7 +324,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       updatelambda(param, lambda);
       updatelambda(param2, lambda2);
       sym = 0;
-      R = vR(0, XMh, tgv = -1);
+      R = vR(0, XMh, tgv = TGV);
       complex[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       iomega = 1i*omega1;
@@ -372,7 +373,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       updatelambda(param, lambda + eps);
       updatelambda(param2, lambda2);
       sym = 0;
-      um2[] = vR(0, XMh, tgv = -1);
+      um2[] = vR(0, XMh, tgv = TGV);
       um2[] -= R;
       um2[] /= eps;
       ChangeNumbering(J, um2[], temp1); // FreeFEM to PETSc
@@ -388,7 +389,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       updatelambda(param2, lambda2 + eps2);
       complex[int] Hl2 = vJ(0, XMh, tgv = -10);
       sym = 0;
-      um2[] = vR(0, XMh, tgv = -1);
+      um2[] = vR(0, XMh, tgv = TGV);
       um2[] -= R;
       um2[] /= eps2;
       ChangeNumbering(J, um2[], temp3); // FreeFEM to PETSc
@@ -479,7 +480,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       ik = 0.0;
       iomega = 0.0;
-      J = vJ(XMh, XMh, tgv = -1);
+      J = vJ(XMh, XMh, tgv = TGV);
       return 0;
   }
 // set up Mat parameters
@@ -509,7 +510,7 @@ if (fileext1 == "hopf" || fileext1 == "foho" || fileext1 == "hoho") um[] = uma[]
 else {
   ik.im = sym1;
   iomega = 1i*omega1;
-  J = vJ(XMh, XMh, tgv = -3);
+  J = vJ(XMh, XMh, tgv = -2);
   KSPSolveHermitianTranspose(J, q1P, q1ma);
   ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);
 }
@@ -529,7 +530,7 @@ if (fileext2 == "hopf" || fileext2 == "foho" || fileext2 == "hoho") um[] = um3[]
 else {
   ik.im = sym2;
   iomega = 1i*omega2;
-  J = vJ(XMh, XMh, tgv = -3);
+  J = vJ(XMh, XMh, tgv = -2);
   KSPSolveHermitianTranspose(J, q2P, q2ma);
   ChangeNumbering(J, um[], q2ma, inverse = true, exchange = true);
 }
@@ -595,12 +596,12 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 0.0;
     iomega2 = 0.0;
     sym = 0;
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = TGV);
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
         lambda = getlambda(paramnames[k]);
         updatelambda(paramnames[k], lambda + eps);
-        um[] = vR(0, XMh, tgv = -1);
+        um[] = vR(0, XMh, tgv = TGV);
         updatelambda(paramnames[k], lambda);
         um[] -= R;
         um[] /= -eps;
@@ -647,7 +648,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, um3[], q2P); // FreeFEM to PETSc
     ik.im = sym;
     iomega = 1i*(omega1 - omega2);
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = TGV);
     if (res1x != 2) KSPSolve(J, q2P, q2P);
     else {
       ChangeNumbering(J, um[], q2ma, inverse = true, exchange = true);
@@ -679,7 +680,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, um3[], p1P); // FreeFEM to PETSc
     ik.im = sym;
     iomega = 2i*omega1;
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = TGV);
     KSPSolve(J, p1P, p1P);
 
     ChangeNumbering(J, um2[], q2m, inverse = true, exchange = true);
@@ -693,7 +694,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, um3[], qAB); // FreeFEM to PETSc
     ik.im = sym;
     iomega = 1i*(omega1 + omega2);
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = TGV);
     KSPSolve(J, qAB, qAB);
 
     um[] = -0.5*um2[];
@@ -704,7 +705,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, um3[], qBB); // FreeFEM to PETSc
     ik.im = sym;
     iomega = 2i*omega2;
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = TGV);
     if (res1x != 2) KSPSolve(J, qBB, qBB);
     else {
       ChangeNumbering(J, um[], q1ma, inverse = true, exchange = true);

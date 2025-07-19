@@ -192,8 +192,8 @@ if (count == 0){
   basefilein = (basefilein == "") ? filein : basefilein;
   savetdls(fileout + "_0", (savecount > 0 ? fileout : ""), meshin, basefilein, filein, sym, time, true);
 }
-Js = vJ(XMh, XMh, tgv = -10);
-M = vM(XMh, XMh, tgv = -10);
+Js = vJ(XMh, XMh, tgv = -20);
+M = vM(XMh, XMh, tgv = -20);
 // Function to build residual "F(t,u,\dot{u})" operator in PETSc numbering
 func PetscScalar[int] funcF(real t, PetscScalar[int]& qPETSc, PetscScalar[int]& qdotPETSc) {
     MatMult(Js, qPETSc, FPETSc);
@@ -205,7 +205,7 @@ func PetscScalar[int] funcF(real t, PetscScalar[int]& qPETSc, PetscScalar[int]& 
 func int funcJ(real t, PetscScalar[int]& qPETSc, PetscScalar[int]& qdotPETSc, real a) {
     if(abs(a - iomega) > 1.0e-10) {
       iomega = a;
-      J = vJ(XMh, XMh, tgv = -1);
+      J = vJ(XMh, XMh, tgv = -2);
     }
     return 0;
 }

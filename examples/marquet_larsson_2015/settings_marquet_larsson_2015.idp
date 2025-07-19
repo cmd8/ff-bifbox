@@ -60,7 +60,7 @@
 
   macro Jinv() (dZdz) //EOM
 
-  macro coordinatetransform() x, y, Z // EOM
+  macro coordinatetransform(U) x, y, Z // EOM
 // Define solution monitors to extract:
   macro getmonitors(){
     monitors["Cd"] = 8.0/params["L"]*int2d(Thg, BCwall)(ubgp*N.x*dZdz - params["1/Re"]*(2.0*dx(ubg)*N.x*dZdz + (dx(ubgy) + dy(ubg))*N.y*dZdz + (dx(ubgz) + dZ(ubg))*N.z));

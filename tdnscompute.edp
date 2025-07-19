@@ -34,6 +34,7 @@ int tsmaxsnesfailures = getARGV("-ts_max_snes_failures", -1);
 real tsdt = getARGV("-ts_dt", 0.01);
 string tsadapttype = getARGV("-ts_adapt_type", "none");
 string sneslinesearchtype = getARGV("-snes_linesearch_type", "basic");
+real TGV = getARGV("-tgv", -1);
 
 // Load mesh, make FE basis
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
@@ -235,7 +236,7 @@ real[int] FPETSc(J.n), qp = q;
 func real[int] funcF(real t, real[int]& qPETSc, real[int]& qdotPETSc) {
     ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
     ChangeNumbering(J, um[], qdotPETSc, inverse = true, exchange = true);
-    um2[] = vR(0, XMh, tgv = -1);
+    um2[] = vR(0, XMh, tgv = TGV);
     um3[] = vM(0, XMh, tgv = -10);
     um2[] += um3[];
     ChangeNumbering(J, um2[], FPETSc);
@@ -245,7 +246,7 @@ func real[int] funcF(real t, real[int]& qPETSc, real[int]& qdotPETSc) {
 func int funcJ(real t, real[int]& qPETSc, real[int]& qdotPETSc, real a) {
     ChangeNumbering(J, ub[], qPETSc, inverse = true, exchange = true);
     iomega = a;
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = TGV);
     return 0;
 }
 // Function to monitor solution progress

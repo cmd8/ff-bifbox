@@ -39,9 +39,9 @@ if (mpirank==0){
       XMhs defu(us) = defu(ubg);
       qpv.resize(us[].n);
       qpv = us[];
-      Thgpv = movemesh(Thgs, [coordinatetransform]);
+      Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
     }
-    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
     fespace XMhgpv(Thgpv, Pk);
     XMhgpv defu(ugr);
     ugr[] = qpv;
@@ -60,9 +60,9 @@ if (mpirank==0){
       XMhs<complex> defu(us) = defu(umg);
       qpv.resize(us[].n);
       qpv = us[];
-      Thgpv = movemesh(Thgs, [coordinatetransform]);
+      Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
     }
-    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    else Thgpv = movemesh(Thg, [coordinatetransform(umg)]);
     fespace XMhgpv(Thgpv, Pk);
     XMhgpv defu(ugr), defu(ugi);
     ugr[] = qpv.re;
@@ -82,9 +82,9 @@ if (mpirank==0){
       XMhs<complex> defu(us) = defu(umg);
       qpv.resize(us[].n);
       qpv = us[];
-      Thgpv = movemesh(Thgs, [coordinatetransform]);
+      Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
     }
-    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    else Thgpv = movemesh(Thg, [coordinatetransform(umg)]);
     fespace XMhgpv(Thgpv, Pk);
     XMhgpv defu(ugr), defu(ugi);
     ugr[] = qpv.re;
@@ -111,9 +111,9 @@ if (mpirank==0){
       XMhs<complex> defu(us) = defu(umg);
       qpv.resize(us[].n);
       qpv = us[];
-      Thgpv = movemesh(Thgs, [coordinatetransform]);
+      Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
     }
-    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    else Thgpv = movemesh(Thg, [coordinatetransform(umg)]);
     fespace Xhgpv(Thgpv, Pkf);
     Xhgpv deff(fgr), deff(fgi);
     fgr[] = fpv.re;
@@ -136,18 +136,18 @@ if (mpirank==0){
     if (paraviewflag > 1){
       meshN Thgs = trunc(Thg, 1, split = paraviewflag);
       fespace XMhs(Thgs, Pk);
-      XMhs defu(us) = defu(ubg);
+      XMhs defu(us) = defu(umg);
       qpv.resize(us[].n);
       qmpv.resize(us[].n);
       qmapv.resize(us[].n);
-      qpv = us[];
-      defu(us) = defu(umg);
       qmpv = us[];
       defu(us) = defu(umag);
       qmapv = us[];
-      Thgpv = movemesh(Thgs, [coordinatetransform]);
+      defu(us) = defu(ubg);
+      qpv = us[];
+      Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
     }
-    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
     fespace XMhgpv(Thgpv, Pk);
     XMhgpv defu(ugr);
     ugr[] = qpv;
@@ -180,9 +180,9 @@ if (mpirank==0){
       qmpv = ums[];
       defu(ums) = defu(umag);
       qmapv = ums[];
-      Thgpv = movemesh(Thgs, [coordinatetransform]);
+      Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
     }
-    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
     fespace XMhgpv(Thgpv, Pk);
     XMhgpv defu(ugr), defu(ugi);
     ugr[] = qpv;
@@ -207,9 +207,9 @@ if (mpirank==0){
       XMhs defu(us) = defu(ubg);
       qpv.resize(us[].n);
       qpv = us[];
-      Thgpv = movemesh(Thgs, [coordinatetransform]);
+      Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
     }
-    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
     fespace XMhgpv(Thgpv, Pk);
     XMhgpv defu(ugr);
     ugr[] = qpv;
@@ -229,9 +229,9 @@ if (mpirank==0){
       XMhs<complex> defu(us) = defu(umg);
       qpv.resize(us[].n);
       qpv = us[];
-      Thgpv = movemesh(Thgs, [coordinatetransform]);
+      Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
     }
-    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    else Thgpv = movemesh(Thg, [coordinatetransform(umg)]);
     fespace XMhgpv(Thgpv, Pk);
     XMhgpv defu(ugr), defu(ugi);
     ugr[] = qpv.re;
@@ -268,9 +268,9 @@ if (mpirank==0){
       q2mpv = ums[];
       defu(ums) = defu(u2mag);
       q2mapv = ums[];
-      Thgpv = movemesh(Thgs, [coordinatetransform]);
+      Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
     }
-    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
     fespace XMhgpv(Thgpv, Pk);
     XMhgpv defu(ugr), defu(ugi);
     ugr[] = qpv;
@@ -306,24 +306,24 @@ if (mpirank==0){
     if (paraviewflag > 1){
       meshN Thgs = trunc(Thg, 1, split = paraviewflag);
       fespace XMhs(Thgs, Pk);
-      XMhs defu(us) = defu(ubg);
+      XMhs defu(us) = defu(u2mg);
       XMhs<complex> defu(ums) = defu(u1mg);
       qpv.resize(us[].n);
       q1mpv.resize(ums[].n);
       q1mapv.resize(ums[].n);
       q2mpv.resize(us[].n);
       q2mapv.resize(us[].n);
-      qpv = us[];
       q1mpv = ums[];
       defu(ums) = defu(u1mag);
       q1mapv = ums[];
-      defu(us) = defu(u2mg);
       q2mpv = us[];
       defu(us) = defu(u2mag);
       q2mapv = us[];
-      Thgpv = movemesh(Thgs, [coordinatetransform]);
+      defu(us) = defu(ubg);
+      qpv = us[];
+      Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
       }
-    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
     fespace XMhgpv(Thgpv, Pk);
     XMhgpv defu(ugr), defu(ugi);
     ugr[] = qpv;
@@ -362,8 +362,9 @@ if (mpirank==0){
         defu(ums) = defu(umg);
         qmpv(:, harm) = ums[];
       }
+      Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
     }
-    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
     fespace XMhgpv(Thgpv, Pk);
     XMhgpv defu(ugr), defu(ugi);
     XMhgpv<complex> defu(ugc);
@@ -397,14 +398,14 @@ if (mpirank==0){
       fespace XMhs(Thgs, Pk);
       XMhs<complex> defu(ums);
       qmpv.resize(ums[].n, qmpv.m);
-      for(int jj = 0; jj < (1+2*Nh); jj++){
+      for(int jj = 2*Nh; jj >= 0; jj--){
         umg[] = qmpv(:, jj);
         defu(ums) = defu(umg);
         qmpv(:, jj) = ums[];
       }
-      Thgpv = movemesh(Thgs, [coordinatetransform]);
+      Thgpv = movemesh(Thgs, [coordinatetransform(ums)]);
     }
-    else Thgpv = movemesh(Thg, [coordinatetransform]);
+    else Thgpv = movemesh(Thg, [coordinatetransform(umg)]);
     fespace XMhgpv(Thgpv, Pk);
     XMhgpv defu(ugr), defu(ugi);
     XMhgpv<complex> defu(ugc);

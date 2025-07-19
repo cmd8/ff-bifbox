@@ -122,6 +122,7 @@ string param = getARGV("-param", "");
 string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
+real TGV = getARGV("-tgv", -1);
 real[int] sym1(sym.n);
 real omega;
 complex[string] alpha;
@@ -326,7 +327,7 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       broadcast(processor(0), omega);
       updatelambda(param, lambda);
       sym = 0;
-      R = vR(0, XMh, tgv = -1);
+      R = vR(0, XMh, tgv = TGV);
       PetscScalar[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       sym = sym1;
@@ -359,7 +360,7 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeNumbering(J, uma[], qma, inverse = true);
       updatelambda(param, lambda + eps);
       sym = 0;
-      um2[] = vR(0, XMh, tgv = -1);
+      um2[] = vR(0, XMh, tgv = TGV);
       um2[] -= R;
       um2[] /= eps;
       ChangeNumbering(J, um2[], qm);
@@ -372,7 +373,7 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       iomega = 1i*omega;
       um2[] = vJ(0, XMh, tgv = -10);
       updatelambda(param, lambda);
-      um3[] = J*um[];
+      um3[] = vJ(0, XMh, tgv = -10);
       um2[] -= um3[];
       PetscScalar gl = J(uma[], um2[])/eps;
       if(zerofreq) tempPms = [[real(gl)]];
@@ -393,7 +394,7 @@ complex[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       ik = 0.0;
       iomega = 0.0;
-      J = vJ(XMh, XMh, tgv = -1);
+      J = vJ(XMh, XMh, tgv = TGV);
       return 0;
   }
 // set up Mat parameters
@@ -421,7 +422,7 @@ um2[] /= Mnorm;
 ChangeNumbering(J, um2[], qP);
 if (fileext == "hopf" || fileext == "hoho" || fileext == "foho") um[] = uma[];
 else {
-  J = vJ(XMh, XMh, tgv = -3);
+  J = vJ(XMh, XMh, tgv = -2);
   KSPSolveHermitianTranspose(J, qP, qma);
   ChangeNumbering(J, um[], qma, inverse = true, exchange = true);
 }
@@ -462,12 +463,12 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     iomega = 0.0;
     iomega2 = 0.0;
     sym = 0;
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = TGV);
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
         lambda = getlambda(paramnames[k]);
         updatelambda(paramnames[k], lambda + eps);
-        um[] = vR(0, XMh, tgv = -1);
+        um[] = vR(0, XMh, tgv = TGV);
         updatelambda(paramnames[k], lambda);
         um[] -= R;
         um[] /= -eps;
@@ -497,7 +498,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     ChangeNumbering(J, um3[], pP);
     ik.im = 2*sym1;
     iomega = 2i*omega;
-    J = vJ(XMh, XMh, tgv = -1);
+    J = vJ(XMh, XMh, tgv = TGV);
     KSPSolve(J, pP, pP);
     // 3rd-order
     //  A: fundamental modification due to parameter change and quadratic interaction of fundamental with 2nd order modification A.

@@ -39,6 +39,7 @@ bool normalform = getARGV("-nf", 1);
 string param = getARGV("-param", "");
 string adaptto = getARGV("-adaptto", "b");
 real eps = getARGV("-eps", 1e-7);
+real TGV = getARGV("-tgv", -1);
 string sneslinesearchtype = getARGV("-snes_linesearch_type","basic");
 real[string] alpha;
 real beta;
@@ -178,7 +179,7 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
       broadcast(processor(0), lambda);
       updatelambda(param, lambda);
-      R = vR(0, XMh, tgv = -1);
+      R = vR(0, XMh, tgv = TGV);
       real[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
       J = vJ(XMh, XMh, tgv = -2);
@@ -200,7 +201,7 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
       updatelambda(param, lambda + eps);
-      um2[] = vR(0, XMh, tgv = -1);
+      um2[] = vR(0, XMh, tgv = TGV);
       um2[] -= R;
       um2[] /= eps;
       ChangeNumbering(J, um2[], qm); // FreeFEM to PETSc
@@ -208,7 +209,7 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       um3[] = vJ(0, XMh, tgv = -10);
       updatelambda(param, lambda);
-      um2[] = J*um[];
+      um2[] = vJ(0, XMh, tgv = -10);
       um3[] -= um2[];
       J = vH(XMh, XMh, tgv = 0);
       MatMultTranspose(J, qma, qm);
@@ -216,7 +217,7 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       ChangeOperator(gqPM, tempPms, parent = Ja); // send to Mat
       tempPms = [[J(uma[], um3[])/eps]]; // dense array to sparse matrix
       ChangeOperator(glPM, tempPms, parent = Ja); // send to Mat
-      J = vJ(XMh, XMh, tgv = -1);
+      J = vJ(XMh, XMh, tgv = TGV);
       return 0;
   }
 // set up Mat parameters
@@ -278,7 +279,7 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       for (int k = 0; k < paramnames.n; ++k){
         lambda = getlambda(paramnames[k]);
         updatelambda(paramnames[k], lambda + eps);
-        um2[] = vR(0, XMh, tgv = -1);
+        um2[] = vR(0, XMh, tgv = TGV);
         updatelambda(paramnames[k], lambda);
         um2[] -= R;
         alpha[paramnames[k]] = -J(uma[], um2[])/eps;

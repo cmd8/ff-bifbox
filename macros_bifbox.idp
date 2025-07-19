@@ -24,10 +24,10 @@ ENDIFMACRO
 // If settings file does not define a coordinate transform.
 IFMACRO(!coordinatetransform)
   IFMACRO(dimension,2)
-    macro coordinatetransform() x, y // EOM
+    macro coordinatetransform(U) x, y // EOM
   ENDIFMACRO 
   IFMACRO(dimension,3)
-    macro coordinatetransform() x, y, z // EOM
+    macro coordinatetransform(U) x, y, z // EOM
   ENDIFMACRO
 ENDIFMACRO
 // Parse mesh or solution filename
@@ -1074,9 +1074,9 @@ macro savebase(basefileout, statsfile, meshfile, saveflag, monitorflag){
           XMhs defu(us) = defu(ubg);
           qpv.resize(us[].n);
           qpv = us[];
-          Thgpv = movemesh(Thgs, [coordinatetransform]);
+          Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
         }
-        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
         fespace XMhgpv(Thgpv, Pk);
         XMhgpv defu(ugr);
         ugr[] = qpv;
@@ -1154,9 +1154,9 @@ macro savemode(modefileout, statsfile, basefile, meshfile, evecs, evals, sym, sa
             XMhs<complex> defu(us) = defu(umg);
             qpv.resize(us[].n);
             qpv = us[];
-            Thgpv = movemesh(Thgs, [coordinatetransform]);
+            Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
           }
-          else Thgpv = movemesh(Thg, [coordinatetransform]);
+          else Thgpv = movemesh(Thg, [coordinatetransform(umg)]);
           fespace XMhgpv(Thgpv, Pk);
           XMhgpv defu(ugr), defu(ugi);
           ugr[] = qpv.re;
@@ -1242,9 +1242,9 @@ macro saveresp(respfileout, statsfile, basefile, meshfile, sym, omega, saveflag,
           XMhs<complex> defu(us) = defu(umg);
           qpv.resize(us[].n);
           qpv = us[];
-          Thgpv = movemesh(Thgs, [coordinatetransform]);
+          Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
         }
-        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        else Thgpv = movemesh(Thg, [coordinatetransform(umg)]);
         fespace XMhgpv(Thgpv, Pk);
         XMhgpv defu(ugr), defu(ugi);
         ugr[] = qpv.re;
@@ -1333,9 +1333,9 @@ macro saverslv(rslvfileout, statsfile, basefile, meshfile, fvecs, uvecs, gains, 
             XMhs<complex> defu(us) = defu(umg);
             qpv.resize(us[].n);
             qpv = us[];
-            Thgpv = movemesh(Thgs, [coordinatetransform]);
+            Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
           }
-          else Thgpv = movemesh(Thg, [coordinatetransform]);
+          else Thgpv = movemesh(Thg, [coordinatetransform(umg)]);
           fespace Xhgpv(Thgpv, Pkf);
           Xhgpv deff(fgr), deff(fgi);
           fgr[] = fpv.re;
@@ -1444,18 +1444,18 @@ macro savefold(foldfileout, statsfile, meshfile, alpha, beta, saveflag, monitorf
         if (paraviewflag > 1){
           meshN Thgs = trunc(Thg, 1, split = paraviewflag);
           fespace XMhs(Thgs, Pk);
-          XMhs defu(us) = defu(ubg);
+          XMhs defu(us) = defu(umg);
           qpv.resize(us[].n);
           qmpv.resize(us[].n);
           qmapv.resize(us[].n);
-          qpv = us[];
-          defu(us) = defu(umg);
           qmpv = us[];
           defu(us) = defu(umag);
           qmapv = us[];
-          Thgpv = movemesh(Thgs, [coordinatetransform]);
+          defu(us) = defu(ubg);
+          qpv = us[];
+          Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
         }
-        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
         fespace XMhgpv(Thgpv, Pk);
         XMhgpv defu(ugr);
         ugr[] = qpv;
@@ -1577,9 +1577,9 @@ macro savehopf(hopffileout, statsfile, meshfile, sym, omega, alpha, beta, savefl
           qmpv = ums[];
           defu(ums) = defu(umag);
           qmapv = ums[];
-          Thgpv = movemesh(Thgs, [coordinatetransform]);
+          Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
         }
-        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
         fespace XMhgpv(Thgpv, Pk);
         XMhgpv defu(ugr), defu(ugi);
         ugr[] = qpv;
@@ -1660,9 +1660,9 @@ macro savetdls(tdlsfileout, statsfile, meshfile, basefile, ICfile, sym, time, sa
           XMhs<complex> defu(us) = defu(umg);
           qpv.resize(us[].n);
           qpv = us[];
-          Thgpv = movemesh(Thgs, [coordinatetransform]);
+          Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
         }
-        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        else Thgpv = movemesh(Thg, [coordinatetransform(umg)]);
         fespace XMhgpv(Thgpv, Pk);
         XMhgpv defu(ugr), defu(ugi);
         ugr[] = qpv.re;
@@ -1742,9 +1742,9 @@ macro savetdns(tdnsfileout, statsfile, meshfile, ICfile, time, saveflag, monitor
           XMhs defu(us) = defu(ubg);
           qpv.resize(us[].n);
           qpv = us[];
-          Thgpv = movemesh(Thgs, [coordinatetransform]);
+          Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
         }
-        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
         fespace XMhgpv(Thgpv, Pk);
         XMhgpv defu(ugr);
         ugr[] = qpv;
@@ -1879,9 +1879,9 @@ macro savehoho(hohofileout, statsfile, meshfile, sym1, sym2, omega1, omega2, alp
           q2mpv = ums[];
           defu(ums) = defu(u2mag);
           q2mapv = ums[];
-          Thgpv = movemesh(Thgs, [coordinatetransform]);
+          Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
         }
-        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
         fespace XMhgpv(Thgpv, Pk);
         XMhgpv defu(ugr), defu(ugi);
         ugr[] = qpv;
@@ -2013,24 +2013,24 @@ macro savefoho(fohofileout, statsfile, meshfile, sym, omega, alpha1, alpha2, bet
         if (paraviewflag > 1){
           meshN Thgs = trunc(Thg, 1, split = paraviewflag);
           fespace XMhs(Thgs, Pk);
-          XMhs defu(us) = defu(ubg);
+          XMhs defu(us) = defu(u2mg);
           XMhs<complex> defu(ums) = defu(u1mg);
           qpv.resize(us[].n);
           q1mpv.resize(ums[].n);
           q1mapv.resize(ums[].n);
           q2mpv.resize(us[].n);
           q2mapv.resize(us[].n);
-          qpv = us[];
           q1mpv = ums[];
           defu(ums) = defu(u1mag);
           q1mapv = ums[];
-          defu(us) = defu(u2mg);
           q2mpv = us[];
           defu(us) = defu(u2mag);
           q2mapv = us[];
-          Thgpv = movemesh(Thgs, [coordinatetransform]);
+          defu(us) = defu(ubg);
+          qpv = us[];
+          Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
         }
-        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
         fespace XMhgpv(Thgpv, Pk);
         XMhgpv defu(ugr), defu(ugi);
         ugr[] = qpv;
@@ -2143,9 +2143,9 @@ macro saveporb(porbfileout, statsfile, meshfile, sym, omega, Nh, saveflag, monit
             defu(ums) = defu(cplxu);
             qmpv(:, nh) = ums[];
           }
-          Thgpv = movemesh(Thgs, [coordinatetransform]);
+          Thgpv = movemesh(Thgs, [coordinatetransform(us)]);
         }
-        else Thgpv = movemesh(Thg, [coordinatetransform]);
+        else Thgpv = movemesh(Thg, [coordinatetransform(ubg)]);
         fespace XMhgpv(Thgpv, Pk);
         XMhgpv defu(ugr), defu(ugi);
         XMhgpv<complex> defu(ugc);
@@ -2238,14 +2238,14 @@ macro savefloq(floqfileout, statsfile, basefile, meshfile, evecs, evals, omega, 
             fespace XMhs(Thgs, Pk);
             XMhs<complex> defu(ums);
             qmpv.resize(ums[].n, uhmg.m);
-            for(int jj = 0; jj < (1+2*Nh); jj++){
+            for(int jj = 2*Nh; jj >= 0; jj--){
               umg[] = uhmg(:, jj);
               defu(ums) = defu(umg);
               qmpv(:, jj) = ums[];
             }
-            Thgpv = movemesh(Thgs, [coordinatetransform]);
+            Thgpv = movemesh(Thgs, [coordinatetransform(ums)]);
           }
-          else Thgpv = movemesh(Thg, [coordinatetransform]);
+          else Thgpv = movemesh(Thg, [coordinatetransform(umg)]);
           fespace XMhgpv(Thgpv, Pk);
           XMhgpv defu(ugr), defu(ugi);
           XMhgpv<complex> defu(ugc);
