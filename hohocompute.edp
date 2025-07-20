@@ -501,6 +501,10 @@ if(mpirank == 0) {
 }
 sym = sym1;
 R = vM(0, XMh, tgv = 0);
+complex phaseref, phaserefl = R.sum;
+mpiAllReduce(phaserefl, phaseref, mpiCommWorld, mpiSUM);
+um[] /= phaseref;
+R /= phaseref;
 ChangeNumbering(J, um[], q1m);
 ChangeNumbering(J, um[], q1m, inverse = true);
 real Mnorm = sqrt(real(J(um[], R)));
@@ -521,6 +525,10 @@ ChangeNumbering(J, R, p1P);
 um[] = um2[];
 sym = sym2;
 R = vM(0, XMh, tgv = 0);
+phaserefl = R.sum;
+mpiAllReduce(phaserefl, phaseref, mpiCommWorld, mpiSUM);
+um[] /= phaseref;
+R /= phaseref;
 ChangeNumbering(J, um[], q2m);
 ChangeNumbering(J, um[], q2m, inverse = true);
 Mnorm = sqrt(real(J(um[], R)));
@@ -559,8 +567,12 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
   sym = sym1;
   um2[] = vM(0, XMh, tgv = 0);
+  phaserefl = um2[].sum;
+  mpiAllReduce(phaserefl, phaseref, mpiCommWorld, mpiSUM);
   ChangeNumbering(J, um[], q1m, inverse = true);
   ChangeNumbering(J, uma[], q1ma, inverse = true);
+  um[] /= phaseref;
+  um2[] /= phaseref;
   Mnorm = sqrt(real(J(um[], um2[])));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
   uma[] *= (Mnorm/J(um2[], uma[])); // so that <uma[],M*um[]> = 1
@@ -569,8 +581,12 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
   sym = sym2;
   um2[] = vM(0, XMh, tgv = 0);
+  phaserefl = um2[].sum;
+  mpiAllReduce(phaserefl, phaseref, mpiCommWorld, mpiSUM);
   ChangeNumbering(J, um[], q2m, inverse = true);
   ChangeNumbering(J, uma[], q2ma, inverse = true);
+  um[] /= phaseref;
+  um2[] /= phaseref;
   Mnorm = sqrt(real(J(um[], um2[])));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
   uma[] *= (Mnorm/J(um2[], uma[])); // so that <uma[],M*um[]> = 1

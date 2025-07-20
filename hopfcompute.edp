@@ -415,6 +415,10 @@ sym = sym1;
 ik.im = sym1;
 iomega = 1i*omega;
 um2[] = vM(0, XMh, tgv = -10);
+complex phaseref, phaserefl = um2[].sum;
+mpiAllReduce(phaserefl, phaseref, mpiCommWorld, mpiSUM);
+um[] /= phaseref;
+um2[] /= phaseref;
 ChangeNumbering(J, um[], qm);
 ChangeNumbering(J, um[], qm, inverse = true);
 real Mnorm = sqrt(real(J(um[], um2[])));
@@ -447,8 +451,12 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   sym = sym1;
   ik.im = sym1;
   um2[] = vM(0, XMh, tgv = 0);
+  phaserefl = um2[].sum;
+  mpiAllReduce(phaserefl, phaseref, mpiCommWorld, mpiSUM);
   ChangeNumbering(J, um[], qm, inverse = true);
   ChangeNumbering(J, uma[], qma, inverse = true);
+  um[] /= phaseref;
+  um2[] /= phaseref;
   Mnorm = sqrt(real(J(um[], um2[])));
   um[] /= Mnorm; // so that <um[],M*um[]> = 1
   uma[] *= (Mnorm/J(um2[], uma[])); // so that <uma[],M*um[]> = 1
