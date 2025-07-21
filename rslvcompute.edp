@@ -39,7 +39,7 @@ if(fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "td
 if(filein != "" && meshin == "") meshin = readmeshname(workdir + filein); // get mesh file
 Th = readmeshN(workdir + meshin);
 Thg = Th;
-buildDmesh(Th);
+DmeshCreate(Th);
 restf = restrict(Xh, Xhg, n2o);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(um2), defu(um3);

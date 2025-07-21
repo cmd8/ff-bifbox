@@ -14,7 +14,7 @@ string meshin = readmeshname(workdir + filein); // get mesh file
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 // Partition mesh across processors
-buildDmesh(Th);
+DmeshCreate(Th);
 restu = restrict(XMh, XMhg, n2o);
 // Make finite element basis
 XMh<complex> defu(um);

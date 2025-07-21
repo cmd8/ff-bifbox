@@ -121,12 +121,12 @@ func string listparams(string[int] & paramnames, real[string] & params){
 macro createMatu(th,A,P){
     NewMacro def(u)defu(u) EndMacro
     NewMacro init(i)initu(i) EndMacro
-    createMat(th,A,P)
+    MatCreate(th,A,P)
 } // EOM
 macro createMatf(th,A,P){
     NewMacro def(u)deff(u) EndMacro
     NewMacro init(i)initf(i) EndMacro
-    createMat(th,A,P)
+    MatCreate(th,A,P)
 } // EOM
 
 macro adaptmeshoptions()

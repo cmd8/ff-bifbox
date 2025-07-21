@@ -43,7 +43,7 @@ parsefilename(meshout, meshout); // trim extension from output mesh, if given
 Th = readmeshN(workdir + meshin);
 Thg = Th;
 // Partition mesh across processors
-buildDmesh(Th);
+DmeshCreate(Th);
 restu = restrict(XMh, XMhg, n2o);
 // Make finite element basis
 XMh defu(ub), defu(um), defu(um2), defu(um3);

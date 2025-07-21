@@ -53,7 +53,7 @@ if(count > 0) {
 }
 Th = readmeshN(workdir + meshin);
 Thg = Th;
-buildDmesh(Th);
+DmeshCreate(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(um), defu(um2), defu(um3);
 real time = 0.0;

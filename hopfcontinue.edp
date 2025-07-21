@@ -66,7 +66,7 @@ if(count > 0) {
 assert(fileext == "hopf" || fileext == "foho" || fileext == "hoho");
 Th = readmeshN(workdir + meshin);
 Thg = Th;
-buildDmesh(Th);
+DmeshCreate(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
 if (count == 0){

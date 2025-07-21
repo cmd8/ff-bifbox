@@ -46,7 +46,7 @@ string meshroot, meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshout); // trim extension from output mesh, if given
 Th = readmeshN(workdir + meshin);
 Thg = Th;
-buildDmesh(Th);
+DmeshCreate(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub);
 XMh<complex> defu(um), defu(um2), defu(um3);

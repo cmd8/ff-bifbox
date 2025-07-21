@@ -21,7 +21,7 @@ string meshroot, meshext = parsefilename(meshin, meshroot);
 // Load mesh, make FE basis
 Th = readmeshN(workdir + meshin);
 Thg = Th;
-buildDmesh(Th);
+DmeshCreate(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub);
 XMh<complex> defu(um), defu(um2), defu(um3);

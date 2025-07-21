@@ -61,7 +61,7 @@ if(count > 0) {
 assert(fileext == "fold" || fileext == "foho");
 Th = readmeshN(workdir + meshin);
 Thg = Th;
-buildDmesh(Th);
+DmeshCreate(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
 if (count == 0){

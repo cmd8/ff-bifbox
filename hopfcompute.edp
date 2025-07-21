@@ -138,7 +138,7 @@ string meshroot, meshext = parsefilename(meshin, meshroot);
 parsefilename(meshout, meshout); // trim extension from output mesh, if given
 Th = readmeshN(workdir + meshin);
 Thg = Th;
-buildDmesh(Th);
+DmeshCreate(Th);
 restu = restrict(XMh, XMhg, n2o);
 XMh<complex> defu(ub), defu(um), defu(uma), defu(um2), defu(um3);
 if (fileext == "hopf") {
