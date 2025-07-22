@@ -5,6 +5,7 @@
 //
 // Set dimension macro for 'macro_ddm.idp' (3)
   macro dimension()3//EOM
+  macro meshtype()V//EOM
 // Load hpddm macros
   include "macro_ddm.idp"
   verbosity = getARGV("-v",0);
