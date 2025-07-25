@@ -20,6 +20,7 @@ include "macros_bifbox.idp"
 string meshin = getARGV("-mi", ""); // input meshfile with extension
 string meshout = getARGV("-mo", "");
 string filein = getARGV("-fi", "");
+string branchfilein = getARGV("-fi2", "");
 string fileout = getARGV("-fo", filein);
 int contorder = getARGV("-contorder", 1);
 int count = getARGV("-count", 0);
@@ -45,6 +46,7 @@ bool forcesave = false;
 
 // Load mesh, make FE basis
 string fileroot, fileext = parsefilename(filein, fileroot); //extract file name and extension
+string branchfileroot, branchfileext = parsefilename(branchfilein, branchfileroot); //extract file name and extension
 parsefilename(fileout, fileout); // trim extension from output file, if given
 if(fileext == "mode" || fileext == "resp" || fileext == "rslv" || fileext == "tdls" || fileext == "floq"){
   filein = readbasename(workdir + filein);
@@ -97,10 +99,24 @@ if(count == 0) {
     complex[int] q1m, q1ma, q2m, q2ma;
     ub[] = loadhoho(fileroot, meshin, q1m, q1ma, q2m, q2ma, sym1, sym2, omega1, omega2, alpha1, alpha2, beta1, beta2, gamma1, gamma2, gamma12, gamma13, gamma22, gamma23);
   }
+  else if (filein == "") {
+    setparams(paramnames,params);
+    defu(ub) = InitialConditions;
+  }
   savebase(filein, (savecount > 0 ? fileout : ""), meshin, false, false);
 }
 else {
   ub[] = loadbase(fileroot + "_" + count, meshin);
+}
+if (branchfilein != ""){
+  if(branchfileext == "base") {
+    um[] = loadbase(branchfileroot, meshin);
+  }
+  else if(branchfileext == "mode") {
+    complex eigenvalue;
+    complex[int] qm = loadmode(fileroot, meshin, sym, eigenvalue);
+    um[] = qm.re;
+  }
 }
 real lambda = getlambda(param);
 real paramdiff = lambda - paramtarget;
@@ -171,6 +187,7 @@ if(mpirank == 0) qa0(Ja.n-1) = lambda;
 if (contorder > 0) {
   R = vR(0, XMh, tgv = TGV);
   funcJa(qa0);
+  if (branchfilein != "") ChangeNumbering(J, um[], yqP);
 }
 else {
   matrix<PetscScalar> tempPms = [[yqP]];
