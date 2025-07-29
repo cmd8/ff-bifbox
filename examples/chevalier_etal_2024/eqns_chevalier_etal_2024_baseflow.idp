@@ -52,7 +52,7 @@
   macro SAfv2p(u, du) ( (u#v^2.0*SAfv1p(u, du) - params["1/Re"]*du#v)/(params["1/Re"] + u#v*SAfv1(u))^2.0 ) // EOM
 
   macro SAfw(u) (SAg(u)*((1.0 + SAcw3^6.0)/(SAg(u)^6.0 + SAcw3^6))^(1.0/6.0)) // EOM
-  macro SAfwp(u, ik, du) ( SAgp(u, ik, du)*(((1.0 + SAcw3^6.0)/(SAg(u)^6.0 + SAcw3^6))^(1.0/6.0) - SAg(u)^6.0*((1.0 + SAcw3^6.0)/(SAg(u)^6.0 + SAcw3^6))^(-5.0/6.0)*((1.0 + SAcw3^6.0)/(SAg(u)^6.0 + SAcw3^6)^2.0)) ) // EOM
+  macro SAfwp(u, ik, du) (SAcw3^6./(1. + SAcw3^6.)*SAgp(u, ik, du)*((1. + SAcw3^6.)/(SAg(u)^6. + SAcw3^6.))^(7./6.)) // EOM
 
   macro SAg(u) (SAr(u) + SAcw2*(SAr(u)^6.0 - SAr(u))) // EOM
   macro SAgp(u, ik, du) ((1.0 + SAcw2*(6.0*SAr(u)^5.0 - 1.0))*SArp(u, ik, du)) // EOM
