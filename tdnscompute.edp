@@ -160,8 +160,8 @@ if (count == 0){
   qm = loadfloq(fileroot, meshin, qh, sym, eigenvalue, symtemp, omega, Nh);
   qm *= exp(1i*phase);
   um[] = 2.0*qm.re;
-}
-  else {
+  }
+  else if(filein == "" && basefilein == "") {
     setparams(paramnames, params);
     defu(ub) = InitialConditions;
   }
