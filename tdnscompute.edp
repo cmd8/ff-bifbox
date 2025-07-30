@@ -162,8 +162,8 @@ if (count == 0){
   um[] = 2.0*qm.re;
 }
   else {
-    defu(ub) = InitialConditions;
     setparams(paramnames, params);
+    defu(ub) = InitialConditions;
   }
   if (basefileext == "base") {
     ub[] = loadbase(basefileroot, meshin);
