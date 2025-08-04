@@ -113,8 +113,10 @@ else {
   ub[] = loadporb(fileroot + "_" + count, meshin, uh, sym0, omega, Nh);
 }
 Nh = max(1, Nh); // Nh must be at least 1, otherwise use basecompute.edp
-real lambda = getlambda(param);
-real paramdiff = lambda - paramtarget;
+real[int] paramvals(2-zerofreq);
+paramvals(0) = zerofreq ? 0.0 : omega;
+paramvals(1-zerofreq) = getparam(param);
+real paramdiff = paramvals(1-zerofreq) - paramtarget;
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
@@ -139,20 +141,14 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       ChangeNumbering(J, ub[], qPETSc(0:J.n-1), inverse = true, exchange = true);
       for (int nh = 0; nh < Nh; nh++)
         ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qPETSc((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true, exchange = true);
-      if(mpirank == 0) {
-        omega = zerofreq ? 0.0 : qPETSc(JHBaa.n-2); 
-        lambda = qPETSc(JHBaa.n-1); // Extract parameter value from state vector on proc 0
-      }
-      broadcast(processor(0), omega);
-      broadcast(processor(0), lambda);
-      updatelambda(param, lambda);
+      if(mpirank == 0) paramvals = qPETSc(JHB.n:JHBaa.n-1);
+      broadcast(processor(0), paramvals);
+      omega = zerofreq ? 0.0 : paramvals(0);
+      updateparam(param, paramvals(1-zerofreq));
       PetscScalar[int] RPETSc(JHBaa.n);
       ResidualHB(RHB, J, ub, uh, sym0, omega);
       RPETSc(0:JHB.n-1) = RHB;
-      if(mpirank == 0){ 
-        if(!zerofreq) RPETSc(JHBaa.n-2) = 0.0;
-        RPETSc(JHBaa.n-1) = 0.0;
-      }
+      if(mpirank == 0) RPETSc(JHB.n:JHBaa.n-1) = 0.0;
       return RPETSc;
   }
 
@@ -160,18 +156,15 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       ChangeNumbering(J, ub[], qPETSc(0:J.n-1), inverse = true, exchange = true);
       for (int nh = 0; nh < Nh; nh++)
         ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qPETSc((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true, exchange = true);
-      if(mpirank == 0) {
-        omega = zerofreq ? 0.0 : qPETSc(JHBaa.n-2); 
-        lambda = qPETSc(JHBaa.n-1); // Extract parameter value from state vector on proc 0
-      }
-      broadcast(processor(0), omega);
-      broadcast(processor(0), lambda);
-      updatelambda(param, lambda);
+      if(mpirank == 0) paramvals = qPETSc(JHB.n:JHBaa.n-1);
+      broadcast(processor(0), paramvals);
+      omega = zerofreq ? 0.0 : paramvals(0);
+      updateparam(param, paramvals(1-zerofreq));
       if (it <= refactor) JacobianHB(JHB, J, ub, uh, sym0, omega);
       if (contorder > 0){
-        updatelambda(param, lambda + eps);
+        updateparam(param, paramvals(1-zerofreq) + eps);
         ResidualHB(yqP, J, ub, uh, sym0, omega);
-        updatelambda(param, lambda);
+        updateparam(param, paramvals(1-zerofreq));
         yqP(0:JHB.n-1) -= RHB;
         yqP /= eps;
         if (mpirank == 0 && !zerofreq) yqP(JHBa.n-1) = 0.0;
@@ -192,7 +185,7 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       return 0;
   }
   
-  ConvergenceCheck(param + " = " + lambda + ",\tomega = " + omega);
+  ConvergenceCheck(param + " = " + paramvals(1-zerofreq) + ",\tomega = " + (zerofreq ? 0.0 : paramvals(0)));
 // set up Mat parameters
 real[int] fieldlabels(JHB.n);
 fieldlabels = 1.0;
@@ -216,10 +209,7 @@ real[int] qa(JHBaa.n), qa0(JHBaa.n);
 real[int] temp;
 ChangeNumbering(J, ub[], temp);
 qa0(0:J.n-1) = temp;
-if(mpirank == 0){
-  if(!zerofreq) qa0(JHBaa.n-2) = omega;
-  qa0(JHBaa.n-1) = lambda;
-}
+if(mpirank == 0) qa0(JHB.n:JHBaa.n-1) = paramvals;
 if (contorder > 0 && fileext == "porb") {
   for (int nh = 0; nh < Nh; nh++){
     ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], temp);
@@ -255,7 +245,7 @@ while (!stopflag){
   if (ret > 0) {
     ++count;
     if (maxcount > 0) stopflag = (count >= maxcount);
-    else if ((lambda - paramtarget)*paramdiff <= 0) stopflag = true;
+    else if ((paramvals(1-zerofreq) - paramtarget)*paramdiff <= 0) stopflag = true;
     h0 /= f;
     if (cosalpha < 0 && contorder > 0) {
       h0 *= -1.0;
@@ -270,13 +260,9 @@ while (!stopflag){
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
       for (int nh = 0; nh < Nh; nh++)
         ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qa((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true);
-      if(mpirank == 0) {
-        omega = zerofreq ? 0.0 : qa(JHBaa.n-2);
-        lambda = qa(JHBaa.n-1);
-      }
-      broadcast(processor(0), omega);
-      broadcast(processor(0), lambda);
-      updatelambda(param, lambda);
+      if(mpirank == 0) paramvals = qa(JHB.n:JHBaa.n-1);
+      broadcast(processor(0), paramvals);
+      updateparam(param, paramvals(1-zerofreq));
       ChangeNumbering(J, um2[].re, yqP(0:J.n-1), inverse = true);
       real yomega;
       if(mpirank == 0 && !zerofreq) yomega = yqP(JHBa.n-1);
@@ -402,11 +388,8 @@ while (!stopflag){
         qa((1+2*nh)*J.n:(3+2*nh)*J.n-1) = temp;
       }
       if(mpirank == 0) {
-        if(!zerofreq) {
-          qa(JHBa.n-1) = omega;
-          yqP(JHBa.n-1) = yomega;
-        }
-        qa(JHBaa.n-1) = lambda;
+        qa(JHB.n:JHBaa.n-1) = paramvals;
+        if(!zerofreq) yqP(JHBa.n-1) = yomega;
       }
       RHB.resize(JHB.n);
       yqP0.resize(JHBa.n);
@@ -429,13 +412,10 @@ while (!stopflag){
     ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
     for (int nh = 0; nh < Nh; nh++)
       ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qa((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true);
-    if (mpirank == 0) {
-      omega = zerofreq ? 0.0 : qa(JHBaa.n-2); 
-      lambda = qa(JHBaa.n-1);
-    }
-    broadcast(processor(0), omega);
-    broadcast(processor(0), lambda);
-    updatelambda(param, lambda);
+    if (mpirank == 0) paramvals = qa(JHB.n:JHBaa.n-1);
+    broadcast(processor(0), paramvals);
+    omega = zerofreq ? 0.0 : paramvals(0);
+    updateparam(param, paramvals(1-zerofreq));
     saveporb(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, sym0, omega, Nh, ((count % savecount == 0) || forcesave || stopflag), true);
     if (stopflag) break;
     forcesave = false;

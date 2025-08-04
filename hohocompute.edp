@@ -15,8 +15,8 @@
 /*
  This script computes the normal form at a non-degenerate Hopf-Hopf point.
  The normal form is written for the complex amplitudes Y = A1*exp(1i*omega1*t) and Z = A2*exp(1i*omega2*t) as:
-    dY/dt = alpha1*dlambda*Y + 1i*omega1*Y + beta1*Y*|Y|^2 + gamma1*Y*|Z|^2 + gamma12*Z^2   + gamma13*Z^3
-    dZ/dt = alpha2*dlambda*Z + 1i*omega2*Z + beta2*Z*|Z|^2 + gamma2*Z*|Y|^2 + gamma22*Y*Z^* + gamma23*Y*(Z^*)^2
+    dY/dt = alpha1*dparam*Y + 1i*omega1*Y + beta1*Y*|Y|^2 + gamma1*Y*|Z|^2 + gamma12*Z^2   + gamma13*Z^3
+    dZ/dt = alpha2*dparam*Z + 1i*omega2*Z + beta2*Z*|Z|^2 + gamma2*Z*|Y|^2 + gamma22*Y*Z^* + gamma23*Y*(Z^*)^2
  where:
     alpha are the coefficients for the terms from parameter changes,
     beta are the coefficients for the terms from self-coupling harmonic interactions,
@@ -205,8 +205,11 @@ else if(basefileext == "porb") {
   complex[int, int] qh(um[].n, Nh);
   ub[].re = loadporb(basefileroot, meshin, qh, sym, omega, Nh);
 }
-real lambda = getlambda(param);
-real lambda2 = getlambda(param2);
+real[int] paramvals(4-zerofreq-zerofreq2);
+paramvals(1-zerofreq) = zerofreq ? 0.0 : omega1;
+paramvals(3-zerofreq-zerofreq2) = zerofreq2 ? 0.0 : omega2;
+paramvals(0) = getparam(param);
+paramvals(2-zerofreq) = getparam(param2);
 // Create distributed Mat
 Mat<complex> J;
 createMatu(Th, J, Pk);
@@ -345,18 +348,12 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
 // FUNCTIONS
   func complex[int] funcRa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) {
-        lambda = real(qa(J.n)); // Extract parameter value from state vector on proc 0
-        omega1 = zerofreq ? 0.0 : real(qa(J.n+1)); // Extract frequency value from state vector on proc 0
-        lambda2 = real(qa(Ja.n-(2-zerofreq2))); // Extract parameter value from state vector on proc 0
-        omega2 = zerofreq2 ? 0.0 : real(qa(Ja.n-1)); // Extract frequency value from state vector on proc 0
-      }
-      broadcast(processor(0), lambda);
-      broadcast(processor(0), omega1);
-      broadcast(processor(0), lambda2);
-      broadcast(processor(0), omega2);
-      updatelambda(param, lambda);
-      updatelambda(param2, lambda2);
+      if(mpirank == 0) paramvals = qa(J.n:Ja.n-1).re;
+      broadcast(processor(0), paramvals);
+      updateparam(param, paramvals(0));
+      omega1 = zerofreq ? 0.0 : paramvals(1-zerofreq);
+      updateparam(param2, paramvals(2-zerofreq));
+      omega2 = zerofreq2 ? 0.0 : paramvals(3-zerofreq-zerofreq2);
       sym = 0;
       R = vR(0, XMh, tgv = TGV);
       complex[int] Ra;
@@ -381,8 +378,8 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       mpiAllReduce(invl, hinv, mpiCommWorld, mpiSUM);
       q2m /= hinv; // rescale direct mode
       q2ma /= conj(hinv); // rescale adjoint mode
+      Ra.resize(Ja.n); // Append 0 to residual vector on proc 0
       if(mpirank == 0) {
-        Ra.resize(Ja.n); // Append 0 to residual vector on proc 0
         Ra(J.n) = real(1.0/ginv);
         if(!zerofreq) Ra(J.n+1) = imag(1.0/ginv);
         Ra(Ja.n-(2-zerofreq2)) = real(1.0/hinv);
@@ -393,23 +390,17 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
 
   func int funcJa(complex[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) {
-        lambda = real(qa(J.n)); // Extract parameter value from state vector on proc 0
-        omega1 = zerofreq ? 0.0 : real(qa(J.n+1)); // Extract frequency value from state vector on proc 0
-        lambda2 = real(qa(Ja.n-(2-zerofreq2))); // Extract parameter value from state vector on proc 0
-        omega2 = zerofreq2 ? 0.0 : real(qa(Ja.n-1)); // Extract frequency value from state vector on proc 0
-      }
-      complex[int] temp1(J.n), temp3(J.n);
-      broadcast(processor(0), lambda);
-      broadcast(processor(0), omega1);
-      broadcast(processor(0), lambda2);
-      broadcast(processor(0), omega2);
-      updatelambda(param, lambda + eps);
-      updatelambda(param2, lambda2);
+      if(mpirank == 0) paramvals = qa(J.n:Ja.n-1).re;
+      broadcast(processor(0), paramvals);
+      updateparam(param, paramvals(0) + eps);
+      omega1 = zerofreq ? 0.0 : paramvals(1-zerofreq);
+      updateparam(param2, paramvals(2-zerofreq));
+      omega2 = zerofreq2 ? 0.0 : paramvals(3-zerofreq-zerofreq2);
       sym = 0;
       um2[] = vR(0, XMh, tgv = TGV);
       um2[] -= R;
       um2[] /= eps;
+      complex[int] temp1(J.n), temp3(J.n);
       ChangeNumbering(J, um2[], temp1); // FreeFEM to PETSc
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
       sym = sym2;
@@ -419,8 +410,8 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       iomega = 1i*omega1;
       ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
       complex[int] Hl1 = vJ(0, XMh, tgv = -10);
-      updatelambda(param, lambda);
-      updatelambda(param2, lambda2 + eps2);
+      updateparam(param, paramvals(0));
+      updateparam(param2, paramvals(2-zerofreq) + eps2);
       complex[int] Hl2 = vJ(0, XMh, tgv = -10);
       sym = 0;
       um2[] = vR(0, XMh, tgv = TGV);
@@ -438,7 +429,7 @@ complex[int] R(ub[].n), q1m(J.n), q1ma(J.n), p1P(J.n), q1P(J.n), q2m(J.n), q2ma(
       iomega = 1i*omega2;
       ChangeNumbering(J, um[], q2m, inverse = true, exchange = true);
       um2[] = vJ(0, XMh, tgv = -10);
-      updatelambda(param2, lambda2);
+      updateparam(param2, paramvals(2-zerofreq));
       R = J*um[];
       um3[] -= R;
       um2[] -= R;
@@ -526,13 +517,8 @@ set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent =
 // Initialize
 complex[int] qa;
 ChangeNumbering(J, ub[], qa);
-if(mpirank == 0) {
-  qa.resize(Ja.n);
-  qa(J.n) = lambda;
-  if(!zerofreq) qa(J.n+1) = omega1;
-  qa(Ja.n-(2-zerofreq2)) = lambda2;
-  if(!zerofreq2) qa(Ja.n-1) = omega2;
-}
+qa.resize(Ja.n);
+if(mpirank == 0) qa(J.n:Ja.n-1).re = paramvals;
 sym = sym1;
 R = vM(0, XMh, tgv = 0);
 complex phaseref, phaserefl = R.sum;
@@ -586,18 +572,12 @@ SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
           sparams = "-snes_linesearch_type " + sneslinesearchtype + " -snes_monitor -snes_converged_reason -options_left no");
 if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-  if(mpirank == 0) {
-    lambda = real(qa(J.n)); // Extract parameter value from state vector on proc 0
-    omega1 = zerofreq ? 0.0 : real(qa(J.n+1)); // Extract frequency value from state vector on proc 0
-    lambda2 = real(qa(Ja.n-(2-zerofreq2))); // Extract parameter value from state vector on proc 0
-    omega2 = zerofreq2 ? 0.0 : real(qa(Ja.n-1)); // Extract frequency value from state vector on proc 0
-  }
-  broadcast(processor(0), lambda);
-  broadcast(processor(0), omega1);
-  broadcast(processor(0), lambda2);
-  broadcast(processor(0), omega2);
-  updatelambda(param, lambda);
-  updatelambda(param2, lambda2);
+  if(mpirank == 0) paramvals = qa(J.n:Ja.n-1).re;
+  broadcast(processor(0), paramvals);
+  updateparam(param, paramvals(0) + eps);
+  omega1 = zerofreq ? 0.0 : paramvals(1-zerofreq);
+  updateparam(param2, paramvals(2-zerofreq));
+  omega2 = zerofreq2 ? 0.0 : paramvals(3-zerofreq-zerofreq2);
   ChangeNumbering(J, um[], q1m, inverse = true, exchange = true);
   sym = sym1;
   um2[] = vM(0, XMh, tgv = 0);
@@ -629,7 +609,6 @@ if (ret > 0) { // Save solution if solver converged and output file is given
   if (normalform){
     complex[int] qAB(J.n), qBB(J.n);
     complex[int,int] qDa(paramnames.n, J.n);
-
     Mat<complex> qPM(J.n, mpirank == 0 ? 1 : 0), pPM(J.n, mpirank == 0 ? 1 : 0); // Initialize Mat objects for bordered matrix
     Ja = [[J, qPM], [pPM', 0]]; // make dummy Jacobian
     set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full"
@@ -649,10 +628,10 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     J = vJ(XMh, XMh, tgv = TGV);
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
-        lambda = getlambda(paramnames[k]);
-        updatelambda(paramnames[k], lambda + eps);
+        real paramval = getparam(paramnames[k]);
+        updateparam(paramnames[k], paramval + eps);
         um[] = vR(0, XMh, tgv = TGV);
-        updatelambda(paramnames[k], lambda);
+        updateparam(paramnames[k], paramval);
         um[] -= R;
         um[] /= -eps;
         ChangeNumbering(J, um[], q1P); // FreeFEM to PETSc
@@ -792,10 +771,10 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       for (int k = 0; k < paramnames.n; ++k){
         ChangeNumbering(J, um2[], qDa(k, :), inverse = true, exchange = true); // FreeFEM to PETSc
         um3[] = vH(0, XMh, tgv = -10); // 2.0/2.0
-        lambda = getlambda(paramnames[k]);
-        updatelambda(paramnames[k], lambda + eps);
+        real paramval = getparam(paramnames[k]);
+        updateparam(paramnames[k], paramval + eps);
         um2[] = vJ(0, XMh, tgv = -10);
-        updatelambda(paramnames[k], lambda);
+        updateparam(paramnames[k], paramval);
         um2[] -= R;
         um3[] += um2[]/eps;
         alpha1[paramnames[k]] = -J(uma[], um3[]);
@@ -812,10 +791,10 @@ if (ret > 0) { // Save solution if solver converged and output file is given
       for (int k = 0; k < paramnames.n; ++k){
         ChangeNumbering(J, um2[], qDa(k, :), inverse = true, exchange = true); // FreeFEM to PETSc
         um3[] = vH(0, XMh, tgv = -10); // 2.0/2.0
-        lambda = getlambda(paramnames[k]);
-        updatelambda(paramnames[k], lambda + eps);
+        real paramval = getparam(paramnames[k]);
+        updateparam(paramnames[k], paramval + eps);
         um2[] = vJ(0, XMh, tgv = -10);
-        updatelambda(paramnames[k], lambda);
+        updateparam(paramnames[k], paramval);
         um2[] -= R;
         um3[] += um2[]/eps;
         alpha2[paramnames[k]] = -J(uma[], um3[]);

@@ -2955,17 +2955,17 @@ func complex[int] loadfloq(string inputfilename, string meshfilename, complex[in
     }
 
 // parameter functions
-  func real getlambda(string& contparam){
-    real lambda;
+  func real getparam(string& contparam){
+    real paramval;
     for (int k = 0; k < paramnames.n; ++k){
-    if (contparam == paramnames[k]) lambda = params[paramnames[k]];
+    if (contparam == paramnames[k]) paramval = params[paramnames[k]];
       }
-    return lambda;
+    return paramval;
   }
 
-  func int updatelambda(string& contparam, real lambda){
+  func int updateparam(string& contparam, real paramval){
     for (int k = 0; k < paramnames.n; ++k){
-      if (contparam == paramnames[k]) params[paramnames[k]] = lambda;
+      if (contparam == paramnames[k]) params[paramnames[k]] = paramval;
     }
     return 0;
   }

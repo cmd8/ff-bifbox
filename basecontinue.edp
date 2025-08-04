@@ -118,8 +118,8 @@ if (branchfilein != ""){
     um[] = qm.re;
   }
 }
-real lambda = getlambda(param);
-real paramdiff = lambda - paramtarget;
+real paramval = getparam(param);
+real paramdiff = paramval - paramtarget;
 
 Mat J;
 createMatu(Th, J, Pk);
@@ -139,9 +139,9 @@ real f, kappa, cosalpha, res, delta, maxdelta;
 // FUNCTIONS
   func PetscScalar[int] funcRa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
-      broadcast(processor(0), lambda);
-      updatelambda(param, lambda);
+      if(mpirank == 0) paramval = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
+      broadcast(processor(0), paramval);
+      updateparam(param, paramval);
       R = vR(0, XMh, tgv = TGV);
       PetscScalar[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
@@ -152,14 +152,14 @@ real f, kappa, cosalpha, res, delta, maxdelta;
 
   func int funcJa(PetscScalar[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
-      broadcast(processor(0), lambda);
-      updatelambda(param, lambda);
+      if(mpirank == 0) paramval = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
+      broadcast(processor(0), paramval);
+      updateparam(param, paramval);
       if (it <= refactor) J = vJ(XMh, XMh, tgv = TGV);
       if (contorder > 0){
-        updatelambda(param, lambda + eps);
+        updateparam(param, paramval + eps);
         um2[] = vR(0, XMh, tgv = TGV);
-        updatelambda(param, lambda);
+        updateparam(param, paramval);
         um2[] -= R;
         um2[] /= eps;
         ChangeNumbering(J, um2[], yqP); // FreeFEM to PETSc
@@ -172,7 +172,7 @@ real f, kappa, cosalpha, res, delta, maxdelta;
       return 0;
   }
   
-  ConvergenceCheck(param + " = " + lambda);
+  ConvergenceCheck(param + " = " + paramval);
 // set up Mat parameters
 IFMACRO(Jprecon) Jprecon(0); ENDIFMACRO
 set(Ja, sparams = "-ksp_type preonly -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_precondition full"
@@ -183,7 +183,7 @@ set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent =
 real[int] qa(Ja.n), qa0;
 ChangeNumbering(J, ub[], qa0);
 qa0.resize(Ja.n);
-if(mpirank == 0) qa0(Ja.n-1) = lambda;
+if(mpirank == 0) qa0(Ja.n-1) = paramval;
 if (contorder > 0) {
   R = vR(0, XMh, tgv = TGV);
   funcJa(qa0);
@@ -218,15 +218,15 @@ while (!stopflag){
           ChangeNumbering(J, um2[], yqnP(:, i-j), inverse = true, exchange = true);
           um3[] = vH(0, XMh, tgv = -10);
           NLq += um3[];
-          updatelambda(param, lambda + 2.0*sqrteps);
+          updateparam(param, paramval + 2.0*sqrteps);
           um2[] = vR(0, XMh, tgv = TGV);
-          updatelambda(param, lambda + sqrteps);
+          updateparam(param, paramval + sqrteps);
           um3[] = vR(0, XMh, tgv = TGV);
           um2[] += (R - 2.0*um3[]);
           NLq += (hn(j)*hn(i-j)/eps)*um2[];
-          updatelambda(param, lambda + eps);
+          updateparam(param, paramval + eps);
           um3[] = vJ(0, XMh, tgv = -10);
-          updatelambda(param, lambda);
+          updateparam(param, paramval);
           um2[] = vJ(0, XMh, tgv = -10);
           um3[] -= um2[];
           NLq += (2.0*hn(i-j)/eps)*um3[];
@@ -235,30 +235,30 @@ while (!stopflag){
             ChangeNumbering(J, um3[], yqnP(:, i-j-k-1), inverse = true, exchange = true);
             temp = vT(0, XMh, tgv = -10);
             NLq += temp/3.0;
-            updatelambda(param, lambda + eps);
+            updateparam(param, paramval + eps);
             um3[] = vH(0, XMh, tgv = -10);
-            updatelambda(param, lambda);
+            updateparam(param, paramval);
             temp = vH(0, XMh, tgv = -10);
             um3[] -= temp;
             NLq += (hn(i-j-k-1)/eps)*um3[];
             um3[] = vJ(0, XMh, tgv = -10);
-            updatelambda(param, lambda + 2.0*sqrteps);
+            updateparam(param, paramval + 2.0*sqrteps);
             um2[] = vJ(0, XMh, tgv = -10);
             um2[] += um3[];
-            updatelambda(param, lambda + sqrteps);
+            updateparam(param, paramval + sqrteps);
             um3[] = vJ(0, XMh, tgv = -10);
             um2[] -= 2.0*um3[];
             NLq += (hn(k)*hn(i-j-k-1)/eps)*um2[];
-            updatelambda(param, lambda + 3.0*cbrteps);
+            updateparam(param, paramval + 3.0*cbrteps);
             um2[] = vR(0, XMh, tgv = TGV);
-            updatelambda(param, lambda + 2.0*cbrteps);
+            updateparam(param, paramval + 2.0*cbrteps);
             um3[] = vR(0, XMh, tgv = TGV);
             um2[] -= 3.0*um3[];
-            updatelambda(param, lambda + cbrteps);
+            updateparam(param, paramval + cbrteps);
             um3[] = vR(0, XMh, tgv = TGV);
             um2[] += (3.0*um3[] - R);
             NLq += (hn(j)*hn(k)*hn(i-j-k-1)/(6.0*eps))*um2[];
-            updatelambda(param, lambda);
+            updateparam(param, paramval);
           }
         }
         NLq *= -0.5;
@@ -279,7 +279,7 @@ while (!stopflag){
   if (ret > 0) {
     ++count;
     if (maxcount > 0) stopflag = (count >= maxcount);
-    else if ((lambda - paramtarget)*paramdiff <= 0) stopflag = true;
+    else if ((paramval - paramtarget)*paramdiff <= 0) stopflag = true;
     h0 /= f;
     if (cosalpha < 0 && contorder > 0) {
       h0 *= -1.0;
@@ -289,9 +289,9 @@ while (!stopflag){
     if (adapt && (count % savecount == 0)){
       meshout = meshroot + "_" + count + "." + meshext;
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
-      if(mpirank == 0) lambda = qa(Ja.n-1);
-      broadcast(processor(0), lambda);
-      updatelambda(param, lambda);
+      if(mpirank == 0) paramval = qa(Ja.n-1);
+      broadcast(processor(0), paramval);
+      updateparam(param, paramval);
       ChangeNumbering(J, um[], yqP, inverse = true);
       XMhg defu(uG), defu(yG), defu(tempu);
       tempu[](restu) = ub[]; // populate local portion of global soln
@@ -341,7 +341,7 @@ while (!stopflag){
       set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent = Ja);
       ChangeNumbering(J, ub[], qa);
       qa.resize(Ja.n);
-      if(mpirank == 0) qa(Ja.n-1) = lambda;
+      if(mpirank == 0) qa(Ja.n-1) = paramval;
       R.resize(ub[].n);
       ChangeNumbering(J, um[], yqP);
       yqP0.resize(J.n);
@@ -362,9 +362,9 @@ while (!stopflag){
       }
     }
     ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true);
-    if(mpirank == 0) lambda = qa(Ja.n-1);
-    broadcast(processor(0), lambda);
-    updatelambda(param, lambda);
+    if(mpirank == 0) paramval = qa(Ja.n-1);
+    broadcast(processor(0), paramval);
+    updateparam(param, paramval);
     savebase(fileout + "_" + count + (forcesave ? "specialpt" : ""), (savecount > 0 ? fileout : ""), meshout, ((count % savecount == 0) || forcesave || stopflag), true);
     if (stopflag) break;
     forcesave = false;

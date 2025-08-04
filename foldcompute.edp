@@ -21,7 +21,7 @@
 /*
  This script computes the normal form at a non-degenerate fold point.
  The normal form is written for the real amplitude A as:
-    dA/dt =  alpha*dlambda + beta*A^2
+    dA/dt =  alpha*dparam + beta*A^2
  where:
     alpha is the coefficient for the term from parameter changes,
     beta is the coefficient for the term from harmonic interactions.
@@ -98,7 +98,7 @@ else if(fileext == "porb") {
   complex[int, int] qh(um[].n, Nh);
   ub[] = loadporb(fileroot, meshin, qh, sym, omega, Nh);
 }
-real lambda = getlambda(param);
+real paramval = getparam(param);
 // Create distributed Mat
 Mat J;
 createMatu(Th, J, Pk);
@@ -192,9 +192,9 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
 // FUNCTIONS
   func real[int] funcRa(real[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
-      broadcast(processor(0), lambda);
-      updatelambda(param, lambda);
+      if(mpirank == 0) paramval = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
+      broadcast(processor(0), paramval);
+      updateparam(param, paramval);
       R = vR(0, XMh, tgv = TGV);
       real[int] Ra;
       ChangeNumbering(J, R, Ra); // FreeFEM to PETSc
@@ -212,11 +212,11 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
 
   func int funcJa(real[int]& qa) {
       ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true); // PETSc to FreeFEM
-      if(mpirank == 0) lambda = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
-      broadcast(processor(0), lambda);
+      if(mpirank == 0) paramval = qa(Ja.n-1); // Extract parameter value from state vector on proc 0
+      broadcast(processor(0), paramval);
       ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
       ChangeNumbering(J, uma[], qma, inverse = true);
-      updatelambda(param, lambda + eps);
+      updateparam(param, paramval + eps);
       um2[] = vR(0, XMh, tgv = TGV);
       um2[] -= R;
       um2[] /= eps;
@@ -224,7 +224,7 @@ real[int] R(ub[].n), qm(J.n), qma(J.n), pP(J.n), qP(J.n);
       matrix tempPms = [[qm]]; // dense array to sparse matrix
       ChangeOperator(JlPM, tempPms, parent = Ja); // send to Mat
       um3[] = vJ(0, XMh, tgv = -10);
-      updatelambda(param, lambda);
+      updateparam(param, paramval);
       um2[] = vJ(0, XMh, tgv = -10);
       um3[] -= um2[];
       J = vH(XMh, XMh, tgv = 0);
@@ -246,11 +246,11 @@ set(J, IFMACRO(Jsetargs) Jsetargs, ENDIFMACRO prefix = "fieldsplit_0_", parent =
 real[int] qa;
 ChangeNumbering(J, ub[], qa);
 qa.resize(Ja.n);
-if(mpirank == 0) qa(Ja.n - 1) = lambda;
+if(mpirank == 0) qa(Ja.n - 1) = paramval;
 if (fileext != "fold" && fileext != "foho"){
-  updatelambda(param, lambda + eps);
+  updateparam(param, paramval + eps);
   um2[] = vR(0, XMh);
-  updatelambda(param, lambda);
+  updateparam(param, paramval);
   R = vR(0, XMh);
   um2[] -= R;
   um2[] /= eps;
@@ -276,9 +276,9 @@ SNESSolve(Ja, funcJa, funcRa, qa, reason = ret,
           sparams = "-snes_linesearch_type " + sneslinesearchtype + " -options_left no -snes_monitor -snes_converged_reason");
 if (ret > 0) { // Save solution if solver converged and output file is given
   ChangeNumbering(J, ub[], qa(0:J.n-1), inverse = true, exchange = true);
-  if(mpirank == 0) lambda = qa(Ja.n-1);
-  broadcast(processor(0), lambda);
-  updatelambda(param, lambda);
+  if(mpirank == 0) paramval = qa(Ja.n-1);
+  broadcast(processor(0), paramval);
+  updateparam(param, paramval);
   ChangeNumbering(J, um[], qm, inverse = true, exchange = true);
   um2[] = vM(0, XMh, tgv = 0);
   ChangeNumbering(J, um[], qm, inverse = true);
@@ -293,10 +293,10 @@ if (ret > 0) { // Save solution if solver converged and output file is given
     //  A: base modification due to parameter changes
     if(paramnames[0] != ""){
       for (int k = 0; k < paramnames.n; ++k){
-        lambda = getlambda(paramnames[k]);
-        updatelambda(paramnames[k], lambda + eps);
+        paramval = getparam(paramnames[k]);
+        updateparam(paramnames[k], paramval + eps);
         um2[] = vR(0, XMh, tgv = TGV);
-        updatelambda(paramnames[k], lambda);
+        updateparam(paramnames[k], paramval);
         um2[] -= R;
         alpha[paramnames[k]] = -J(uma[], um2[])/eps;
       }
