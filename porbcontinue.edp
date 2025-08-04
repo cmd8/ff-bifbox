@@ -313,7 +313,7 @@ while (!stopflag){
           else if(Nh > 1 && adaptto == "012") Thg = adaptmesh(Thg, adaptu(uG), adaptu(u1rG), adaptu(u1iG), adaptu(u2rG), adaptu(u2iG), adaptmeshoptions);
         ENDIFMACRO
         IFMACRO(dimension,3)
-          cout << "NOTE: 3D mesh adaptation is still under development." << endl;
+          //NOTE: 3D mesh adaptation is still under development.
           load "mshmet"
           load "mmg"
           real anisomax = getARGV("-anisomax",1.0);

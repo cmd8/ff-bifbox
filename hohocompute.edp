@@ -227,7 +227,7 @@ else { // if output meshfile is given, adapt mesh
   ChangeNumbering(J, um2[], q, inverse = true);
   ChangeNumbering(J, um3[], q);
   ChangeNumbering(J, um3[], q, inverse = true);
-  XMhg defu(uG), defu(umrG), defu(umiG), defu(umarG), defu(umaiG), defu(tempu), defu(um2rG), defu(um2iG), defu(um3rG), defu(um3iG);
+  XMhg defu(uG), defu(umrG), defu(umiG), defu(umarG), defu(umaiG), defu(tempu), defu(um2rG), defu(um2iG), defu(um3rG), defu(um3iG), defu(uoG), defu(uo2G);
   tempu[](restu) = ub[].re; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM);
   tempu[](restu) = um[].re; // populate local portion of global soln
@@ -252,9 +252,26 @@ else { // if output meshfile is given, adapt mesh
       else if(adaptto == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(um2rG), adaptu(um2iG), adaptmeshoptions);
       else if(adaptto == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptu(um3rG), adaptu(um3iG), adaptmeshoptions);
       else if(adaptto == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptu(um2rG), adaptu(um2iG), adaptu(um3rG), adaptu(um3iG), adaptmeshoptions);
+      else if(adaptto == "bo") {
+        uoG[] = (umrG[].*umrG[]);
+        uoG[] += (umiG[].*umiG[]);
+        uoG[] = sqrt(uoG[]);
+        tempu[] = (umarG[].*umarG[]);
+        tempu[] += (umaiG[].*umaiG[]);
+        tempu[] = sqrt(tempu[]);
+        uoG[] .*= tempu[];
+        uo2G[] = (um2rG[].*um2rG[]);
+        uo2G[] += (um2iG[].*um2iG[]);
+        uo2G[] = sqrt(uo2G[]);
+        tempu[] = (um3rG[].*um3rG[]);
+        tempu[] += (um3iG[].*um3iG[]);
+        tempu[] = sqrt(tempu[]);
+        uo2G[] .*= tempu[];
+        Thg = adaptmesh(Thg, adaptu(uG), adaptu(uoG), adaptu(uo2G), adaptmeshoptions);
+      }
     ENDIFMACRO
     IFMACRO(dimension,3)
-      cout << "NOTE: 3D mesh adaptation is still under development." << endl;
+      //NOTE: 3D mesh adaptation is still under development.
       load "mshmet"
       load "mmg"
       real anisomax = getARGV("-anisomax",1.0);
@@ -263,13 +280,30 @@ else { // if output meshfile is given, adapt mesh
       else if(adaptto == "bd") met = mshmet(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(um2rG), adaptu(um2iG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
       else if(adaptto == "ba") met = mshmet(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptu(um3rG), adaptu(um3iG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
       else if(adaptto == "bda") met = mshmet(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptu(um2rG), adaptu(um2iG), adaptu(um3rG), adaptu(um3iG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      else if(adaptto == "bo") {
+        uoG[] = (umrG[].*umrG[]);
+        uoG[] += (umiG[].*umiG[]);
+        uoG[] = sqrt(uoG[]);
+        tempu[] = (umarG[].*umarG[]);
+        tempu[] += (umaiG[].*umaiG[]);
+        tempu[] = sqrt(tempu[]);
+        uoG[] .*= tempu[];
+        uo2G[] = (um2rG[].*um2rG[]);
+        uo2G[] += (um2iG[].*um2iG[]);
+        uo2G[] = sqrt(uo2G[]);
+        tempu[] = (um3rG[].*um3rG[]);
+        tempu[] += (um3iG[].*um3iG[]);
+        tempu[] = sqrt(tempu[]);
+        uo2G[] .*= tempu[];
+        met = mshmet(Thg, adaptu(uG), adaptu(uoG), adaptu(uo2G), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      }
       if(anisomax > 1.0) {
         load "aniso"
         boundaniso(6, met, anisomax);
       }
       Thg = mmg3d(Thg, metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1, verbose = verbosity-(verbosity==0));
     ENDIFMACRO
-  } // TODO: add adaptation to endogeneity and structural sensitivity
+  }
   broadcast(processor(0), Thg);
   defu(uG) = defu(uG);
   defu(umrG) = defu(umrG);

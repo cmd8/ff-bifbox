@@ -294,7 +294,7 @@ while (count < maxcount){
         Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
       ENDIFMACRO
       IFMACRO(dimension,3)
-        cout << "NOTE: 3D mesh adaptation is still under development." << endl;
+        //NOTE: 3D mesh adaptation is still under development.
         load "mshmet"
         load "mmg"
         real anisomax = getARGV("-anisomax",1.0);

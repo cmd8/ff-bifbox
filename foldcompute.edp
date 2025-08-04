@@ -115,7 +115,7 @@ else { // if output meshfile is given, adapt mesh
   ChangeNumbering(J, um[], q, inverse = true);
   ChangeNumbering(J, uma[], q);
   ChangeNumbering(J, uma[], q, inverse = true);
-  XMhg defu(uG), defu(umG), defu(umaG), defu(tempu); // create private global FE functions
+  XMhg defu(uG), defu(umG), defu(umaG), defu(tempu), defu(uoG); // create private global FE functions
   tempu[](restu) = ub[]; // populate local portion of global soln
   mpiAllReduce(tempu[], uG[], mpiCommWorld, mpiSUM); //aggregate local solns into global soln
   tempu[](restu) = um[]; // populate local portion of global soln
@@ -128,9 +128,17 @@ else { // if output meshfile is given, adapt mesh
       else if(adaptto == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptmeshoptions);
       else if(adaptto == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umaG), adaptmeshoptions);
       else if(adaptto == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umG), adaptu(umaG), adaptmeshoptions);
+      else if(adaptto == "bo") {
+        uoG[] = (umG[].*umG[]);
+        uoG[] = sqrt(uoG[]);
+        tempu[] = (umaG[].*umaG[]);
+        tempu[] = sqrt(tempu[]);
+        uoG[] .*= tempu[];
+        Thg = adaptmesh(Thg, adaptu(uG), adaptu(uoG), adaptmeshoptions);
+      }
     ENDIFMACRO
     IFMACRO(dimension,3)
-      cout << "NOTE: 3D mesh adaptation is still under development." << endl;
+      //NOTE: 3D mesh adaptation is still under development.
       load "mshmet"
       load "mmg"
       real anisomax = getARGV("-anisomax",1.0);
@@ -139,13 +147,21 @@ else { // if output meshfile is given, adapt mesh
       else if(adaptto == "bd") met = mshmet(Thg, adaptu(uG), adaptu(umG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
       else if(adaptto == "ba") met = mshmet(Thg, adaptu(uG), adaptu(umaG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
       else if(adaptto == "bda") met = mshmet(Thg, adaptu(uG), adaptu(umG), adaptu(umaG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      else if(adaptto == "bo") {
+        uoG[] = (umG[].*umG[]);
+        uoG[] = sqrt(uoG[]);
+        tempu[] = (umaG[].*umaG[]);
+        tempu[] = sqrt(tempu[]);
+        uoG[] .*= tempu[];
+        met = mshmet(Thg, adaptu(uG), adaptu(uoG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
+      }
       if(anisomax > 1.0) {
         load "aniso"
         boundaniso(6, met, anisomax);
       }
       Thg = mmg3d(Thg, metric = met, hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), hgrad = -1, verbose = verbosity-(verbosity==0));
     ENDIFMACRO
-  } // TODO: add adaptation to endogeneity and structural sensitivity
+  }
   broadcast(processor(0), Thg); // broadcast global mesh to all processors
   defu(uG) = defu(uG); //interpolate global solution from old mesh to new mesh
   defu(umG) = defu(umG); //interpolate global solution from old mesh to new mesh
