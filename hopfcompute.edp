@@ -265,21 +265,22 @@ else { // if output meshfile is given, adapt mesh
   tempu[](restu) = uma[].im; // populate local portion of global soln
   mpiAllReduce(tempu[], umaiG[], mpiCommWorld, mpiSUM);
   if(mpirank == 0) {  // Perform mesh adaptation (serially) on processor 0
+    if(adaptto == "bo") {
+      defu(uoG) = initu(defu(umarG)'*defu(umarG));
+      defu(tempu) = initu(defu(umaiG)'*defu(umaiG));
+      tempu[] += uoG[];
+      tempu[] = sqrt(tempu[]);
+      uoG[] = (umrG[].*umrG[]);
+      uoG[] += (umiG[].*umiG[]);
+      uoG[] = sqrt(uoG[]);
+      uoG[] .*= tempu[];
+    }
     IFMACRO(dimension,2)
       if(adaptto == "b") Thg = adaptmesh(Thg, adaptu(uG), adaptmeshoptions);
       else if(adaptto == "bd") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptmeshoptions);
       else if(adaptto == "ba") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
       else if(adaptto == "bda") Thg = adaptmesh(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), adaptmeshoptions);
-      else if(adaptto == "bo") {
-        uoG[] = (umrG[].*umrG[]);
-        uoG[] += (umiG[].*umiG[]);
-        uoG[] = sqrt(uoG[]);
-        tempu[] = (umarG[].*umarG[]);
-        tempu[] += (umaiG[].*umaiG[]);
-        tempu[] = sqrt(tempu[]);
-        uoG[] .*= tempu[];
-        Thg = adaptmesh(Thg, adaptu(uG), adaptu(uoG), adaptmeshoptions);
-      }
+      else if(adaptto == "bo") Thg = adaptmesh(Thg, adaptu(uG), adaptu(uoG), adaptmeshoptions);
     ENDIFMACRO
     IFMACRO(dimension,3)
       //NOTE: 3D mesh adaptation is still under development.
@@ -291,16 +292,7 @@ else { // if output meshfile is given, adapt mesh
       else if(adaptto == "bd") met = mshmet(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
       else if(adaptto == "ba") met = mshmet(Thg, adaptu(uG), adaptu(umarG), adaptu(umaiG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
       else if(adaptto == "bda") met = mshmet(Thg, adaptu(uG), adaptu(umrG), adaptu(umiG), adaptu(umarG), adaptu(umaiG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
-      else if(adaptto == "bo") {
-        uoG[] = (umrG[].*umrG[]);
-        uoG[] += (umiG[].*umiG[]);
-        uoG[] = sqrt(uoG[]);
-        tempu[] = (umarG[].*umarG[]);
-        tempu[] += (umaiG[].*umaiG[]);
-        tempu[] = sqrt(tempu[]);
-        uoG[] .*= tempu[];
-        met = mshmet(Thg, adaptu(uG), adaptu(uoG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
-      }
+      else if(adaptto == "bo") met = mshmet(Thg, adaptu(uG), adaptu(uoG), normalization = getARGV("-normalization",1), aniso = bool(anisomax > 1.0),hmin = getARGV("-hmin", 1.0e-6), hmax = getARGV("-hmax", 1.0e+2), err = getARGV("-err", 1.0e-2));
       if(anisomax > 1.0) {
         load "aniso"
         boundaniso(6, met, anisomax);
