@@ -262,6 +262,7 @@ while (!stopflag){
         ChangeNumbering([J, J], [uh(:, nh).re, uh(:, nh).im], qa((1+2*nh)*J.n:(3+2*nh)*J.n-1), inverse = true);
       if(mpirank == 0) paramvals = qa(JHB.n:JHBaa.n-1);
       broadcast(processor(0), paramvals);
+      omega = zerofreq ? 0.0 : paramvals(0);
       updateparam(param, paramvals(1-zerofreq));
       ChangeNumbering(J, um2[].re, yqP(0:J.n-1), inverse = true);
       real yomega;
